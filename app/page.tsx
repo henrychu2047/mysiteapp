@@ -162,8 +162,9 @@ export default function Page() {
       sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
       for (const p of chosen) {
         const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note || '', time: new Date(p.createdAt).toLocaleString('zh-HK') })
-        const clean = await imageAsJpeg(p.cleanSrc)
-        const imageId = book.addImage({ base64: clean, extension: 'jpeg' })
+        const cleanDataUrl = await imageAsJpeg(p.cleanSrc)
+        const cleanBase64 = cleanDataUrl.split(',')[1]
+        const imageId = book.addImage({ base64: cleanBase64, extension: 'jpeg' })
         sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } })
         row.height = 130
       }
@@ -175,6 +176,10 @@ export default function Page() {
       document.body.appendChild(link)
       link.click()
       setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 3000)
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent) && navigator.share && typeof File !== 'undefined') {
+        const file = new File([buffer], '地盤相片記錄.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: '地盤相片記錄.xlsx' })
+      }
     } catch (error) {
       console.error('[v0] ExcelJS export failed:', error)
       alert(`Excel 匯出失敗：${error instanceof Error ? error.message : '未知錯誤'}`)
