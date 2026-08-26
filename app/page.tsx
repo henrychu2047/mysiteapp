@@ -125,6 +125,7 @@ export default function Page() {
   const [tab, setTab] = useState<'home' | 'photos' | 'settings'>('home')
   const [settingsOptions, setSettingsOptions] = useState<Record<string, string[]>>(tagOptions)
   const [newOption, setNewOption] = useState<Record<string, string>>({})
+  const settingsLoadedRef = useRef(false)
   const [tags, setTags] = useState<Record<string, string>>({})
   const [note, setNote] = useState('')
   const [picker, setPicker] = useState<string | null>(null)
@@ -148,11 +149,13 @@ export default function Page() {
       if (memory) { const m = JSON.parse(memory); setTags(m.tags || {}); setNote(m.note || '') }
       if (savedOptions) setSettingsOptions({ ...tagOptions, ...JSON.parse(savedOptions) })
     } catch { /* 儲存空間不可用時仍可繼續拍攝 */ }
+    settingsLoadedRef.current = true
   }, [])
   useEffect(() => {
     if (photos.length) saveStoredPhotos(photos).catch(() => alert('相片儲存失敗，請檢查瀏覽器儲存空間'))
   }, [photos])
   useEffect(() => {
+    if (!settingsLoadedRef.current) return
     try {
       localStorage.setItem('site-photo-memory', JSON.stringify({ tags, note }))
       localStorage.setItem('site-photo-options', JSON.stringify(settingsOptions))
@@ -274,7 +277,7 @@ export default function Page() {
     </main>
     {continuousCamera && <div className="overlay dark-overlay camera-overlay"><div className="camera-sheet"><div className="camera-topline"><button className="camera-back" onClick={stopContinuousCamera} aria-label="返回上一頁">‹ 返回</button><div><strong>連續拍攝</strong><small>{active} · 已拍 {currentPhotos.length} 張</small></div><span className="live-pill"><i /> LIVE</span></div><div className="camera-frame"><video ref={videoRef} autoPlay playsInline muted /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /></div><div className="camera-toolbar"><span className="capture-hint">按快門即可繼續</span><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={captureContinuousPhoto} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : '●'}</button><span className="capture-count">{currentPhotos.length} 張</span></div>{captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}{cameraError && <p className="camera-error">{cameraError}</p>}</div></div>}
     {cameraError && !continuousCamera && <div className="camera-error-banner">{cameraError}</div>}
-    {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>×</button></div>{(tagOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '✓' : '›'}</span></button>)}<div className="custom-option"><input id="custom" placeholder="新增自訂項目" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>新增</button></div></div></div>}
+    {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>×</button></div>{(settingsOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '✓' : '›'}</span></button>)}<div className="custom-option"><input id="custom" placeholder="新增自訂項目" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>新增</button></div></div></div>}
     {detail && <div className="overlay dark-overlay" onClick={() => setDetail(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="close light" onClick={() => setDetail(null)}>×</button><img src={detail.src} alt="相片詳情" /><div className="detail-copy"><b>{detail.category}</b><p>{Object.entries(detail.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>{detail.note || '沒有備註'}</p><small>{new Date(detail.createdAt).toLocaleString('zh-HK')}</small></div></div></div>}
     {newCategory && <div className="overlay" onClick={() => setNewCategory(false)}><div className="sheet small-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">NEW CATEGORY</p><h3>新增工程類別</h3></div><button className="close" onClick={() => setNewCategory(false)}>×</button></div><input className="category-input" autoFocus placeholder="例如：外牆工程" onKeyDown={e => { if (e.key === 'Enter') addCategory(e.currentTarget.value) }} /><button className="primary-button" onClick={() => addCategory((document.querySelector('.category-input') as HTMLInputElement).value)}>建立類別</button></div></div>}
   </>
