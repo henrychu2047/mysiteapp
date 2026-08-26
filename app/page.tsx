@@ -52,6 +52,23 @@ function saveStoredPhotos(photos: Photo[]) {
   }))
 }
 
+function imageAsJpeg(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth || image.width
+      canvas.height = image.naturalHeight || image.height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject(new Error('無法建立圖片轉換器'))
+      ctx.drawImage(image, 0, 0)
+      resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1])
+    }
+    image.onerror = () => reject(new Error('無法轉換原圖'))
+    image.src = dataUrl
+  })
+}
+
 function stampImage(file: File, category: string) {
   return new Promise<{ stamped: string; clean: string }>((resolve, reject) => {
     const reader = new FileReader()
@@ -138,11 +155,8 @@ export default function Page() {
       sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
       for (const p of chosen) {
         const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note, time: new Date(p.createdAt).toLocaleString('zh-HK') })
-        const cleanParts = p.cleanSrc.split(',')
-        const cleanBase64 = cleanParts.length > 1 ? cleanParts[1] : cleanParts[0]
-        const mime = cleanParts[0].match(/^data:image\/(png|gif|jpeg|jpg|webp)/i)?.[1]?.toLowerCase() || 'jpeg'
-        const extension = mime === 'jpg' ? 'jpeg' : mime === 'webp' ? 'jpeg' : mime
-        const imageId = book.addImage({ base64: cleanBase64, extension })
+        const cleanBase64 = await imageAsJpeg(p.cleanSrc)
+        const imageId = book.addImage({ base64: cleanBase64, extension: 'jpeg' })
         sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } })
         row.height = 130
       }
