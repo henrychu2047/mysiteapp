@@ -20,8 +20,39 @@ const tagOptions: Record<string, string[]> = {
   其它: ['日常巡查', '材料到場', '環境記錄', '問題跟進'],
 }
 
+const PHOTO_DB = 'site-photo-db'
+const PHOTO_STORE = 'photos'
+
+function openPhotoDb() {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(PHOTO_DB, 1)
+    request.onupgradeneeded = () => request.result.createObjectStore(PHOTO_STORE, { keyPath: 'id' })
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+function loadStoredPhotos() {
+  return openPhotoDb().then(db => new Promise<Photo[]>((resolve, reject) => {
+    const request = db.transaction(PHOTO_STORE, 'readonly').objectStore(PHOTO_STORE).getAll()
+    request.onsuccess = () => resolve(request.result as Photo[])
+    request.onerror = () => reject(request.error)
+  }))
+}
+
+function saveStoredPhotos(photos: Photo[]) {
+  return openPhotoDb().then(db => new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(PHOTO_STORE, 'readwrite')
+    const store = transaction.objectStore(PHOTO_STORE)
+    store.clear()
+    photos.forEach(photo => store.put(photo))
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+  }))
+}
+
 function stampImage(file: File, category: string) {
-  return new Promise<{ stamped: string; clean: string }>((resolve) => {
+  return new Promise<{ stamped: string; clean: string }>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
       const image = new Image()
@@ -39,8 +70,10 @@ function stampImage(file: File, category: string) {
         ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(text, image.width - width + size * .7, image.height - height / 2)
         resolve({ stamped: canvas.toDataURL('image/jpeg', .88), clean: reader.result as string })
       }
+      image.onerror = () => reject(new Error('無法讀取相片'))
       image.src = reader.result as string
     }
+    reader.onerror = () => reject(reader.error || new Error('無法讀取檔案'))
     reader.readAsDataURL(file)
   })
 }
@@ -59,13 +92,19 @@ export default function Page() {
   const cameraRef = useRef<HTMLInputElement>(null); const albumRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const saved = localStorage.getItem('site-photo-records')
-    const memory = localStorage.getItem('site-photo-memory')
-    if (saved) setPhotos(JSON.parse(saved))
-    if (memory) { const m = JSON.parse(memory); setTags(m.tags || {}); setNote(m.note || '') }
+    loadStoredPhotos().then(setPhotos).catch(() => setPhotos([]))
+    try {
+      localStorage.removeItem('site-photo-records')
+      const memory = localStorage.getItem('site-photo-memory')
+      if (memory) { const m = JSON.parse(memory); setTags(m.tags || {}); setNote(m.note || '') }
+    } catch { /* 儲存空間不可用時仍可繼續拍攝 */ }
   }, [])
-  useEffect(() => { localStorage.setItem('site-photo-records', JSON.stringify(photos)) }, [photos])
-  useEffect(() => { localStorage.setItem('site-photo-memory', JSON.stringify({ tags, note })) }, [tags, note])
+  useEffect(() => {
+    if (photos.length) saveStoredPhotos(photos).catch(() => alert('相片儲存失敗，請檢查瀏覽器儲存空間'))
+  }, [photos])
+  useEffect(() => {
+    try { localStorage.setItem('site-photo-memory', JSON.stringify({ tags, note })) } catch { /* 備註記憶不可用不影響相片 */ }
+  }, [tags, note])
 
   const currentPhotos = useMemo(() => active ? photos.filter(p => p.category === active) : photos, [active, photos])
   const importFiles = async (files: FileList | null) => {
