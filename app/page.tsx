@@ -154,29 +154,18 @@ export default function Page() {
   const removeCategory = (name: string) => { if (confirm(`確定刪除「${name}」及其相片？`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
   const exportExcel = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
-    if (!chosen.length) return alert('請先勾選要匯出的相片')
-    const XLSX = await loadBrowserLibrary('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js', 'ExcelJS').catch(() => null)
-    if (!XLSX) return alert('Excel 模組載入失敗，請確認網絡連線後重試')
-    try {
-      const book = new XLSX.Workbook()
-      const sheet = book.addWorksheet('相片記錄')
-      sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
-      for (const p of chosen) {
-        const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note, time: new Date(p.createdAt).toLocaleString('zh-HK') })
-        const cleanDataUrl = await imageAsJpeg(p.cleanSrc)
-        const imageId = book.addImage({ base64: cleanDataUrl, extension: 'jpeg' })
-        sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } })
-        row.height = 130
-      }
-      const buffer = await book.xlsx.writeBuffer()
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a'); a.setAttribute('href', url); a.setAttribute('download', '地盤相片記錄.xlsx'); a.style.display = 'none'; document.body.appendChild(a); a.click()
-      setTimeout(() => { a.remove(); URL.revokeObjectURL(url) }, 2000)
-    } catch (error) {
-      console.error('[v0] Excel export failed:', error)
-      alert(`Excel 匯出失敗：${error instanceof Error ? error.message : '請稍後再試'}`)
-    }
+    if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
+    const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const rows = chosen.map(p => `<tr><td><img src="${p.cleanSrc}" width="165" height="165"></td><td>${escape(p.category)}</td><td>${escape(Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '))}</td><td>${escape(p.note || '')}</td><td>${escape(new Date(p.createdAt).toLocaleString('zh-HK'))}</td></tr>`).join('')
+    const html = `<html><head><meta charset="UTF-8"><style>table{border-collapse:collapse}td,th{border:1px solid #999;padding:8px;vertical-align:top}img{object-fit:cover}</style></head><body><h2>地盤相片記錄</h2><table><thead><tr><th>相片</th><th>類別</th><th>標籤</th><th>備註</th><th>拍攝時間</th></tr></thead><tbody>${rows}</tbody></table></body></html>`
+    const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = '地盤相片記錄.xls'
+    document.body.appendChild(link)
+    link.click()
+    setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 2000)
   }
   const exportPdf = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
