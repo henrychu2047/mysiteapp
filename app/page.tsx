@@ -115,12 +115,33 @@ export default function Page() {
   const addCategory = (name: string) => { if (name.trim()) setCategories(c => [...c, { name: name.trim(), icon: '＋' }]); setNewCategory(false) }
   const removeCategory = (name: string) => { if (confirm(`確定刪除「${name}」及其相片？`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
   const exportExcel = async () => {
-    const XLSX = (window as any).ExcelJS; if (!XLSX) return alert('Excel 模組載入中，請稍後再試')
-    const book = new XLSX.Workbook(); const sheet = book.addWorksheet('相片記錄'); sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
-    for (const p of photos.filter(x => selected.includes(x.id))) { const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note, time: new Date(p.createdAt).toLocaleString('zh-HK') }); const imageId = book.addImage({ base64: p.cleanSrc, extension: 'jpeg' }); sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } }); row.height = 130 }
-    const buffer = await book.xlsx.writeBuffer(); const url = URL.createObjectURL(new Blob([buffer])); const a = document.createElement('a'); a.href = url; a.download = '地盤相片記錄.xlsx'; a.click(); URL.revokeObjectURL(url)
+    const chosen = photos.filter(x => selected.includes(x.id))
+    if (!chosen.length) return alert('請先勾選要匯出的相片')
+    const XLSX = (window as any).ExcelJS
+    if (!XLSX) return alert('Excel 模組尚未載入，請重新整理頁面後再試')
+    try {
+      const book = new XLSX.Workbook()
+      const sheet = book.addWorksheet('相片記錄')
+      sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
+      for (const p of chosen) {
+        const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note, time: new Date(p.createdAt).toLocaleString('zh-HK') })
+        const imageId = book.addImage({ base64: p.cleanSrc, extension: 'jpeg' })
+        sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } })
+        row.height = 130
+      }
+      const buffer = await book.xlsx.writeBuffer()
+      const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const a = document.createElement('a'); a.href = url; a.download = '地盤相片記錄.xlsx'; document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error) { console.error('[v0] Excel export failed:', error); alert('Excel 匯出失敗，請稍後再試') }
   }
-  const exportPdf = async () => { const el = document.getElementById('pdf-report'); if (!el) return; const pdf = (window as any).html2pdf; await pdf().set({ margin: 12, filename: '地盤相片報表.pdf', html2canvas: { scale: 1.4 }, jsPDF: { format: 'a3', orientation: 'landscape' } }).from(el).save() }
+  const exportPdf = async () => {
+    const chosen = photos.filter(x => selected.includes(x.id)); const el = document.getElementById('pdf-report'); const pdf = (window as any).html2pdf
+    if (!chosen.length) return alert('請先勾選要匯出的相片')
+    if (!el || !pdf) return alert('PDF 模組尚未載入，請重新整理頁面後再試')
+    try { await pdf().set({ margin: 12, filename: '地盤相片報表.pdf', html2canvas: { scale: 1.2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(el).save() }
+    catch (error) { console.error('[v0] PDF export failed:', error); alert('PDF 匯出失敗，請稍後再試') }
+  }
 
   return <>
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" />
