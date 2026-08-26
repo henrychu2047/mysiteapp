@@ -1,47 +1,100 @@
+'use client'
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+
+type Photo = { id: string; src: string; cleanSrc: string; category: string; tags: Record<string, string>; note: string; createdAt: string }
+type Category = { name: string; icon: string }
+
+const defaultCategories: Category[] = [
+  { name: '鋼筋工程', icon: '▦' },
+  { name: '模板工程', icon: '▤' },
+  { name: '混凝土澆置', icon: '◈' },
+  { name: '機電工程', icon: '⌁' },
+  { name: '安全巡查', icon: '△' },
+]
+const tagOptions: Record<string, string[]> = {
+  樓層: ['B2', 'B1', 'G/F', '1/F', '2/F', '3/F', '天台'],
+  機房: ['A區機房', 'B區機房', '泵房', '電房', '消防泵房'],
+  事項: ['施工進度', '品質檢查', '材料驗收', '工序記錄', '完成確認'],
+  安全: ['個人防護', '臨邊防護', '開口防護', '消防設備', '安全通道'],
+  其它: ['日常巡查', '材料到場', '環境記錄', '問題跟進'],
+}
+
+function stampImage(file: File, category: string) {
+  return new Promise<{ stamped: string; clean: string }>((resolve) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const image = new Image()
+      image.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = image.width; canvas.height = image.height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(image, 0, 0)
+        const text = `${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`
+        const size = Math.max(18, Math.round(image.width / 48))
+        ctx.font = `600 ${size}px Arial, sans-serif`
+        const width = ctx.measureText(text).width + size * 1.4
+        const height = size * 2.1
+        ctx.fillStyle = 'rgba(10, 17, 24, .72)'; ctx.fillRect(image.width - width, image.height - height, width, height)
+        ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(text, image.width - width + size * .7, image.height - height / 2)
+        resolve({ stamped: canvas.toDataURL('image/jpeg', .88), clean: reader.result as string })
+      }
+      image.src = reader.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 export default function Page() {
-  return (
-    <main
-      style={{
-        colorScheme: 'light dark',
-        position: 'relative',
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'light-dark(#fff, #000)',
-        color: 'light-dark(#000, #fff)',
-      }}
-    >
-      <svg
-        aria-hidden="true"
-        style={{ width: 80, height: 80 }}
-        width={80}
-        height={80}
-        fill="none"
-        viewBox="0 0 20 20"
-        xmlns="http://www.w3.org/2000/svg"
-        stroke="currentColor"
-        strokeWidth="0.5"
-      >
-        <path
-          d="M14.2 14.2H17V6.9375C17 4.76288 15.2371 3 13.0625 3H5.8V5.8M14.2 14.2V7.79063L7.79062 14.2H14.2ZM14.2 14.2V17H6.9375C4.76288 17 3 15.2371 3 13.0625V5.8H5.8M5.8 5.8V12.2313L12.2313 5.8H5.8Z"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <p
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: 'calc(50% + 56px)',
-          transform: 'translateX(-50%)',
-          whiteSpace: 'nowrap',
-          fontSize: '14px',
-          fontWeight: 500,
-          color: 'light-dark(#71717a, #a1a1aa)',
-        }}
-      >
-        Your v0 generation will show here.
-      </p>
+  const [categories, setCategories] = useState(defaultCategories)
+  const [photos, setPhotos] = useState<Photo[]>([])
+  const [active, setActive] = useState<string | null>(null)
+  const [tab, setTab] = useState<'home' | 'photos'>('home')
+  const [tags, setTags] = useState<Record<string, string>>({})
+  const [note, setNote] = useState('')
+  const [picker, setPicker] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string[]>([])
+  const [detail, setDetail] = useState<Photo | null>(null)
+  const [newCategory, setNewCategory] = useState(false)
+  const cameraRef = useRef<HTMLInputElement>(null); const albumRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('site-photo-records')
+    const memory = localStorage.getItem('site-photo-memory')
+    if (saved) setPhotos(JSON.parse(saved))
+    if (memory) { const m = JSON.parse(memory); setTags(m.tags || {}); setNote(m.note || '') }
+  }, [])
+  useEffect(() => { localStorage.setItem('site-photo-records', JSON.stringify(photos)) }, [photos])
+  useEffect(() => { localStorage.setItem('site-photo-memory', JSON.stringify({ tags, note })) }, [tags, note])
+
+  const currentPhotos = useMemo(() => active ? photos.filter(p => p.category === active) : photos, [active, photos])
+  const importFiles = async (files: FileList | null) => {
+    if (!files || !active) return
+    const added = await Promise.all(Array.from(files).map(async file => { const result = await stampImage(file, active); return { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString() } }))
+    setPhotos(p => [...added, ...p]); setTab('photos')
+  }
+  const addCategory = (name: string) => { if (name.trim()) setCategories(c => [...c, { name: name.trim(), icon: '＋' }]); setNewCategory(false) }
+  const removeCategory = (name: string) => { if (confirm(`確定刪除「${name}」及其相片？`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
+  const exportExcel = async () => {
+    const XLSX = (window as any).ExcelJS; if (!XLSX) return alert('Excel 模組載入中，請稍後再試')
+    const book = new XLSX.Workbook(); const sheet = book.addWorksheet('相片記錄'); sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
+    for (const p of photos.filter(x => selected.includes(x.id))) { const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note, time: new Date(p.createdAt).toLocaleString('zh-HK') }); const imageId = book.addImage({ base64: p.cleanSrc, extension: 'jpeg' }); sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } }); row.height = 130 }
+    const buffer = await book.xlsx.writeBuffer(); const url = URL.createObjectURL(new Blob([buffer])); const a = document.createElement('a'); a.href = url; a.download = '地盤相片記錄.xlsx'; a.click(); URL.revokeObjectURL(url)
+  }
+  const exportPdf = async () => { const el = document.getElementById('pdf-report'); if (!el) return; const pdf = (window as any).html2pdf; await pdf().set({ margin: 12, filename: '地盤相片報表.pdf', html2canvas: { scale: 1.4 }, jsPDF: { format: 'a3', orientation: 'landscape' } }).from(el).save() }
+
+  return <>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" />
+    <main className="app-shell">
+      <header className="topbar"><div className="brand-mark">▦</div><div><p className="eyebrow">SITE LOG / 2026</p><h1>地盤相片記錄</h1></div><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
+      {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{photos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{photos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
+      {active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>‹ 所有類別</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} 張</span></div><div className="capture-actions"><button className="capture-button camera" onClick={() => cameraRef.current?.click()}><span>▣</span><div><strong>立即拍照</strong><small>拍攝後自動儲存</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>▧</span><div><strong>選擇相簿</strong><small>可一次匯入多張</small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={e => importFiles(e.target.files)} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={e => importFiles(e.target.files)} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>拍攝資訊</h3></div><span className="memory-dot">● 已記憶</span></div><div className="tag-grid">{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '選擇'}</b></button>)}</div><label className="note-field"><span>文字備註</span><input value={note} onChange={e => setNote(e.target.value)} placeholder="輸入本次拍攝的補充說明..." /></label></div></section>}
+      {tab === 'photos' && <section className="content"><div className="section-heading"><div><p className="eyebrow">PHOTO ARCHIVE</p><h2>相片集</h2></div><span className="photo-total">已選 {selected.length} 張</span></div><div className="photo-grid">{photos.map(p => <div className="photo-card" key={p.id}><button className="photo-open" onClick={() => setDetail(p)}><img src={p.src} alt={`${p.category} ${p.createdAt}`} /></button><label className="check"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(s => e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id))} /><span /></label></div>)}{!photos.length && <div className="empty-state">尚未有相片記錄<br /><small>進入工程類別開始拍攝</small></div>}</div>{selected.length > 0 && <div className="export-bar"><span>已選 {selected.length} 張</span><button onClick={exportExcel}>匯出 Excel</button><button onClick={exportPdf}>匯出 A3 PDF</button></div>}<div id="pdf-report" className="pdf-report"><h1>地盤相片記錄報表</h1>{photos.filter(p => selected.includes(p.id)).map(p => <article key={p.id}><img src={p.src} alt="" /><div><b>{p.category}</b><p>{Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>{p.note}</p><small>{new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>)}</div></section>}
+      <nav className="bottom-nav"><button className={tab === 'home' ? 'active' : ''} onClick={() => { setTab('home'); setActive(null) }}><span>⌂</span>工程類別</button><button className={tab === 'photos' ? 'active' : ''} onClick={() => { setTab('photos'); setActive(null) }}><span>▧</span>相片集<em>{photos.length}</em></button></nav>
     </main>
-  )
+    {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>×</button></div>{(tagOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '✓' : '›'}</span></button>)}<div className="custom-option"><input id="custom" placeholder="新增自訂項目" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>新增</button></div></div></div>}
+    {detail && <div className="overlay dark-overlay" onClick={() => setDetail(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="close light" onClick={() => setDetail(null)}>×</button><img src={detail.src} alt="相片詳情" /><div className="detail-copy"><b>{detail.category}</b><p>{Object.entries(detail.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>{detail.note || '沒有備註'}</p><small>{new Date(detail.createdAt).toLocaleString('zh-HK')}</small></div></div></div>}
+    {newCategory && <div className="overlay" onClick={() => setNewCategory(false)}><div className="sheet small-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">NEW CATEGORY</p><h3>新增工程類別</h3></div><button className="close" onClick={() => setNewCategory(false)}>×</button></div><input className="category-input" autoFocus placeholder="例如：外牆工程" onKeyDown={e => { if (e.key === 'Enter') addCategory(e.currentTarget.value) }} /><button className="primary-button" onClick={() => addCategory((document.querySelector('.category-input') as HTMLInputElement).value)}>建立類別</button></div></div>}
+  </>
 }
