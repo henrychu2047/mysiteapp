@@ -97,6 +97,7 @@ function stampImage(file: File, category: string) {
           return
         }
         ctx.drawImage(image, 0, 0)
+        const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.92)
         const text = `${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`
         const size = Math.max(18, Math.round(image.width / 48))
         ctx.font = `600 ${size}px Arial, sans-serif`
@@ -107,7 +108,7 @@ function stampImage(file: File, category: string) {
         ctx.fillStyle = '#fff'
         ctx.textBaseline = 'middle'
         ctx.fillText(text, image.width - width + size * 0.7, image.height - height / 2)
-        resolve({ stamped: canvas.toDataURL('image/jpeg', 0.88), clean: reader.result as string })
+        resolve({ stamped: canvas.toDataURL('image/jpeg', 0.88), clean: cleanDataUrl })
       }
       image.onerror = () => reject(new Error('無法讀取相片'))
       image.src = reader.result as string
@@ -163,8 +164,7 @@ export default function Page() {
       for (const p of chosen) {
         const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note || '', time: new Date(p.createdAt).toLocaleString('zh-HK') })
         const cleanDataUrl = await imageAsJpeg(p.cleanSrc)
-        const cleanBase64 = cleanDataUrl.split(',')[1]
-        const imageId = book.addImage({ base64: cleanBase64, extension: 'jpeg' })
+        const imageId = book.addImage({ base64: cleanDataUrl, extension: 'jpeg' })
         sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } })
         row.height = 130
       }
