@@ -17,6 +17,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .camera-sheet video { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
 .camera-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; color: white; }
 .camera-toolbar span { flex: 1; text-align: center; font-size: 14px; }
+.camera-back { min-width: 76px; min-height: 44px; border: 0; background: transparent; color: white; font-size: 16px; font-weight: 600; text-align: left; }
 .shutter { width: 64px; height: 64px; border-radius: 50%; border: 5px solid white; background: var(--orange); color: white; font-size: 28px; line-height: 1; transition: transform .12s, opacity .12s; }
 .shutter:active { transform: scale(.9); }
 .shutter:disabled, .shutter.is-busy { opacity: .65; }
