@@ -134,17 +134,18 @@ export default function Page() {
         row.height = 130
       }
       const buffer = await book.xlsx.writeBuffer()
-      const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
-      const a = document.createElement('a'); a.href = url; a.download = '地盤相片記錄.xlsx'; document.body.appendChild(a); a.click(); a.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.setAttribute('href', url); a.setAttribute('download', '地盤相片記錄.xlsx'); a.style.display = 'none'; document.body.appendChild(a); a.click()
+      setTimeout(() => { a.remove(); URL.revokeObjectURL(url) }, 2000)
     } catch (error) { console.error('[v0] Excel export failed:', error); alert('Excel 匯出失敗，請稍後再試') }
   }
   const exportPdf = async () => {
     const chosen = photos.filter(x => selected.includes(x.id)); const pdf = (window as any).html2pdf
     if (!chosen.length) return alert('請先勾選要匯出的相片')
-    if (!pdf) return alert('PDF 模組尚未載入，請重新整理頁面後再試')
+    if (!pdf) return alert('PDF ���組尚未載入，請重新整理頁面後再試')
     const report = document.createElement('div')
-    report.style.cssText = 'position:absolute;left:0;top:0;width:1120px;min-height:500px;display:block;visibility:visible;opacity:1;background:#fff;color:#15212b;padding:24px;z-index:9999;'
+    report.style.cssText = `position:fixed;left:-12000px;top:0;width:1120px;height:${Math.max(520, chosen.length * 180 + 100)}px;display:block;visibility:visible;opacity:1;overflow:visible;background:#fff;color:#15212b;padding:24px;z-index:-1;`
     report.innerHTML = `<h1 style="font-size:22px;margin:0 0 18px">地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;align-items:flex-start;gap:14px;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:125px"><img src="${p.src}" width="165" height="125" style="display:block;width:165px;height:125px;object-fit:cover"/><div style="font-size:14px;line-height:1.5"><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>${p.note || ''}</p><small>${new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>`).join('')
     document.body.appendChild(report)
     await Promise.all(Array.from(report.querySelectorAll('img')).map(img => img.complete ? Promise.resolve() : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve() })))
