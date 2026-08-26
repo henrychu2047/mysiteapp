@@ -8,11 +8,11 @@ type Photo = { id: string; src: string; cleanSrc: string; category: string; tags
 type Category = { name: string; icon: string }
 
 const defaultCategories: Category[] = [
-  { name: '鋼筋工程', icon: '▦' },
-  { name: '模板工程', icon: '▤' },
-  { name: '混凝土澆置', icon: '◈' },
-  { name: '機電工程', icon: '⌁' },
-  { name: '安全巡查', icon: '△' },
+  { name: '電器', icon: '⌁' },
+  { name: '冷氣', icon: '◇' },
+  { name: '消防', icon: '△' },
+  { name: '制櫃', icon: '▤' },
+  { name: '發電機', icon: '◈' },
 ]
 const tagOptions: Record<string, string[]> = {
   樓層: ['B2', 'B1', 'G/F', '1/F', '2/F', '3/F', '天台'],
