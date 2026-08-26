@@ -239,11 +239,13 @@ export default function Page() {
   const exportPdf = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
     if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
-    const report = document.createElement('div')
-    report.style.cssText = 'position:fixed;inset:0;background:#fff;color:#15212b;padding:24px;overflow:auto;z-index:99999;'
-    report.innerHTML = `<h1>地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;gap:14px;border-top:1px solid #ccc;padding:14px 0"><img src="${p.src}" style="width:165px;height:125px;object-fit:cover"><div><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>${p.note || ''}</p></div></article>`).join('') + '<div style="display:flex;gap:10px;margin-top:20px"><button id="close-report" style="padding:12px 20px">返回上一頁</button><button id="print-report" style="padding:12px 20px">列印／儲存 PDF</button></div>'
+  const report = document.createElement('div')
+  report.className = 'export-preview-overlay'
+  report.innerHTML = `<div class="export-backdrop"></div><div class="export-report-preview"><h1>地盤相片記錄報表</h1>${chosen.map(p => `<article><img src="${p.src}" alt="${p.category}相片"><div><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>${p.note || ''}</p><small>${new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>`).join('')}</div><div class="export-sheet"><div class="sheet-handle"></div><button class="export-back" id="close-report" aria-label="返回上一頁">‹</button><h2>地盤相片記錄報表預覽（A3 橫向）</h2><div class="export-sheet-actions"><button id="excel-report">下載 Excel（含相片）</button><button id="print-report">下載 A3 橫向 PDF</button><button class="export-close" id="close-report-2">關閉</button></div></div>`
   document.body.appendChild(report)
   report.querySelector('#close-report')?.addEventListener('click', () => report.remove())
+  report.querySelector('#close-report-2')?.addEventListener('click', () => report.remove())
+  report.querySelector('#excel-report')?.addEventListener('click', () => exportExcel())
   report.querySelector('#print-report')?.addEventListener('click', () => window.print())
   return
   }
