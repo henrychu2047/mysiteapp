@@ -1,5 +1,6 @@
 'use client'
 
+import Script from 'next/script'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 type Photo = { id: string; src: string; cleanSrc: string; category: string; tags: Record<string, string>; note: string; createdAt: string }
@@ -125,8 +126,12 @@ export default function Page() {
   const exportExcel = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
     if (!chosen.length) return alert('請先勾選要匯出的相片')
-    const XLSX = (window as any).ExcelJS
-    if (!XLSX) return alert('Excel 模組尚未載入，請重新整理頁面後再試')
+    const XLSX = await new Promise<any>(resolve => {
+      if ((window as any).ExcelJS) return resolve((window as any).ExcelJS)
+      const timer = window.setInterval(() => { if ((window as any).ExcelJS) { window.clearInterval(timer); resolve((window as any).ExcelJS) } }, 100)
+      window.setTimeout(() => { window.clearInterval(timer); resolve(null) }, 8000)
+    })
+    if (!XLSX) return alert('Excel 模組載入失敗，請確認網絡連線後重試')
     try {
       const book = new XLSX.Workbook()
       const sheet = book.addWorksheet('相片記錄')
@@ -149,9 +154,20 @@ export default function Page() {
     } catch (error) { console.error('[v0] Excel export failed:', error); alert('Excel 匯出失敗，請稍後再試') }
   }
   const exportPdf = async () => {
-    const chosen = photos.filter(x => selected.includes(x.id)); const pdf = (window as any).html2pdf
+    const chosen = photos.filter(x => selected.includes(x.id))
+    if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
+    const report = document.createElement('div')
+    report.style.cssText = 'position:fixed;inset:0;background:#fff;color:#15212b;padding:24px;overflow:auto;z-index:99999;'
+    report.innerHTML = `<h1>地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;gap:14px;border-top:1px solid #ccc;padding:14px 0"><img src="${p.src}" style="width:165px;height:125px;object-fit:cover"><div><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>${p.note || ''}</p></div></article>`).join('') + '<button id="print-report" style="padding:12px 20px">列印／儲存 PDF</button>'
+    document.body.appendChild(report)
+    report.querySelector('#print-report')?.addEventListener('click', () => window.print())
+    return
+  }
+  const exportPdfLegacy = async () => {
+    const chosen = photos.filter(x => selected.includes(x.id))
+    const pdf = (window as any).html2pdf
     if (!chosen.length) return alert('請先勾選要匯出的相片')
-    if (!pdf) return alert('PDF ���組尚未載入，請重新整理頁面後再試')
+    if (!pdf) return alert('PDF 模組尚未載入，請重新整理頁面後再試')
     const report = document.createElement('div')
     report.style.cssText = `position:fixed;left:-12000px;top:0;width:1120px;height:${Math.max(520, chosen.length * 180 + 100)}px;display:block;visibility:visible;opacity:1;overflow:visible;background:#fff;color:#15212b;padding:24px;z-index:-1;`
     report.innerHTML = `<h1 style="font-size:22px;margin:0 0 18px">地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;align-items:flex-start;gap:14px;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:125px"><img src="${p.src}" width="165" height="125" style="display:block;width:165px;height:125px;object-fit:cover"/><div style="font-size:14px;line-height:1.5"><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>${p.note || ''}</p><small>${new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>`).join('')
@@ -163,8 +179,8 @@ export default function Page() {
   }
 
   return <>
-    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" />
+  <Script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" strategy="afterInteractive" />
+  <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" strategy="afterInteractive" />
     <main className="app-shell">
       <header className="topbar"><div className="brand-mark">▦</div><div><p className="eyebrow">SITE LOG / 2026</p><h1>地盤相片記錄</h1></div><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
       {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{photos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{photos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
