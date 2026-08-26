@@ -207,7 +207,7 @@ export default function Page() {
   const removeCategory = (name: string) => { if (confirm(`確定刪除「${name}」及其相片？`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
   const exportExcel = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
-    if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
+    if (!chosen.length) { alert('請先勾選要匯出��相片'); return }
     try {
       const book = new ExcelJS.Workbook()
       const sheet = book.addWorksheet('相片記錄')
@@ -241,10 +241,11 @@ export default function Page() {
     if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
     const report = document.createElement('div')
     report.style.cssText = 'position:fixed;inset:0;background:#fff;color:#15212b;padding:24px;overflow:auto;z-index:99999;'
-    report.innerHTML = `<h1>地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;gap:14px;border-top:1px solid #ccc;padding:14px 0"><img src="${p.src}" style="width:165px;height:125px;object-fit:cover"><div><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>${p.note || ''}</p></div></article>`).join('') + '<button id="print-report" style="padding:12px 20px">列印／儲存 PDF</button>'
-    document.body.appendChild(report)
-    report.querySelector('#print-report')?.addEventListener('click', () => window.print())
-    return
+    report.innerHTML = `<h1>地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;gap:14px;border-top:1px solid #ccc;padding:14px 0"><img src="${p.src}" style="width:165px;height:125px;object-fit:cover"><div><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>${p.note || ''}</p></div></article>`).join('') + '<div style="display:flex;gap:10px;margin-top:20px"><button id="close-report" style="padding:12px 20px">返回上一頁</button><button id="print-report" style="padding:12px 20px">列印／儲存 PDF</button></div>'
+  document.body.appendChild(report)
+  report.querySelector('#close-report')?.addEventListener('click', () => report.remove())
+  report.querySelector('#print-report')?.addEventListener('click', () => window.print())
+  return
   }
   const exportPdfLegacy = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
