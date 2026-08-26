@@ -58,17 +58,25 @@ function stampImage(file: File, category: string) {
       const image = new Image()
       image.onload = () => {
         const canvas = document.createElement('canvas')
-        canvas.width = image.width; canvas.height = image.height
-        const ctx = canvas.getContext('2d')!
+        canvas.width = image.width
+        canvas.height = image.height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('無法建立圖片處理器'))
+          return
+        }
         ctx.drawImage(image, 0, 0)
         const text = `${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`
         const size = Math.max(18, Math.round(image.width / 48))
         ctx.font = `600 ${size}px Arial, sans-serif`
         const width = ctx.measureText(text).width + size * 1.4
         const height = size * 2.1
-        ctx.fillStyle = 'rgba(10, 17, 24, .72)'; ctx.fillRect(image.width - width, image.height - height, width, height)
-        ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(text, image.width - width + size * .7, image.height - height / 2)
-        resolve({ stamped: canvas.toDataURL('image/jpeg', .88), clean: reader.result as string })
+        ctx.fillStyle = 'rgba(10, 17, 24, .72)'
+        ctx.fillRect(image.width - width, image.height - height, width, height)
+        ctx.fillStyle = '#fff'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, image.width - width + size * 0.7, image.height - height / 2)
+        resolve({ stamped: canvas.toDataURL('image/jpeg', 0.88), clean: reader.result as string })
       }
       image.onerror = () => reject(new Error('無法讀取相片'))
       image.src = reader.result as string
