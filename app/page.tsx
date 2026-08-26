@@ -211,12 +211,13 @@ export default function Page() {
     try {
       const book = new ExcelJS.Workbook()
       const sheet = book.addWorksheet('相片記錄')
-      sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
+      sheet.columns = [{ header: '日期', key: 'date', width: 16 }, { header: '時間', key: 'time', width: 14 }, { header: '類別', key: 'category', width: 18 }, { header: '細項說明', key: 'detail', width: 34 }, { header: '備註', key: 'note', width: 28 }, { header: '照片', key: 'photo', width: 28 }]
       for (const p of chosen) {
-        const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note || '', time: new Date(p.createdAt).toLocaleString('zh-HK') })
+        const capturedAt = new Date(p.createdAt)
+        const row = sheet.addRow({ date: capturedAt.toLocaleDateString('zh-HK'), time: capturedAt.toLocaleTimeString('zh-HK', { hour12: false }), category: p.category, detail: Object.entries(p.tags).filter(([key, value]) => key !== '備註' && value).map(([key, value]) => `${key}: ${value}`).join(' / '), note: p.note || p.tags['備註'] || '' })
         const cleanDataUrl = await imageAsJpeg(p.cleanSrc)
         const imageId = book.addImage({ base64: cleanDataUrl, extension: 'jpeg' })
-        sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } })
+        sheet.addImage(imageId, { tl: { col: 5, row: row.number - 1 }, ext: { width: 165, height: 165 } })
         row.height = 130
       }
       const buffer = await book.xlsx.writeBuffer()
@@ -241,7 +242,7 @@ export default function Page() {
     if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
   const report = document.createElement('div')
   report.className = 'export-preview-overlay'
-  report.innerHTML = `<div class="export-backdrop"></div><div class="export-report-preview"><h1>地盤相片記錄報表</h1>${chosen.map(p => `<article><img src="${p.src}" alt="${p.category}相片"><div><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>${p.note || ''}</p><small>${new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>`).join('')}</div><div class="export-sheet"><div class="sheet-handle"></div><button class="export-back" id="close-report" aria-label="返回上一頁">‹</button><h2>地盤相片記錄報表預覽（A3 橫向）</h2><div class="export-sheet-actions"><button id="excel-report">下載 Excel（含相片）</button><button id="print-report">下載 A3 橫向 PDF</button><button class="export-close" id="close-report-2">關閉</button></div></div>`
+  report.innerHTML = `<div class="export-backdrop"></div><div class="export-report-preview"><h1>地盤相片記錄報表（A3 橫向排版）</h1><div class="export-report-head"><b>日期</b><b>時間</b><b>類別</b><b>細項說明</b><b>備註</b><b>照片</b></div>${chosen.map(p => { const capturedAt = new Date(p.createdAt); const detail = Object.entries(p.tags).filter(([key, value]) => key !== '備註' && value).map(([key, value]) => `${key}: ${value}`).join(' / '); return `<article><div>${capturedAt.toLocaleDateString('zh-HK')}</div><div>${capturedAt.toLocaleTimeString('zh-HK', { hour12: false })}</div><div>${p.category}</div><div>${detail || '—'}</div><div>${p.note || p.tags['備註'] || '—'}</div><img src="${p.src}" alt="${p.category}相片"></article>` }).join('')}</div><div class="export-sheet"><div class="sheet-handle"></div><button class="export-back" id="close-report" aria-label="返回上一頁">‹</button><h2>地盤相片記錄報表預覽（A3 橫向）</h2><div class="export-sheet-actions"><button id="excel-report">下載 Excel（含相片）</button><button id="print-report">下載 A3 橫向 PDF</button><button class="export-close" id="close-report-2">關閉</button></div></div>`
   document.body.appendChild(report)
   report.querySelector('#close-report')?.addEventListener('click', () => report.remove())
   report.querySelector('#close-report-2')?.addEventListener('click', () => report.remove())
@@ -256,7 +257,7 @@ export default function Page() {
     if (!pdf) return alert('PDF 模組尚未載入，請重新整理頁面後再試')
     const report = document.createElement('div')
     report.style.cssText = `position:fixed;left:-12000px;top:0;width:1120px;height:${Math.max(520, chosen.length * 180 + 100)}px;display:block;visibility:visible;opacity:1;overflow:visible;background:#fff;color:#15212b;padding:24px;z-index:-1;`
-    report.innerHTML = `<h1 style="font-size:22px;margin:0 0 18px">地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;align-items:flex-start;gap:14px;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:125px"><img src="${p.src}" width="165" height="125" style="display:block;width:165px;height:125px;object-fit:cover"/><div style="font-size:14px;line-height:1.5"><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>${p.note || ''}</p><small>${new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>`).join('')
+    report.innerHTML = `<h1 style="font-size:22px;margin:0 0 18px">地盤相片記錄報表（A3 橫向排版）</h1><div style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1.6fr 1.3fr 2fr;background:#e5e9ee;font-weight:700;padding:12px">日期　　時間　　類別　　細項說明　　備註　　照片</div>` + chosen.map(p => { const capturedAt = new Date(p.createdAt); const detail = Object.entries(p.tags).filter(([key, value]) => key !== '備註' && value).map(([key, value]) => `${key}: ${value}`).join(' / '); return `<article style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1.6fr 1.3fr 2fr;align-items:center;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:150px"><div>${capturedAt.toLocaleDateString('zh-HK')}</div><div>${capturedAt.toLocaleTimeString('zh-HK', { hour12: false })}</div><div>${p.category}</div><div>${detail || '—'}</div><div>${p.note || p.tags['備註'] || '—'}</div><img src="${p.src}" width="165" height="125" style="display:block;width:100%;height:125px;object-fit:cover"/></article>` }).join('')
     document.body.appendChild(report)
     await Promise.all(Array.from(report.querySelectorAll('img')).map(img => img.complete ? Promise.resolve() : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve() })))
     try { await pdf().set({ margin: 12, filename: '地盤相片報表.pdf', html2canvas: { scale: 1.5, useCORS: true, backgroundColor: '#ffffff', logging: false }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(report).save() }
