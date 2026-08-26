@@ -125,7 +125,8 @@ export default function Page() {
       sheet.columns = [{ header: '相片', key: 'photo', width: 28 }, { header: '類別', key: 'category', width: 18 }, { header: '標籤', key: 'tags', width: 42 }, { header: '備註', key: 'note', width: 32 }, { header: '拍攝時間', key: 'time', width: 22 }]
       for (const p of chosen) {
         const row = sheet.addRow({ category: p.category, tags: Object.entries(p.tags).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(' / '), note: p.note, time: new Date(p.createdAt).toLocaleString('zh-HK') })
-        const imageId = book.addImage({ base64: p.cleanSrc, extension: 'jpeg' })
+        const cleanBase64 = p.cleanSrc.includes(',') ? p.cleanSrc.split(',')[1] : p.cleanSrc
+        const imageId = book.addImage({ base64: cleanBase64, extension: 'jpeg' })
         sheet.addImage(imageId, { tl: { col: 0, row: row.number - 1 }, ext: { width: 165, height: 165 } })
         row.height = 130
       }
@@ -136,11 +137,17 @@ export default function Page() {
     } catch (error) { console.error('[v0] Excel export failed:', error); alert('Excel 匯出失敗，請稍後再試') }
   }
   const exportPdf = async () => {
-    const chosen = photos.filter(x => selected.includes(x.id)); const el = document.getElementById('pdf-report'); const pdf = (window as any).html2pdf
+    const chosen = photos.filter(x => selected.includes(x.id)); const pdf = (window as any).html2pdf
     if (!chosen.length) return alert('請先勾選要匯出的相片')
-    if (!el || !pdf) return alert('PDF 模組尚未載入，請重新整理頁面後再試')
-    try { await pdf().set({ margin: 12, filename: '地盤相片報表.pdf', html2canvas: { scale: 1.2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(el).save() }
+    if (!pdf) return alert('PDF 模組尚未載入，請重新整理頁面後再試')
+    const report = document.createElement('div')
+    report.style.cssText = 'position:fixed;left:-10000px;top:0;width:1120px;min-height:500px;background:#fff;color:#15212b;padding:24px;z-index:1;'
+    report.innerHTML = `<h1 style="font-size:22px;margin:0 0 18px">地盤相片記錄報表</h1>` + chosen.map(p => `<article style="display:flex;gap:14px;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid"><img src="${p.src}" style="width:165px;height:125px;object-fit:cover"/><div><b>${p.category}</b><p>${Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>${p.note || ''}</p><small>${new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>`).join('')
+    document.body.appendChild(report)
+    await Promise.all(Array.from(report.querySelectorAll('img')).map(img => img.complete ? Promise.resolve() : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve() })))
+    try { await pdf().set({ margin: 12, filename: '地盤相片報表.pdf', html2canvas: { scale: 1.5, useCORS: true, backgroundColor: '#ffffff', logging: false }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(report).save() }
     catch (error) { console.error('[v0] PDF export failed:', error); alert('PDF 匯出失敗，請稍後再試') }
+    finally { report.remove() }
   }
 
   return <>
