@@ -52,6 +52,18 @@ function saveStoredPhotos(photos: Photo[]) {
   }))
 }
 
+function loadBrowserLibrary(src: string, globalName: string) {
+  return new Promise<any>((resolve, reject) => {
+    if ((window as any)[globalName]) return resolve((window as any)[globalName])
+    const script = document.createElement('script')
+    script.src = src
+    script.async = true
+    script.onload = () => resolve((window as any)[globalName] || null)
+    script.onerror = () => reject(new Error('匯出套件載入失敗'))
+    document.head.appendChild(script)
+  })
+}
+
 function imageAsJpeg(dataUrl: string) {
   return new Promise<string>((resolve, reject) => {
     const image = new Image()
@@ -143,11 +155,7 @@ export default function Page() {
   const exportExcel = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
     if (!chosen.length) return alert('請先勾選要匯出的相片')
-    const XLSX = await new Promise<any>(resolve => {
-      if ((window as any).ExcelJS) return resolve((window as any).ExcelJS)
-      const timer = window.setInterval(() => { if ((window as any).ExcelJS) { window.clearInterval(timer); resolve((window as any).ExcelJS) } }, 100)
-      window.setTimeout(() => { window.clearInterval(timer); resolve(null) }, 8000)
-    })
+    const XLSX = await loadBrowserLibrary('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js', 'ExcelJS').catch(() => null)
     if (!XLSX) return alert('Excel 模組載入失敗，請確認網絡連線後重試')
     try {
       const book = new XLSX.Workbook()
