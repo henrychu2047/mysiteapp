@@ -159,18 +159,30 @@ export default function Page() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
       streamRef.current = stream
       setContinuousCamera(true)
-      requestAnimationFrame(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => {}) } })
     } catch (error) { console.error('[v0] camera start failed:', error); setCameraError('無法開啟鏡頭，請允許相機權限或改用立即拍照') }
   }
+  useEffect(() => {
+    if (!continuousCamera || !videoRef.current || !streamRef.current) return
+    const video = videoRef.current
+    video.srcObject = streamRef.current
+    video.play().catch(error => console.error('[v0] video play failed:', error))
+    return () => { video.pause(); video.srcObject = null }
+  }, [continuousCamera])
   const stopContinuousCamera = () => { streamRef.current?.getTracks().forEach(track => track.stop()); streamRef.current = null; setContinuousCamera(false) }
   const captureContinuousPhoto = async () => {
     if (!videoRef.current || !active) return
-    const canvas = document.createElement('canvas'); canvas.width = videoRef.current.videoWidth; canvas.height = videoRef.current.videoHeight
-    const ctx = canvas.getContext('2d'); if (!ctx) return
-    ctx.drawImage(videoRef.current, 0, 0)
-    const file = await new Promise<File>(resolve => canvas.toBlob(blob => resolve(new File([blob!], 'camera.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.92))
-    const result = await stampImage(file, active)
-    setPhotos(p => [{ id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString() }, ...p])
+    const video = videoRef.current
+    if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) { setCameraError('鏡頭尚未準備好，請稍候再按快門'); return }
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('無法建立畫布')
+      ctx.drawImage(video, 0, 0)
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
+      const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active)
+      setPhotos(p => [{ id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString() }, ...p])
+      setCameraError('')
+    } catch (error) { console.error('[v0] capture failed:', error); setCameraError('拍攝失敗，請稍候再試') }
   }
   const importFiles = async (files: FileList | null) => {
     if (!files || !active) return
