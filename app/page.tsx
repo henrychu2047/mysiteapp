@@ -131,6 +131,8 @@ export default function Page() {
   const [newCategory, setNewCategory] = useState(false)
   const [continuousCamera, setContinuousCamera] = useState(false)
   const [cameraError, setCameraError] = useState('')
+  const [captureBusy, setCaptureBusy] = useState(false)
+  const [captureMessage, setCaptureMessage] = useState('')
   const cameraRef = useRef<HTMLInputElement>(null); const albumRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -170,7 +172,9 @@ export default function Page() {
   }, [continuousCamera])
   const stopContinuousCamera = () => { streamRef.current?.getTracks().forEach(track => track.stop()); streamRef.current = null; setContinuousCamera(false) }
   const captureContinuousPhoto = async () => {
-    if (!videoRef.current || !active) return
+    if (captureBusy || !videoRef.current || !active) return
+    setCaptureBusy(true)
+    setCaptureMessage('正在處理相片…')
     const video = videoRef.current
     if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) { setCameraError('鏡頭尚未準備好，請稍候再按快門'); return }
     try {
@@ -182,7 +186,10 @@ export default function Page() {
       const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active)
       setPhotos(p => [{ id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString() }, ...p])
       setCameraError('')
-    } catch (error) { console.error('[v0] capture failed:', error); setCameraError('拍攝失敗，請稍候再試') }
+      setCaptureMessage('已拍攝並儲存，可繼續拍攝')
+      window.setTimeout(() => setCaptureMessage(''), 1800)
+    } catch (error) { console.error('[v0] capture failed:', error); setCameraError('拍攝失敗，請稍候再試'); setCaptureMessage('') }
+    finally { setCaptureBusy(false) }
   }
   const importFiles = async (files: FileList | null) => {
     if (!files || !active) return
@@ -257,7 +264,7 @@ export default function Page() {
       {tab === 'photos' && <section className="content"><div className="section-heading"><div><p className="eyebrow">PHOTO ARCHIVE</p><h2>相片集</h2></div><span className="photo-total">已選 {selected.length} 張</span></div><div className="photo-grid">{photos.map(p => <div className="photo-card" key={p.id}><button className="photo-open" onClick={() => setDetail(p)}><img src={p.src} alt={`${p.category} ${p.createdAt}`} /></button><label className="check"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(s => e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id))} /><span /></label></div>)}{!photos.length && <div className="empty-state">尚未有相片記錄<br /><small>進入工程類別開始拍攝</small></div>}</div><div className="export-bar"><span>{selected.length ? `已選 ${selected.length} 張` : '請先勾選相片'}</span><button onClick={exportExcel}>匯出 Excel</button><button onClick={exportPdf}>匯出 A3 PDF</button></div><div id="pdf-report" className="pdf-report"><h1>地盤��片記錄報表</h1>{photos.filter(p => selected.includes(p.id)).map(p => <article key={p.id}><img src={p.src} alt="" /><div><b>{p.category}</b><p>{Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>{p.note}</p><small>{new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>)}</div></section>}
       <nav className="bottom-nav"><button className={tab === 'home' ? 'active' : ''} onClick={() => { setTab('home'); setActive(null) }}><span>⌂</span>工程類別</button><button className={tab === 'photos' ? 'active' : ''} onClick={() => { setTab('photos'); setActive(null) }}><span>▧</span>相片集<em>{photos.length}</em></button></nav>
     </main>
-    {continuousCamera && <div className="overlay dark-overlay camera-overlay"><div className="camera-sheet"><video ref={videoRef} autoPlay playsInline muted /><div className="camera-toolbar"><button className="close light" onClick={stopContinuousCamera}>×</button><span>連續拍攝 · {active}</span><button className="shutter" onClick={captureContinuousPhoto} aria-label="拍攝相片">●</button></div>{cameraError && <p className="camera-error">{cameraError}</p>}</div></div>}
+    {continuousCamera && <div className="overlay dark-overlay camera-overlay"><div className="camera-sheet"><video ref={videoRef} autoPlay playsInline muted /><div className="camera-toolbar"><button className="close light" onClick={stopContinuousCamera}>×</button><span>連續拍攝 · {active}</span><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={captureContinuousPhoto} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : '●'}</button></div>{captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}{cameraError && <p className="camera-error">{cameraError}</p>}</div></div>}
     {cameraError && !continuousCamera && <div className="camera-error-banner">{cameraError}</div>}
     {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>×</button></div>{(tagOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '✓' : '›'}</span></button>)}<div className="custom-option"><input id="custom" placeholder="新增自訂項目" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>新增</button></div></div></div>}
     {detail && <div className="overlay dark-overlay" onClick={() => setDetail(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="close light" onClick={() => setDetail(null)}>×</button><img src={detail.src} alt="相片詳情" /><div className="detail-copy"><b>{detail.category}</b><p>{Object.entries(detail.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>{detail.note || '沒有備註'}</p><small>{new Date(detail.createdAt).toLocaleString('zh-HK')}</small></div></div></div>}
