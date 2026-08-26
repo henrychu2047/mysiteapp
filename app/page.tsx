@@ -125,7 +125,7 @@ export default function Page() {
   const [tab, setTab] = useState<'home' | 'photos' | 'settings'>('home')
   const [settingsOptions, setSettingsOptions] = useState<Record<string, string[]>>(tagOptions)
   const [newOption, setNewOption] = useState<Record<string, string>>({})
-  const settingsLoadedRef = useRef(false)
+  const [settingsReady, setSettingsReady] = useState(false)
   const [tags, setTags] = useState<Record<string, string>>({})
   const [note, setNote] = useState('')
   const [picker, setPicker] = useState<string | null>(null)
@@ -149,18 +149,15 @@ export default function Page() {
       if (memory) { const m = JSON.parse(memory); setTags(m.tags || {}); setNote(m.note || '') }
       if (savedOptions) setSettingsOptions({ ...tagOptions, ...JSON.parse(savedOptions) })
     } catch { /* 儲存空間不可用時仍可繼續拍攝 */ }
-    settingsLoadedRef.current = true
+    setSettingsReady(true)
   }, [])
   useEffect(() => {
-    if (photos.length) saveStoredPhotos(photos).catch(() => alert('相片儲存失敗，請檢查瀏覽器儲存空間'))
-  }, [photos])
-  useEffect(() => {
-    if (!settingsLoadedRef.current) return
+    if (!settingsReady) return
     try {
       localStorage.setItem('site-photo-memory', JSON.stringify({ tags, note }))
       localStorage.setItem('site-photo-options', JSON.stringify(settingsOptions))
     } catch { /* 記憶不可用不影響拍攝 */ }
-  }, [tags, note, settingsOptions])
+  }, [settingsReady, tags, note, settingsOptions])
 
   const currentPhotos = useMemo(() => active ? photos.filter(p => p.category === active) : photos, [active, photos])
   useEffect(() => () => { streamRef.current?.getTracks().forEach(track => track.stop()) }, [])
