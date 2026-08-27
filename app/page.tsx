@@ -1,6 +1,5 @@
 'use client'
 
-import Script from 'next/script'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ExcelJS from 'exceljs'
 
@@ -252,23 +251,20 @@ export default function Page() {
   }
   const exportPdfLegacy = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
-    const pdf = (window as any).html2pdf
-    if (!chosen.length) return alert('請先勾選要匯出的相片')
-    if (!pdf) return alert('PDF 模組尚未載入，請重新整理頁面後再試')
-    const report = document.createElement('div')
+  if (!chosen.length) return alert('請先勾選要匯出的相片')
+  const { default: html2pdf } = await import('html2pdf.js')
+  const report = document.createElement('div')
     report.style.cssText = `position:absolute;left:0;top:0;width:1120px;min-height:${Math.max(520, chosen.length * 180 + 100)}px;display:block;visibility:visible;opacity:1;overflow:visible;background:#fff;color:#15212b;padding:24px;z-index:999999;pointer-events:none;`
     report.innerHTML = `<h1 style="font-size:22px;margin:0 0 18px">地盤相片記錄報表（A3 橫向排版）</h1><div style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;background:#e5e9ee;font-weight:700;padding:12px">${['日期','時間','類別','細項說明','備註','照片'].map(label => `<div style="padding:10px;border-right:1px solid #ccd4db">${label}</div>`).join('')}</div>` + chosen.map(p => { const capturedAt = new Date(p.createdAt); const detail = Object.entries(p.tags).filter(([key, value]) => key !== '備註' && value).map(([key, value]) => `${key}: ${value}`).join('<br>'); return `<article style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;align-items:center;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:150px"><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleDateString('zh-HK')}</div><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div style="padding:10px;overflow-wrap:anywhere">${p.category}</div><div style="padding:10px;overflow-wrap:anywhere">${detail || '—'}</div><div style="padding:10px;overflow-wrap:anywhere">${p.note || p.tags['備註'] || '—'}</div><img src="${p.src}" width="165" height="125" style="display:block;width:165px;height:125px;object-fit:cover"/></article>` }).join('')
     document.body.appendChild(report)
     await Promise.all(Array.from(report.querySelectorAll('img')).map(img => img.complete ? Promise.resolve() : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve() })))
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-    try { await pdf().set({ margin: 8, filename: '地盤相片報表.pdf', image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 1.2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1120 }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(report).save() }
+    try { await html2pdf().set({ margin: 8, filename: '地盤相片報表.pdf', image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 1.2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1120 }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(report).save() }
     catch (error) { console.error('[v0] PDF export failed:', error); alert('PDF 匯出失敗，請稍後再試') }
     finally { report.remove() }
   }
 
   return <>
-  <Script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" strategy="afterInteractive" />
-  <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" strategy="afterInteractive" />
     <main className="app-shell">
       <header className="topbar"><div className="brand-mark">▦</div><div><p className="eyebrow">SITE LOG / 2026</p><h1>地盤相片記錄</h1></div><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
       {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{photos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{photos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
