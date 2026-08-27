@@ -5,9 +5,11 @@ import ExcelJS from 'exceljs'
 
 type Photo = { id: string; src: string; cleanSrc: string; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string }
 type Category = { name: string; icon: string }
-type Project = { id: string; name: string }
+type ProjectSettings = { categories: Category[]; tags: Record<string, string>; note: string; settingsOptions: Record<string, string[]> }
+type Project = { id: string; name: string; settings?: ProjectSettings }
 
 const DEFAULT_PROJECT: Project = { id: 'default-project', name: '我的 Project' }
+const createProjectSettings = (): ProjectSettings => ({ categories: defaultCategories, tags: {}, note: '', settingsOptions: tagOptions })
 const PROJECTS_KEY = 'site-photo-projects'
 const CURRENT_PROJECT_KEY = 'site-photo-current-project'
 
@@ -125,7 +127,7 @@ function stampImage(file: File, category: string) {
 export default function Page() {
   const [categories, setCategories] = useState(defaultCategories)
   const [photos, setPhotos] = useState<Photo[]>([])
-  const [projects, setProjects] = useState<Project[]>([DEFAULT_PROJECT])
+  const [projects, setProjects] = useState<Project[]>([{ ...DEFAULT_PROJECT, settings: createProjectSettings() }])
   const [currentProjectId, setCurrentProjectId] = useState(DEFAULT_PROJECT.id)
   const [projectPanel, setProjectPanel] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
@@ -149,6 +151,7 @@ export default function Page() {
   const cameraRef = useRef<HTMLInputElement>(null); const albumRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const loadedProjectRef = useRef('')
 
   const [isOffline, setIsOffline] = useState(false)
   useEffect(() => {
@@ -172,7 +175,7 @@ export default function Page() {
       const savedCurrent = localStorage.getItem(CURRENT_PROJECT_KEY)
       if (savedProjects) {
         const parsed = JSON.parse(savedProjects) as Project[]
-        if (Array.isArray(parsed) && parsed.length) setProjects(parsed)
+        if (Array.isArray(parsed) && parsed.length) setProjects(parsed.map(project => ({ ...project, settings: { ...createProjectSettings(), ...(project.settings || {}) } })))
       }
       if (savedCurrent) setCurrentProjectId(savedCurrent)
       localStorage.removeItem('site-photo-records')
@@ -183,6 +186,16 @@ export default function Page() {
     } catch { /* 儲存空間不可用時仍可繼續拍攝 */ }
     setSettingsReady(true)
   }, [])
+  useEffect(() => {
+    if (!settingsReady || loadedProjectRef.current === currentProjectId) return
+    const projectSettings = projects.find(project => project.id === currentProjectId)?.settings
+    if (projectSettings) { setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setSettingsOptions(projectSettings.settingsOptions) }
+    loadedProjectRef.current = currentProjectId
+  }, [settingsReady, currentProjectId, projects])
+  useEffect(() => {
+    if (!settingsReady) return
+    setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, settings: { categories, tags, note, settingsOptions } } : project))
+  }, [settingsReady, currentProjectId, categories, tags, note, settingsOptions])
   useEffect(() => {
     if (!settingsReady) return
     try {
@@ -261,6 +274,11 @@ export default function Page() {
     const project = { id: crypto.randomUUID(), name }
     setProjects(current => [...current, project])
     setCurrentProjectId(project.id)
+    const projectSettings = project.settings || createProjectSettings()
+    setCategories(projectSettings.categories)
+    setTags(projectSettings.tags)
+    setNote(projectSettings.note)
+    setSettingsOptions(projectSettings.settingsOptions)
     setNewProjectName('')
     setProjectPanel(false)
     setActive(null)
@@ -342,7 +360,7 @@ export default function Page() {
   return <>
     {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
     <main className="app-shell">
-      <header className="topbar"><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><span className="eyebrow">PROJECT</span><strong>{currentProject.name}</strong><span>⌄</span></button><div className="brand-mark">▦</div><div><p className="eyebrow">SITE LOG / 2026</p><h1>地盤相片記錄</h1></div><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
+      <header className="topbar"><div className="brand-mark">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button><div><p className="eyebrow">SITE LOG / 2026</p><h1>地盤相片記錄</h1></div><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
       {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{projectPhotos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
       {tab === 'home' && active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>‹ 所有類別</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} 張</span></div><div className="capture-actions"><button className="capture-button camera" onClick={startContinuousCamera}><span>▣</span><div><strong>連續拍攝</strong><small>拍完可立即拍下一張</small></div></button><button className="capture-button secondary-camera" onClick={() => cameraRef.current?.click()}><span>□</span><div><strong>立即拍照</strong><small>使用 iPhone 原生相機</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>▧</span><div><strong>選擇相簿</strong><small>可一��匯入多張</small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={e => importFiles(e.target.files)} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={e => importFiles(e.target.files)} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>拍攝資訊</h3></div><span className="memory-dot">● 已記憶</span></div><div className="tag-grid">{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '選擇'}</b></button>)}</div><label className="note-field"><span>文字備註</span><input value={note} onChange={e => setNote(e.target.value)} placeholder="輸入本次拍攝的補充說明..." /></label></div></section>}
       {tab === 'settings' && <section className="content settings-page"><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p>{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
@@ -353,7 +371,7 @@ export default function Page() {
     {cameraError && !continuousCamera && <div className="camera-error-banner">{cameraError}</div>}
     {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>×</button></div>{(settingsOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '✓' : '›'}</span></button>)}<div className="custom-option"><input id="custom" placeholder="新增自訂項目" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>新增</button></div></div></div>}
     {detail && <div className="overlay dark-overlay" onClick={() => setDetail(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="close light" onClick={() => setDetail(null)}>×</button><img src={detail.src} alt="相片詳情" /><div className="detail-copy"><b>{detail.category}</b><p>{Object.entries(detail.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ') || '未設定標籤'}</p><p>{detail.note || '沒有備註'}</p><small>{new Date(detail.createdAt).toLocaleString('zh-HK')}</small></div></div></div>}
-    {projectPanel && <div className="overlay" onClick={() => setProjectPanel(false)}><div className="sheet project-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">PROJECTS</p><h3>選擇 Project</h3></div><button className="close" onClick={() => setProjectPanel(false)} aria-label="關閉">×</button></div>{projects.map(project => <button className={`option ${project.id === currentProject.id ? 'chosen' : ''}`} key={project.id} onClick={() => { setCurrentProjectId(project.id); setProjectPanel(false); setActive(null); setSelected([]) }}><span>{project.name}<small>{photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === project.id).length} 張相片</small></span><b>{project.id === currentProject.id ? '✓' : '›'}</b></button>)}<div className="project-add"><input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="輸入新 Project 名稱" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addProject() }} /><button onClick={addProject}>新增</button></div></div></div>}
+    {projectPanel && <div className="overlay" onClick={() => setProjectPanel(false)}><div className="sheet project-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">PROJECTS</p><h3>選擇 Project</h3></div><button className="close" onClick={() => setProjectPanel(false)} aria-label="關閉">×</button></div>{projects.map(project => <button className={`option ${project.id === currentProject.id ? 'chosen' : ''}`} key={project.id} onClick={() => { const projectSettings = project.settings || createProjectSettings(); setCurrentProjectId(project.id); setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setSettingsOptions(projectSettings.settingsOptions); setProjectPanel(false); setActive(null); setSelected([]) }}><span>{project.name}<small>{photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === project.id).length} 張相片</small></span><b>{project.id === currentProject.id ? '✓' : '›'}</b></button>)}<div className="project-add"><input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="輸入新 Project 名稱" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addProject() }} /><button onClick={addProject}>新增</button></div></div></div>}
     {newCategory && <div className="overlay" onClick={() => setNewCategory(false)}><div className="sheet small-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">NEW CATEGORY</p><h3>新增工程類別</h3></div><button className="close" onClick={() => setNewCategory(false)}>×</button></div><input className="category-input" autoFocus placeholder="例如：外牆工程" onKeyDown={e => { if (e.key === 'Enter') addCategory(e.currentTarget.value) }} /><button className="primary-button" onClick={() => addCategory((document.querySelector('.category-input') as HTMLInputElement).value)}>建立類別</button></div></div>}
   </>
 }
