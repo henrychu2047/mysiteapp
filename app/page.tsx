@@ -247,7 +247,7 @@ export default function Page() {
   report.querySelector('#close-report')?.addEventListener('click', () => report.remove())
   report.querySelector('#close-report-2')?.addEventListener('click', () => report.remove())
   report.querySelector('#excel-report')?.addEventListener('click', () => exportExcel())
-  report.querySelector('#print-report')?.addEventListener('click', () => window.print())
+  report.querySelector('#print-report')?.addEventListener('click', () => exportPdfLegacy())
   return
   }
   const exportPdfLegacy = async () => {
