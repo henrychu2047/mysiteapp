@@ -142,12 +142,6 @@ export default function Page() {
   const [isOffline, setIsOffline] = useState(false)
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      const reloadAfterControl = () => {
-        if (!navigator.serviceWorker.controller) return
-        navigator.serviceWorker.removeEventListener('controllerchange', reloadAfterControl)
-        window.location.reload()
-      }
-      navigator.serviceWorker.addEventListener('controllerchange', reloadAfterControl)
       navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => registration.update()).catch(() => undefined)
     }
     const updateOnlineState = () => setIsOffline(!navigator.onLine)
