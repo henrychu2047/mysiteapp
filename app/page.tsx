@@ -95,7 +95,7 @@ function imageAsJpeg(dataUrl: string) {
   })
 }
 
-function stampImage(file: File, category: string) {
+function stampImage(file: File, category: string, tags: Record<string, string> = {}, note = '') {
   return new Promise<{ stamped: string; clean: string }>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -111,16 +111,19 @@ function stampImage(file: File, category: string) {
         }
         ctx.drawImage(image, 0, 0)
         const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.92)
-        const text = `${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`
+        const detailLines = Object.entries(tags).filter(([, value]) => value).map(([key, value]) => `${key}: ${value}`)
+        if (note.trim()) detailLines.push(`備註: ${note.trim()}`)
+        const lines = [`${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`, ...detailLines]
         const size = Math.max(18, Math.round(image.width / 48))
+        const lineHeight = size * 1.35
         ctx.font = `600 ${size}px Arial, sans-serif`
-        const width = ctx.measureText(text).width + size * 1.4
-        const height = size * 2.1
-        ctx.fillStyle = 'rgba(10, 17, 24, .72)'
+        const width = Math.min(image.width * 0.92, Math.max(...lines.map(line => ctx.measureText(line).width)) + size * 1.4)
+        const height = lineHeight * lines.length + size * 0.8
+        ctx.fillStyle = 'rgba(10, 17, 24, .78)'
         ctx.fillRect(image.width - width, image.height - height, width, height)
         ctx.fillStyle = '#fff'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(text, image.width - width + size * 0.7, image.height - height / 2)
+        ctx.textBaseline = 'top'
+        lines.forEach((line, index) => ctx.fillText(line, image.width - width + size * 0.7, image.height - height + size * 0.4 + index * lineHeight, width - size))
         resolve({ stamped: canvas.toDataURL('image/jpeg', 0.88), clean: cleanDataUrl })
       }
       image.onerror = () => reject(new Error('無法讀取相片'))
@@ -315,7 +318,7 @@ export default function Page() {
       const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('無法建立畫��')
       ctx.drawImage(video, 0, 0)
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
-      const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active)
+      const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active, tags, note)
       const photo = { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
       setPhotos(p => [photo, ...p])
       await saveToProjectFolder(photo)
@@ -327,7 +330,7 @@ export default function Page() {
   }
   const importFiles = async (files: FileList | null) => {
     if (!files || !active) return
-    const added = await Promise.all(Array.from(files).map(async file => { const result = await stampImage(file, active); return { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id } }))
+    const added = await Promise.all(Array.from(files).map(async file => { const result = await stampImage(file, active, tags, note); return { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id } }))
     setPhotos(p => [...added, ...p]); await Promise.all(added.map(saveToProjectFolder)); setTab('photos')
   }
   const addProject = () => {
