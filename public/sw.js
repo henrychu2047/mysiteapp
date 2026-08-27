@@ -1,9 +1,21 @@
-const CACHE_NAME = 'site-photo-shell-v4'
+const CACHE_NAME = 'site-photo-shell-v5'
 const APP_SHELL = ['/', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => Promise.all(APP_SHELL.map((asset) => cache.add(asset).catch(() => undefined)))))
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME)
+    const response = await fetch('/')
+    if (!response.ok) return
+    await cache.put('/', response.clone())
+    const html = await response.text()
+    const assets = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
+      .map((match) => match[1])
+      .filter((asset) => asset.startsWith('/_next/static/') || asset === '/manifest.webmanifest')
+    await Promise.all([...new Set(assets)].map(async (asset) => {
+      try { await cache.add(asset) } catch { /* 單一資源失敗不阻止 Worker 安裝 */ }
+    }))
+  })())
 })
 
 self.addEventListener('activate', (event) => {
