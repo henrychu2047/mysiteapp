@@ -19,8 +19,6 @@ const defaultCategories: Category[] = [
   { name: '制櫃', icon: '▤' },
   { name: '發電機', icon: '◈' },
 ]
-const createProjectSettings = (): ProjectSettings => ({ categories: defaultCategories, tags: {}, note: '', settingsOptions: tagOptions })
-
 const tagOptions: Record<string, string[]> = {
   樓層: ['B2', 'B1', 'G/F', '1/F', '2/F', '3/F', '天台'],
   機房: ['A區機房', 'B區機房', '泵房', '電房', '消防泵房'],
@@ -28,6 +26,13 @@ const tagOptions: Record<string, string[]> = {
   安全: ['個人防護', '臨邊防護', '開口防護', '消防設備', '安全通道'],
   其它: ['日常巡查', '材料到場', '環境記錄', '問題跟進'],
 }
+
+const createProjectSettings = (): ProjectSettings => ({
+  categories: defaultCategories,
+  tags: {},
+  note: '',
+  settingsOptions: tagOptions,
+})
 
 const PHOTO_DB = 'site-photo-db'
 const PHOTO_STORE = 'photos'
