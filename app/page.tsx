@@ -252,12 +252,13 @@ export default function Page() {
   const exportPdfLegacy = async () => {
     const chosen = photos.filter(x => selected.includes(x.id))
   if (!chosen.length) return alert('請先勾選要匯出的相片')
-  let html2pdf: any
+  let html2canvas: any
+  let JsPDF: any
   try {
-    const pdfModule = await import('html2pdf.js')
-    const loadedModule = (pdfModule as any).default || pdfModule
-    html2pdf = typeof loadedModule === 'function' ? loadedModule : loadedModule.default
-    if (typeof html2pdf !== 'function') throw new Error('PDF 模組格式不正確')
+    const [canvasModule, pdfModule] = await Promise.all([import('html2canvas'), import('jspdf')])
+    html2canvas = (canvasModule as any).default || canvasModule
+    JsPDF = (pdfModule as any).jsPDF
+    if (typeof html2canvas !== 'function' || typeof JsPDF !== 'function') throw new Error('PDF 模組格式不正確')
   } catch (error) {
     console.error('[v0] PDF module load failed:', error)
     alert('PDF 模組載入失敗，請重新整理頁面後再試')
@@ -269,7 +270,7 @@ export default function Page() {
     document.body.appendChild(report)
     await Promise.all(Array.from(report.querySelectorAll('img')).map(img => img.complete ? Promise.resolve() : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve() })))
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-    try { await html2pdf().set({ margin: 8, filename: '地盤相片報表.pdf', image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 1.2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1120 }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(report).save() }
+    try { const canvas = await html2canvas(report, { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 1120 }); const pdfDocument = new JsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' }); const pageWidth = pdfDocument.internal.pageSize.getWidth(); const pageHeight = pdfDocument.internal.pageSize.getHeight(); const imageHeight = canvas.height * pageWidth / canvas.width; let offset = 0; while (offset < imageHeight) { if (offset > 0) pdfDocument.addPage(); pdfDocument.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 8, 8 - offset, pageWidth - 16, imageHeight); offset += pageHeight - 16; } pdfDocument.save('地盤相片報表.pdf') }
     catch (error) { console.error('[v0] PDF export failed:', error); alert('PDF 直接下載失敗，將開啟系統列印功能，請在分享選單選擇「儲存到檔案」或「列印」'); window.print() }
     finally { window.setTimeout(() => report.remove(), 1000) }
   }
