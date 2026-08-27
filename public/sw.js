@@ -1,4 +1,4 @@
-const CACHE_NAME = 'site-photo-shell-v3'
+const CACHE_NAME = 'site-photo-shell-v4'
 const APP_SHELL = ['/', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
@@ -15,8 +15,12 @@ self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
   const url = new URL(request.url)
+  const isNavigation = request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request)).then((response) => {
+    (isNavigation ? fetch(request).then((response) => {
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()))
+      return response
+    }).catch(() => caches.match(request).then((cached) => cached || caches.match('/'))) : caches.match(request).then((cached) => cached || fetch(request))).then((response) => {
       if (response && response.ok) {
         const copy = response.clone()
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
