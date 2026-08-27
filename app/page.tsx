@@ -139,6 +139,15 @@ export default function Page() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
+  const [isOffline, setIsOffline] = useState(false)
+  useEffect(() => {
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined)
+    const updateOnlineState = () => setIsOffline(!navigator.onLine)
+    updateOnlineState()
+    window.addEventListener('online', updateOnlineState)
+    window.addEventListener('offline', updateOnlineState)
+    return () => { window.removeEventListener('online', updateOnlineState); window.removeEventListener('offline', updateOnlineState) }
+  }, [])
   useEffect(() => {
     loadStoredPhotos().then(setPhotos).catch(() => setPhotos([]))
     try {
@@ -276,6 +285,7 @@ export default function Page() {
   }
 
   return <>
+    {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
     <main className="app-shell">
       <header className="topbar"><div className="brand-mark">▦</div><div><p className="eyebrow">SITE LOG / 2026</p><h1>地盤相片記錄</h1></div><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
       {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{photos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{photos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}

@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   title: '地盤相片記錄系統',
   description: '專為建築工地設計的 iOS 最佳化相片記錄與報表系統',
   generator: 'v0.app',
+  manifest: '/manifest.webmanifest',
+  applicationName: '地盤相片記錄系統',
+  appleWebApp: {
+    capable: true,
+    title: '地盤相片記錄',
+    statusBarStyle: 'black-translucent',
+  },
   icons: {
     icon: [
       {
