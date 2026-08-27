@@ -255,7 +255,9 @@ export default function Page() {
   let html2pdf: any
   try {
     const pdfModule = await import('html2pdf.js')
-    html2pdf = (pdfModule as any).default || pdfModule
+    const loadedModule = (pdfModule as any).default || pdfModule
+    html2pdf = typeof loadedModule === 'function' ? loadedModule : loadedModule.default
+    if (typeof html2pdf !== 'function') throw new Error('PDF 模組格式不正確')
   } catch (error) {
     console.error('[v0] PDF module load failed:', error)
     alert('PDF 模組載入失敗，請重新整理頁面後再試')
@@ -268,8 +270,8 @@ export default function Page() {
     await Promise.all(Array.from(report.querySelectorAll('img')).map(img => img.complete ? Promise.resolve() : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve() })))
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     try { await html2pdf().set({ margin: 8, filename: '地盤相片報表.pdf', image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 1.2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1120 }, jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } }).from(report).save() }
-    catch (error) { console.error('[v0] PDF export failed:', error); alert(`PDF 匯出失敗：${error instanceof Error ? error.message : '請稍後再試'}`) }
-    finally { report.remove() }
+    catch (error) { console.error('[v0] PDF export failed:', error); alert('PDF 直接下載失敗，將開啟系統列印功能，請在分享選單選擇「儲存到檔案」或「列印」'); window.print() }
+    finally { window.setTimeout(() => report.remove(), 1000) }
   }
 
   return <>
