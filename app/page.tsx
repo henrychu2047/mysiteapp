@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ExcelJS from 'exceljs'
+import JSZip from 'jszip'
 
 type Photo = { id: string; src: string; cleanSrc: string; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string }
 type Category = { name: string; icon: string }
@@ -410,15 +411,36 @@ export default function Page() {
   }
 
   const exportLocalBackup = async () => {
-    const payload = { version: 1, exportedAt: new Date().toISOString(), projects, currentProjectId, photos }
-    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
-    const file = new File([blob], `project-camera-backup-${new Date().toISOString().slice(0, 10)}.json`, { type: blob.type })
-    if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Project Camera 備份' }); return }
-    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = file.name; link.click(); URL.revokeObjectURL(url)
+    const zip = new JSZip()
+    zip.file('projects.json', JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), currentProjectId, projects }, null, 2))
+    for (const project of projects) {
+      const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}`
+      zip.file(`${prefix}/settings.json`, JSON.stringify(project.settings || {}, null, 2))
+      for (const photo of photos.filter(item => item.projectId === project.id)) {
+        const image = await fetch(photo.src).then(response => response.blob())
+        zip.file(`${prefix}/photos/${photo.id}.jpg`, image)
+      }
+    }
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const file = new File([blob], `project-camera-backup-${new Date().toISOString().slice(0, 10)}.zip`, { type: 'application/zip' })
+    if (navigator.share && navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Project Camera ZIP 備份' }); return }
+    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = file.name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 3000)
   }
   const importLocalBackup = async (file: File | undefined) => {
     if (!file) return
-    try { const data = JSON.parse(await file.text()); if (!Array.isArray(data.projects) || !Array.isArray(data.photos)) throw new Error('格式不正確'); setProjects(data.projects); setCurrentProjectId(data.currentProjectId || data.projects[0]?.id || DEFAULT_PROJECT.id); setPhotos(data.photos); alert('本機備份已還原') } catch { alert('備份檔案無法讀取') }
+    try {
+      const zip = await JSZip.loadAsync(file)
+      const manifest = zip.file('projects.json'); if (!manifest) throw new Error('找不到 projects.json')
+      const data = JSON.parse(await manifest.async('text'))
+      if (!Array.isArray(data.projects)) throw new Error('格式不正確')
+      const restored: Photo[] = []
+      for (const project of data.projects) {
+        const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}/photos/`
+        const entries = Object.values(zip.files).filter(entry => !entry.dir && entry.name.startsWith(prefix)) as JSZip.JSZipObject[]
+        for (const entry of entries) { const blob = await entry.async('blob'); const src = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob) }); restored.push({ id: entry.name.split('/').pop()!.replace(/\\.jpg$/, ''), src, cleanSrc: src, category: project.settings?.categories?.[0]?.name || '其它', tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id }) }
+      }
+      setProjects(data.projects); setCurrentProjectId(data.currentProjectId || data.projects[0]?.id || DEFAULT_PROJECT.id); setPhotos(restored); alert('ZIP 備份已還原')
+    } catch { alert('ZIP 備份檔案無法讀取') }
   }
 
   return <>
@@ -427,7 +449,7 @@ export default function Page() {
       <header className="topbar"><div className="brand-mark">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button><button className="folder-button" onClick={connectProjectFolder} aria-label="連接 Project Camera 資料夾">{folderConnected ? '✓' : '資料夾'}</button><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
       {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{projectPhotos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
       {tab === 'home' && active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>‹ 所有類別</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} 張</span></div><div className="capture-actions"><button className="capture-button camera" onClick={startContinuousCamera}><span>▣</span><div><strong>連續拍攝</strong><small>拍完可立即拍下一張</small></div></button><button className="capture-button secondary-camera" onClick={() => cameraRef.current?.click()}><span>□</span><div><strong>立即拍照</strong><small>使用 iPhone 原生相機</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>▧</span><div><strong>選擇相簿</strong><small>可一��匯入多張</small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={e => importFiles(e.target.files)} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={e => importFiles(e.target.files)} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>拍攝資訊</h3></div><span className="memory-dot">● 已記憶</span></div><div className="tag-grid">{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '選擇'}</b></button>)}</div><label className="note-field"><span>文字備註</span><input value={note} onChange={e => setNote(e.target.value)} placeholder="輸入本次拍攝的補充說明..." /></label></div></section>}
-      {tab === 'settings' && <section className="content settings-page"><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p><div className="local-storage-card"><strong>{storageStatus}</strong><span>照片、Project 及設定會保存在此裝置</span><div className="backup-actions"><button onClick={exportLocalBackup}>匯出本機備份</button><label>匯入備份<input type="file" accept="application/json,.json" hidden onChange={e => importLocalBackup(e.target.files?.[0])} /></label></div></div>{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
+      {tab === 'settings' && <section className="content settings-page"><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p><div className="local-storage-card"><strong>{storageStatus}</strong><span>照片、Project 及設定會保存在此裝置</span><div className="backup-actions"><button onClick={exportLocalBackup}>匯出 ZIP 備份</button><label>匯入備份<input type="file" accept="application/zip,.zip" hidden onChange={e => importLocalBackup(e.target.files?.[0])} /></label></div></div>{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
       {tab === 'photos' && <section className="content"><div className="section-heading photo-heading"><div><p className="eyebrow">PHOTO ARCHIVE</p><h2>相片集</h2></div><div className="photo-actions"><span className="photo-total">已選 {selected.length} 張</span><div className="export-bar"><button onClick={exportExcel}>匯出 Excel</button><button onClick={exportPdf}>匯出 A3 PDF</button></div></div></div><div className="photo-grid">{projectPhotos.map(p => <div className="photo-card" key={p.id}><button className="photo-open" onClick={() => setDetail(p)}><img src={p.src} alt={`${p.category} ${p.createdAt}`} /></button><label className="check"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(s => e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id))} /><span /></label></div>)}{!projectPhotos.length && <div className="empty-state">尚未有相片記錄<br /><small>進入工程類別開始拍攝</small></div>}</div><div id="pdf-report" className="pdf-report" aria-hidden="true"><h1>地盤相片記錄報表</h1>{photos.filter(p => selected.includes(p.id)).map(p => <article key={p.id}><img src={p.src} alt="" /><div><b>{p.category}</b><p>{Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>{p.note}</p><small>{new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>)}</div></section>}
       <nav className="bottom-nav"><button className={tab === 'home' ? 'active' : ''} onClick={() => { setTab('home'); setActive(null) }}><span>⌂</span>工程類別</button><button className={tab === 'photos' ? 'active' : ''} onClick={() => { setTab('photos'); setActive(null) }}><span>▧</span>相片集<em>{projectPhotos.length}</em></button><button className={tab === 'settings' ? 'active' : ''} onClick={() => { setTab('settings'); setActive(null) }}><span>⚙</span>設定</button></nav>
     </main>
