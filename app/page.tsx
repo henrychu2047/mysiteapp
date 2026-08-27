@@ -158,6 +158,8 @@ export default function Page() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const loadedProjectRef = useRef('')
+  const folderHandleRef = useRef<any>(null)
+  const [folderConnected, setFolderConnected] = useState(false)
 
   const [isOffline, setIsOffline] = useState(false)
   useEffect(() => {
@@ -231,6 +233,29 @@ export default function Page() {
   const projectPhotos = useMemo(() => photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === currentProject.id), [currentProject.id, photos])
   const currentPhotos = useMemo(() => active ? projectPhotos.filter(p => p.category === active) : projectPhotos, [active, projectPhotos])
   useEffect(() => () => { streamRef.current?.getTracks().forEach(track => track.stop()) }, [])
+  const connectProjectFolder = async () => {
+    const picker = (window as any).showDirectoryPicker
+    if (!picker) { alert('此瀏覽器不支援直接保存資料夾，照片仍會保存於本機 App。'); return }
+    try {
+      const root = await picker({ mode: 'readwrite' })
+      folderHandleRef.current = root
+      setFolderConnected(true)
+      setCaptureMessage('已連接本機 Project Camera 資料夾')
+    } catch { setCaptureMessage('未選擇資料夾') }
+  }
+  const saveToProjectFolder = async (photo: Photo) => {
+    const root = folderHandleRef.current
+    if (!root) return
+    try {
+      const projectDir = await root.getDirectoryHandle(currentProject.name.replace(/[\\/:*?"<>|]/g, '_'), { create: true })
+      const photosDir = await projectDir.getDirectoryHandle('photos', { create: true })
+      const blob = await (await fetch(photo.src)).blob()
+      const file = await photosDir.getFileHandle(`${photo.id}.jpg`, { create: true })
+      const writable = await file.createWritable(); await writable.write(blob); await writable.close()
+      const settings = await projectDir.getFileHandle('settings.json', { create: true })
+      const settingsWritable = await settings.createWritable(); await settingsWritable.write(JSON.stringify({ project: currentProject, categories, settingsOptions, tags, note }, null, 2)); await settingsWritable.close()
+    } catch (error) { console.error('[v0] folder save failed:', error) }
+  }
   const startContinuousCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) { setCameraError('此瀏覽器不支援連續相機，請使用立即拍照'); return }
     try {
@@ -272,7 +297,9 @@ export default function Page() {
       ctx.drawImage(video, 0, 0)
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
       const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active)
-      setPhotos(p => [{ id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }, ...p])
+      const photo = { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+      setPhotos(p => [photo, ...p])
+      await saveToProjectFolder(photo)
       setCameraError('')
       setCaptureMessage('已拍攝並儲存，可繼續拍攝')
       window.setTimeout(() => setCaptureMessage(''), 1800)
@@ -282,7 +309,7 @@ export default function Page() {
   const importFiles = async (files: FileList | null) => {
     if (!files || !active) return
     const added = await Promise.all(Array.from(files).map(async file => { const result = await stampImage(file, active); return { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id } }))
-    setPhotos(p => [...added, ...p]); setTab('photos')
+    setPhotos(p => [...added, ...p]); await Promise.all(added.map(saveToProjectFolder)); setTab('photos')
   }
   const addProject = () => {
     const name = newProjectName.trim()
@@ -377,7 +404,7 @@ export default function Page() {
   return <>
     {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
     <main className="app-shell">
-      <header className="topbar"><div className="brand-mark">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
+      <header className="topbar"><div className="brand-mark">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button><button className="folder-button" onClick={connectProjectFolder} aria-label="連接 Project Camera 資料夾">{folderConnected ? '✓' : '資料夾'}</button><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
       {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{projectPhotos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
       {tab === 'home' && active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>‹ 所有類別</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} 張</span></div><div className="capture-actions"><button className="capture-button camera" onClick={startContinuousCamera}><span>▣</span><div><strong>連續拍攝</strong><small>拍完可立即拍下一張</small></div></button><button className="capture-button secondary-camera" onClick={() => cameraRef.current?.click()}><span>□</span><div><strong>立即拍照</strong><small>使用 iPhone 原生相機</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>▧</span><div><strong>選擇相簿</strong><small>可一��匯入多張</small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={e => importFiles(e.target.files)} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={e => importFiles(e.target.files)} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>拍攝資訊</h3></div><span className="memory-dot">● 已記憶</span></div><div className="tag-grid">{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '選擇'}</b></button>)}</div><label className="note-field"><span>文字備註</span><input value={note} onChange={e => setNote(e.target.value)} placeholder="輸入本次拍攝的補充說明..." /></label></div></section>}
       {tab === 'settings' && <section className="content settings-page"><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p>{['樓層', '機房', '事項', '安全', '其它', '備註'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
