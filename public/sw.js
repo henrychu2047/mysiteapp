@@ -1,4 +1,4 @@
-const CACHE_NAME = 'site-photo-static-v7'
+const CACHE_NAME = 'site-photo-static-v8'
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
@@ -16,6 +16,9 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+  if (event.data?.type === 'CACHE_RESOURCES' && Array.isArray(event.data.urls)) {
+    event.waitUntil(caches.open(CACHE_NAME).then((cache) => Promise.all(event.data.urls.map((url) => cache.add(url).catch(() => undefined)))))
+  }
 })
 
 self.addEventListener('activate', (event) => {
@@ -31,10 +34,10 @@ self.addEventListener('fetch', (event) => {
   const isDocument = request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')
   event.respondWith(
     isDocument
-      ? fetch(request).then((response) => {
+      ? caches.match(request).then((cached) => cached || caches.match('/')).then((cached) => cached || fetch(request).then((response) => {
           if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()))
           return response
-        }).catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+        }))
       : caches.match(request).then((cached) => cached || fetch(request).then((response) => {
           if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()))
           return response

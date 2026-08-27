@@ -142,7 +142,7 @@ export default function Page() {
   const [isOffline, setIsOffline] = useState(false)
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => { if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' }); return registration.update() }).catch(() => undefined)
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => { if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' }); window.setTimeout(() => { const urls = performance.getEntriesByType('resource').map((entry) => new URL((entry as PerformanceResourceTiming).name, location.href)).filter((url) => url.origin === location.origin).map((url) => `${url.pathname}${url.search}`); registration.active?.postMessage({ type: 'CACHE_RESOURCES', urls: [...new Set(['/', '/manifest.webmanifest', ...urls])] }) }, 1000); return registration.update() }).catch(() => undefined)
     }
     const updateOnlineState = () => setIsOffline(!navigator.onLine)
     updateOnlineState()
