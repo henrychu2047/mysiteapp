@@ -258,7 +258,7 @@ export default function Page() {
   useEffect(() => () => { streamRef.current?.getTracks().forEach(track => track.stop()) }, [])
   const connectProjectFolder = async () => {
     const picker = (window as any).showDirectoryPicker
-    if (!picker) { alert('此瀏覽器不支援直接保存資料夾，照片仍會保存於本機 App。'); return }
+    if (!picker) { setProjectPanel(true); return }
     try {
       const root = await picker({ mode: 'readwrite' })
       folderHandleRef.current = root
