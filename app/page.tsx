@@ -142,7 +142,7 @@ export default function Page() {
   const [isOffline, setIsOffline] = useState(false)
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => registration.update()).catch(() => undefined)
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => { if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' }); return registration.update() }).catch(() => undefined)
     }
     const updateOnlineState = () => setIsOffline(!navigator.onLine)
     updateOnlineState()
