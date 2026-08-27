@@ -141,7 +141,7 @@ export default function Page() {
 
   const [isOffline, setIsOffline] = useState(false)
   useEffect(() => {
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined)
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => registration.update()).catch(() => undefined)
     const updateOnlineState = () => setIsOffline(!navigator.onLine)
     updateOnlineState()
     window.addEventListener('online', updateOnlineState)
@@ -195,7 +195,7 @@ export default function Page() {
     try {
       const canvas = document.createElement('canvas')
       canvas.width = video.videoWidth; canvas.height = video.videoHeight
-      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('無法建立畫布')
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('無法建立畫��')
       ctx.drawImage(video, 0, 0)
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
       const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active)
