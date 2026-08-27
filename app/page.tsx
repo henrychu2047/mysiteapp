@@ -22,7 +22,7 @@ const defaultCategories: Category[] = [
 ]
 const tagOptions: Record<string, string[]> = {
   樓層: ['B02', 'B01', 'L00', 'L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L08', 'L09', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16', 'L17', 'L18', 'L19', 'MR/F', 'UR1/F', 'UR2/F'],
-  機房: ['電制房', '線制房', '發電機房', 'AHU房', 'ELV房', 'TR房'],
+  機房: ['電制房', '總制房', '發電機房', 'AHU房', 'ELV房', 'TR房'],
   房間名稱: ['N1', 'N2', 'N3', 'N4', 'N5', 'S1', 'S2', 'S4', 'S5', 'S6', 'S7', 'S8', 'ELV1', 'ELV2', 'ELV3', 'ELV4', 'TR1', 'TR2', 'TR3', 'TR4', '1', '2', '3', '4'],
   事項: ['Defect', '未做喉', '未做糟', '未補明喉', '未穿線', '未裝燈', '未裝膠器', '未起鐵架', '未封板', '未開吼', '未塞吼', '未裝門', '進度慢', '被破壞', '受其它行頭阻礙', '受建築阻礙', '其它行頭無跟CSD做'],
   安全: ['無圍欄', '不正規高空工作', '無安全帶', '無帶安全帽', '無安全繩', '地坑無鐵板', '吸煙'],
@@ -458,7 +458,7 @@ export default function Page() {
   }
 
   return <>
-    {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
+    {isOffline && <div className="offline-banner" role="status">��前為離線模式，資料會儲存在本機</div>}
     <main className="app-shell">
       <header className="topbar"><div className="brand-mark">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button><button className="folder-button" onClick={connectProjectFolder} aria-label="連接 Project Camera 資料夾">{folderConnected ? '✓' : '資料夾'}</button><button className="icon-button" onClick={() => setNewCategory(true)} aria-label="新增類別">＋</button></header>
       {tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{projectPhotos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
