@@ -1,4 +1,4 @@
-const CACHE_NAME = 'site-photo-static-v8'
+const CACHE_NAME = 'site-photo-static-v10'
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
@@ -34,10 +34,10 @@ self.addEventListener('fetch', (event) => {
   const isDocument = request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')
   event.respondWith(
     isDocument
-      ? caches.match(request).then((cached) => cached || caches.match('/')).then((cached) => cached || fetch(request).then((response) => {
+      ? fetch(request, { cache: 'no-store' }).then((response) => {
           if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()))
           return response
-        }))
+        }).catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
       : caches.match(request).then((cached) => cached || fetch(request).then((response) => {
           if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()))
           return response
