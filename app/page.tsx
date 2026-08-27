@@ -253,7 +253,7 @@ export default function Page() {
   }, [projects, currentProjectId])
 
   const currentProject = projects.find(project => project.id === currentProjectId) || DEFAULT_PROJECT
-  const projectPhotos = useMemo(() => photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === currentProject.id), [currentProject.id, photos])
+  const projectPhotos = useMemo(() => photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === currentProject.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [currentProject.id, photos])
   const currentPhotos = useMemo(() => active ? projectPhotos.filter(p => p.category === active) : projectPhotos, [active, projectPhotos])
   useEffect(() => () => { streamRef.current?.getTracks().forEach(track => track.stop()) }, [])
   const connectProjectFolder = async () => {
@@ -354,7 +354,7 @@ export default function Page() {
   const addCategory = (name: string) => { if (name.trim()) setCategories(c => [...c, { name: name.trim(), icon: '＋' }]); setNewCategory(false) }
   const removeCategory = (name: string) => { if (confirm(`確定刪除「${name}」及其相片？`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
   const exportExcel = async () => {
-    const chosen = photos.filter(x => selected.includes(x.id))
+    const chosen = photos.filter(x => selected.includes(x.id)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     if (!chosen.length) { alert('請先勾選要匯出���相片'); return }
     try {
       const book = new ExcelJS.Workbook()
@@ -386,7 +386,7 @@ export default function Page() {
     }
   }
   const exportPdf = async () => {
-    const chosen = photos.filter(x => selected.includes(x.id))
+    const chosen = photos.filter(x => selected.includes(x.id)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
   const report = document.createElement('div')
   report.className = 'export-preview-overlay'
@@ -398,7 +398,7 @@ export default function Page() {
   return
   }
   const exportPdfLegacy = async () => {
-    const chosen = photos.filter(x => selected.includes(x.id))
+    const chosen = photos.filter(x => selected.includes(x.id)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   if (!chosen.length) return alert('請先勾選要匯出的相片')
   let html2canvas: any
   let JsPDF: any
