@@ -9,7 +9,6 @@ type ProjectSettings = { categories: Category[]; tags: Record<string, string>; n
 type Project = { id: string; name: string; settings?: ProjectSettings }
 
 const DEFAULT_PROJECT: Project = { id: 'default-project', name: '我的 Project' }
-const createProjectSettings = (): ProjectSettings => ({ categories: defaultCategories, tags: {}, note: '', settingsOptions: tagOptions })
 const PROJECTS_KEY = 'site-photo-projects'
 const CURRENT_PROJECT_KEY = 'site-photo-current-project'
 
@@ -20,6 +19,8 @@ const defaultCategories: Category[] = [
   { name: '制櫃', icon: '▤' },
   { name: '發電機', icon: '◈' },
 ]
+const createProjectSettings = (): ProjectSettings => ({ categories: defaultCategories, tags: {}, note: '', settingsOptions: tagOptions })
+
 const tagOptions: Record<string, string[]> = {
   樓層: ['B2', 'B1', 'G/F', '1/F', '2/F', '3/F', '天台'],
   機房: ['A區機房', 'B區機房', '泵房', '電房', '消防泵房'],
