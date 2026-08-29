@@ -357,6 +357,10 @@ export default function Page() {
     } catch (error) { console.error('[v0] folder save failed:', error) }
   }
   const startContinuousCamera = async () => {
+    if (!window.isSecureContext) {
+      setCameraError('連續拍攝需要 HTTPS；目前網址不安全，請改用立即拍照或設定 HTTPS')
+      return
+    }
     if (!navigator.mediaDevices?.getUserMedia) { setCameraError('此瀏覽器不支援連續相機，請使用立即拍照'); return }
     try {
       setCameraError('')
@@ -389,7 +393,12 @@ export default function Page() {
     setCaptureBusy(true)
     setCaptureMessage('正在處理相片…')
     const video = videoRef.current
-    if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) { setCameraError('鏡頭尚未準備好，請稍候再按快門'); return }
+    if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+      setCameraError('鏡頭尚未準備好，請稍候再按快門')
+      setCaptureMessage('')
+      setCaptureBusy(false)
+      return
+    }
     try {
       const canvas = document.createElement('canvas')
       canvas.width = video.videoWidth; canvas.height = video.videoHeight
