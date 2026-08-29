@@ -22,8 +22,8 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - name: Prepare pnpm
-        run: corepack prepare pnpm@latest --activate
+      - name: Install pnpm (fallback)
+        run: npm install -g pnpm@7
 
       - name: Verify pnpm
         run: pnpm --version
