@@ -434,7 +434,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 }}
               >
                 <ClipboardCheck size={30} className="ho-home-icon" />
-                <strong>制房移交</strong>
+                <strong>制房移交狀況</strong>
                 <span>日期、責任人、狀態、相片、Defect</span>
               </button>
               <button className="ho-home-card" onClick={() => setView('stats')}>
