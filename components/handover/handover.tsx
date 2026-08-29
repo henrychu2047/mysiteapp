@@ -456,6 +456,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         <button className="project-trigger" onClick={goBack} aria-label="返回並選擇 Project">
           <strong>{projectName}</strong><span>⌄</span>
         </button>
+        <strong className="ho-page-title">{view === 'manage' ? '機房資料' : '制房移交'}</strong>
       </header>
 
       <main className="ho-body">
