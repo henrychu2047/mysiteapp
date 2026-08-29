@@ -387,9 +387,17 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     n: towers.reduce((sum, t) => sum + t.floors.reduce((a, f) => a + f.rooms.filter(r => r.handover.status === s).length, 0), 0),
   }))
   const selectedStatus = statusCounts.find(({ s }) => s === selectedStatusFilter)?.s || null
-  const statusRooms = selectedStatus
-    ? towers.flatMap(t => t.floors.flatMap(f => f.rooms.filter(r => r.handover.status === selectedStatus).map(r => ({ tower: t, floor: f, room: r }))))
+  const statusGroups = selectedStatus
+    ? towers
+        .map(t => ({
+          tower: t,
+          floors: t.floors
+            .map(f => ({ floor: f, rooms: f.rooms.filter(r => r.handover.status === selectedStatus) }))
+            .filter(group => group.rooms.length > 0),
+        }))
+        .filter(group => group.floors.length > 0)
     : []
+  const statusRoomCount = statusGroups.reduce((sum, group) => sum + group.floors.reduce((floorSum, floor) => floorSum + floor.rooms.length, 0), 0)
 
   return (
     <div className="ho-app">
@@ -929,19 +937,30 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           <div className="ho-status-list">
             <div className="ho-section-head">
               <strong>{selectedStatus}</strong>
-              <span>{statusRooms.length} 間</span>
+              <span>{statusRoomCount} 間</span>
             </div>
-            {!statusRooms.length && <div className="ho-empty small">目前沒有符合此狀態的機房。</div>}
-            {statusRooms.map(({ tower: t, floor: f, room: r }) => (
-              <button
-                className="ho-status-room"
-                key={r.id}
-                onClick={() => openDetail(t.id, f.id, r.id)}
-              >
-                <span className="ho-status-room-path">{t.name} ＞ {f.name}</span>
-                <strong>{r.name}</strong>
-                <span className="ho-badge" style={{ background: ROOM_STATUS_COLOR[selectedStatus] }}>{selectedStatus}</span>
-              </button>
+            {!statusGroups.length && <div className="ho-empty small">目前沒有符合此狀態的機房。</div>}
+            {statusGroups.map(({ tower: t, floors }) => (
+              <section className="ho-status-tower" key={t.id}>
+                <h3>{t.name}</h3>
+                {floors.map(({ floor: f, rooms }) => (
+                  <div className="ho-status-floor" key={f.id}>
+                    <h4>{f.name}</h4>
+                    <div className="ho-status-rooms">
+                      {rooms.map(r => (
+                        <button
+                          className="ho-status-room"
+                          key={r.id}
+                          onClick={() => openDetail(t.id, f.id, r.id)}
+                        >
+                          <strong>{r.name}</strong>
+                          <span className="ho-badge" style={{ background: ROOM_STATUS_COLOR[selectedStatus] }}>{selectedStatus}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
             ))}
           </div>
         )}
