@@ -101,6 +101,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   // Defect 編輯
   const [defectModal, setDefectModal] = useState<{ id: string | null; description: string } | null>(null)
+  const [defectDraft, setDefectDraft] = useState('')
   const [zoom, setZoom] = useState<string | null>(null)
 
   const roomPhotoRef = useRef<HTMLInputElement>(null)
@@ -326,8 +327,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           },
         }
       }
-      const d: Defect = { id: uid(), description: desc, status: '未完成', note: '', createdAt: nowIso(), photos: [] }
-      return { ...r, handover: { ...r.handover, defects: [...r.handover.defects, d] } }
+      return r
     })
     setDefectModal(null)
     flash('已儲存 Defect')
@@ -782,6 +782,61 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               </div>
             </div>
 
+            <div className="ho-section ho-inline-defect">
+              <div className="ho-section-head">
+                <strong>Defect</strong>
+              </div>
+              <div className="ho-field">
+                <span>Defect 描述（快選）</span>
+                <div className="ho-chip-row">
+                  {DEFECT_SUGGESTIONS.map(s => (
+                    <button key={s} className="ho-suggest" onClick={() => setDefectDraft(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="ho-field">
+                <span>自訂 Defect 描述</span>
+                <textarea rows={2} value={defectDraft} onChange={e => setDefectDraft(e.target.value)} placeholder="快選中沒有合適項目時，可自行輸入" />
+              </label>
+              <button className="ho-save-btn" onClick={() => {
+                const description = defectDraft.trim()
+                if (!description || !selTower || !selFloor || !selRoom) {
+                  flash('請輸入 Defect 描述')
+                  return
+                }
+                updateRoom(selTower, selFloor, selRoom, r => ({
+                  ...r,
+                  handover: {
+                    ...r.handover,
+                    defects: [...r.handover.defects, { id: uid(), description, status: '未完成', note: '', createdAt: nowIso(), photos: [] }],
+                  },
+                }))
+                setDefectDraft('')
+                flash('已新增 Defect')
+              }}>儲存 Defect</button>
+              {!room.handover.defects.length && <p className="ho-empty small">未有 Defect。</p>}
+              <div className="ho-defect-list">
+                {room.handover.defects.map(d => (
+                  <div className="ho-defect-card" key={d.id}>
+                    <div className="ho-defect-top">
+                      <div className="ho-defect-ops">
+                        <button aria-label="編輯 Defect" onClick={() => setDefectModal({ id: d.id, description: d.description })}>
+                          <Pencil size={15} />
+                        </button>
+                        <button className="danger" aria-label="刪除 Defect" onClick={() => deleteDefect(d.id)}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="ho-defect-desc">{d.description}</p>
+                    <small className="ho-defect-date">建立：{new Date(d.createdAt).toLocaleString('zh-HK', { hour12: false })}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <label className="ho-field">
               <span>備註</span>
               <textarea rows={3} value={draft.note} onChange={e => setDraft({ ...draft, note: e.target.value })} placeholder="例如：等待測試報告、承辦商已安排跟進…" />
@@ -816,34 +871,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               </div>
             </div>
 
-            {/* Defect 管理 */}
-            <div className="ho-section">
-              <div className="ho-section-head">
-                <strong>Defect</strong>
-                <button className="ho-add-photo" onClick={() => setDefectModal({ id: null, description: '' })}>
-                  <Plus size={16} />新增 Defect
-                </button>
-              </div>
-              {!room.handover.defects.length && <p className="ho-empty small">未有 Defect。</p>}
-              <div className="ho-defect-list">
-                {room.handover.defects.map(d => (
-                  <div className="ho-defect-card" key={d.id}>
-                    <div className="ho-defect-top">
-                      <div className="ho-defect-ops">
-                        <button aria-label="編輯 Defect" onClick={() => setDefectModal({ id: d.id, description: d.description })}>
-                          <Pencil size={15} />
-                        </button>
-                        <button className="danger" aria-label="刪除 Defect" onClick={() => deleteDefect(d.id)}>
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="ho-defect-desc">{d.description}</p>
-                    <small className="ho-defect-date">建立：{new Date(d.createdAt).toLocaleString('zh-HK', { hour12: false })}</small>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
