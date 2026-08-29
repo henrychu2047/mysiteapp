@@ -2,7 +2,7 @@
 // 座 → 樓層 → 機房 三層階層，每間機房內含移交記錄、相片與 Defect。
 // 資料按 projectId 分開儲存在 IndexedDB。
 
-export const ROOM_STATUSES = ['未收', '已收(有Defect)', '拒絕簽收(有Defect)', '已完成'] as const
+export const ROOM_STATUSES = ['未收', '拒絕簽收(有Defect)', '已收(有Defect)', '已完成'] as const
 export type RoomStatus = (typeof ROOM_STATUSES)[number]
 
 // 狀態顏色（配合現有設計 token）
