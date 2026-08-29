@@ -453,7 +453,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       </header>
 
       <main className="ho-body">
-      {view !== 'home' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
+      {view !== 'home' && view !== 'manage' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
       {view !== 'home' && (
           <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
         )}
@@ -798,7 +798,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                         </span>
                         <span className={`ho-defect-count ${open ? 'has' : ''}`}>Defect：{r.handover.defects.length}</span>
                       </div>
-                      {r.handover.updatedAt && <small>更新：{new Date(r.handover.updatedAt).toLocaleString('zh-HK', { hour12: false })}</small>}
                     </div>
                     <ChevronRight size={20} />
                   </button>
