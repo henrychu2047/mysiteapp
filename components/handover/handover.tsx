@@ -427,11 +427,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               <h2>制房移交</h2>
             </div>
             <div className="ho-home-grid">
-              <button className="ho-home-card" onClick={() => setView('manage')}>
-                <Building2 size={30} className="ho-home-icon" />
-                <strong>機房資料</strong>
-                <span>座、樓層、機房</span>
-              </button>
               <button
                 className="ho-home-card"
                 onClick={() => {
