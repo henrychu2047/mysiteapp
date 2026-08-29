@@ -23,7 +23,7 @@ export default function Page() {
             <strong>Henry Chu</strong>
             <span>Project Manager</span>
             <span>Southa Technical Ltd</span>
-            <a href="mailto:henrychu@southa.com">henrychu@southa.com</a>
+                      <span className="contact-email">✉️ <a href="mailto:henrychu@southa.com">henrychu@southa.com</a></span>
           </div>
         </div>
       </div>
