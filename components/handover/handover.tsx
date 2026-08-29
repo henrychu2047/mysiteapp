@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  ArrowLeft,
   Camera,
   PenLine,
   ClipboardList,
@@ -385,9 +384,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onExportB
     return parts.join(' ＞ ')
   }
 
-  const topTitle =
-    view === 'manage' ? '機房資料' : view === 'stats' ? '統計' : view === 'backup' ? '備用' : '制房移交'
-
   const goBack = () => {
     if (view === 'home') return onBack()
     if (view === 'detail') return setView('flow-room')
@@ -413,13 +409,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onExportB
   return (
     <div className="ho-app">
       <header className="ho-topbar">
-        <button onClick={goBack} aria-label="返回" className="ho-icon-btn">
-          <ArrowLeft size={22} />
+        <div className="brand-mark" aria-hidden="true">▦</div>
+        <button className="project-trigger" onClick={goBack} aria-label="返回並選擇 Project">
+          <strong>{projectName}</strong><span>⌄</span>
         </button>
-        <div className="ho-project">
-          <strong>{topTitle}</strong>
-          <span>{projectName}</span>
-        </div>
       </header>
 
       <main className="ho-body">
