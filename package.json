@@ -10,6 +10,7 @@
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@vercel/analytics": "1.6.1",
+    "ai": "^7.0.84",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
@@ -19,6 +20,7 @@
     "jszip": "^3.10.1",
     "lucide-react": "^1.16.0",
     "next": "16.3.3",
+    "pdfjs-dist": "^6.2.108",
     "react": "^19",
     "react-dom": "^19",
     "shadcn": "^4.11.0",
