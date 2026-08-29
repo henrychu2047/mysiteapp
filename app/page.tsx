@@ -229,7 +229,7 @@ export default function Page() {
   }, [])
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=20', { updateViaCache: 'none' }).then((registration) => {
+      navigator.serviceWorker.register('/sw.js?v=21', { updateViaCache: 'none' }).then((registration) => {
         const markUpdate = () => setUpdateAvailable(true)
         if (registration.waiting) markUpdate()
         registration.addEventListener('updatefound', () => {
