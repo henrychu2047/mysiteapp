@@ -101,12 +101,12 @@ export const ROOM_NAME_SUGGESTIONS = [
 ]
 export const FLOOR_SUGGESTIONS = ['LG/F', 'G/F', '1/F', '2/F', '3/F', 'Podium', 'Roof']
 export const DEFECT_SUGGESTIONS = [
-  '控制箱標示缺失',
-  '水泵有滲水情況',
-  '防火門未能正常關閉',
-  '照明未完成安裝',
-  '沒有提供測試證書',
-  '管道保溫破損',
+  '未有門',
+  '油漆未完',
+  '未開牆身吼',
+  '未開地台吼',
+  '安全問題',
+  '其它',
 ]
 
 // ---------- 批量產生輔助 ----------

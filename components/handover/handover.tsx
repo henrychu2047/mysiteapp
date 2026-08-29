@@ -276,16 +276,20 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   }
   const saveDetail = () => {
     if (!selTower || !selFloor || !selRoom || !draft) return
+    const defectDescription = defectDraft.trim()
     updateRoom(selTower, selFloor, selRoom, r => ({
       ...r,
       handover: {
         ...r.handover,
         date: draft.date,
         status: draft.status,
-        note: draft.note,
+        defects: defectDescription
+          ? [...r.handover.defects, { id: uid(), description: defectDescription, status: '未完成', note: '', createdAt: nowIso(), photos: [] }]
+          : r.handover.defects,
         updatedAt: nowIso(),
       },
     }))
+    setDefectDraft('')
     flash('已儲存')
   }
   const saveResponsiblePerson = () => {
@@ -800,22 +804,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <span>自訂 Defect 描述</span>
                 <textarea rows={2} value={defectDraft} onChange={e => setDefectDraft(e.target.value)} placeholder="快選中沒有合適項目時，可自行輸入" />
               </label>
-              <button className="ho-save-btn" onClick={() => {
-                const description = defectDraft.trim()
-                if (!description || !selTower || !selFloor || !selRoom) {
-                  flash('請輸入 Defect 描述')
-                  return
-                }
-                updateRoom(selTower, selFloor, selRoom, r => ({
-                  ...r,
-                  handover: {
-                    ...r.handover,
-                    defects: [...r.handover.defects, { id: uid(), description, status: '未完成', note: '', createdAt: nowIso(), photos: [] }],
-                  },
-                }))
-                setDefectDraft('')
-                flash('已新增 Defect')
-              }}>儲存 Defect</button>
               {!room.handover.defects.length && <p className="ho-empty small">未有 Defect。</p>}
               <div className="ho-defect-list">
                 {room.handover.defects.map(d => (
@@ -836,15 +824,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 ))}
               </div>
             </div>
-
-            <label className="ho-field">
-              <span>備註</span>
-              <textarea rows={3} value={draft.note} onChange={e => setDraft({ ...draft, note: e.target.value })} placeholder="例如：等待測試報告、承辦商已安排跟進…" />
-            </label>
-
-            <button className="ho-save-btn" onClick={saveDetail}>
-              儲存
-            </button>
 
             {/* 機房相片 */}
             <div className="ho-section">
@@ -870,6 +849,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 ))}
               </div>
             </div>
+
+            <button className="ho-save-btn" onClick={saveDetail}>
+              儲存
+            </button>
 
           </div>
         )}
