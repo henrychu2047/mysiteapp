@@ -44,7 +44,6 @@ import {
   type Tower,
   type Room,
   type RoomStatus,
-  type DefectStatus,
   type RoomHandover,
   type ResponsiblePerson,
 } from './handover-data'
@@ -276,16 +275,23 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const saveDetail = () => {
     if (!selTower || !selFloor || !selRoom || !draft) return
     const defectDescriptions = defectDraft.map(description => description.trim()).filter(Boolean)
-    updateRoom(selTower, selFloor, selRoom, r => ({
-      ...r,
-      handover: {
-        ...r.handover,
-        date: draft.date,
-        status: draft.status,
-        defects: [...r.handover.defects, ...defectDescriptions.map(description => ({ id: uid(), description, status: '未完成' as const, note: '', createdAt: nowIso(), photos: [] }))],
-        updatedAt: nowIso(),
-      },
-    }))
+    updateRoom(selTower, selFloor, selRoom, r => {
+      const defects = [...r.handover.defects, ...defectDescriptions.map(description => ({ id: uid(), description, status: '未完成' as const, note: '', createdAt: nowIso(), photos: [] }))]
+      const hasDefect = defects.length > 0
+      const status: RoomStatus = hasDefect
+        ? (draft.status === '拒絕簽收(有Defect)' ? '拒絕簽收(有Defect)' : '已收(有Defect)')
+        : draft.status
+      return {
+        ...r,
+        handover: {
+          ...r.handover,
+          date: draft.date,
+          status,
+          defects,
+          updatedAt: nowIso(),
+        },
+      }
+    })
     setDefectDraft([])
     flash('已儲存')
   }
@@ -769,7 +775,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             <div className="ho-field">
               <span>移交狀態</span>
               <div className="ho-status-picker">
-                {ROOM_STATUSES.map(s => (
+                {(draft.defects.length > 0 || defectDraft.some(description => description.trim())
+                  ? ROOM_STATUSES.filter(s => s === '已收(有Defect)' || s === '拒絕簽收(有Defect)')
+                  : ROOM_STATUSES
+                ).map(s => (
                   <button
                     key={s}
                     className={`ho-status-opt ${draft.status === s ? 'active' : ''}`}
