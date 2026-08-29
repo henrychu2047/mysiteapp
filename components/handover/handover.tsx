@@ -18,7 +18,6 @@ import {
   ChevronRight,
   ChevronDown,
   X,
-  Image as ImageIcon,
   AlertTriangle,
   Wand2,
   Check,
@@ -107,7 +106,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [zoom, setZoom] = useState<string | null>(null)
 
   const roomPhotoRef = useRef<HTMLInputElement>(null)
-  const defectPhotoRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -349,32 +347,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       handover: { ...r.handover, defects: r.handover.defects.map(d => (d.id !== defectId ? d : { ...d, status })) },
     }))
   }
-  const [defectPhotoTarget, setDefectPhotoTarget] = useState<string | null>(null)
-  const addDefectPhotos = async (files: FileList | null) => {
-    if (!files || !files.length || !defectPhotoTarget || !tower || !floor || !room || !selTower || !selFloor || !selRoom) return
-    const lines = [projectName, `${tower.name} ＞ ${floor.name} ＞ ${room.name}`, 'Defect', new Date().toLocaleString('zh-HK', { hour12: false })]
-    const added = await Promise.all(
-      Array.from(files).map(async file => ({ id: uid(), src: await stampHandoverImage(file, lines), createdAt: nowIso() })),
-    )
-    updateRoom(selTower, selFloor, selRoom, r => ({
-      ...r,
-      handover: { ...r.handover, defects: r.handover.defects.map(d => (d.id !== defectPhotoTarget ? d : { ...d, photos: [...d.photos, ...added] })) },
-    }))
-    setDefectPhotoTarget(null)
-    flash('已加入相片')
-  }
-  const deleteDefectPhoto = (defectId: string, photoId: string) => {
-    if (!selTower || !selFloor || !selRoom) return
-    if (!confirm('確定刪除此相片嗎？')) return
-    updateRoom(selTower, selFloor, selRoom, r => ({
-      ...r,
-      handover: {
-        ...r.handover,
-        defects: r.handover.defects.map(d => (d.id !== defectId ? d : { ...d, photos: d.photos.filter(p => p.id !== photoId) })),
-      },
-    }))
-  }
-
   // ---------- 備用 ----------
   const clearAll = async () => {
     if (!confirm('你確定要清除所有制房移交資料嗎？')) return
@@ -889,32 +861,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                         </button>
                       ))}
                     </div>
-                    <div className="ho-defect-photos">
-                      {d.photos.map(p => (
-                        <div className="ho-thumb small" key={p.id}>
-                          <button onClick={() => setZoom(p.src)}>
-                            <img src={p.src || '/placeholder.svg'} alt="Defect 相片" />
-                          </button>
-                          <button className="ho-thumb-del" aria-label="刪除相片" onClick={() => deleteDefectPhoto(d.id, p.id)}>
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        className="ho-defect-add-photo"
-                        onClick={() => {
-                          setDefectPhotoTarget(d.id)
-                          defectPhotoRef.current?.click()
-                        }}
-                      >
-                        <ImageIcon size={16} />
-                        <span>相片 {d.photos.length}</span>
-                      </button>
-                    </div>
                   </div>
                 ))}
               </div>
-              <input ref={defectPhotoRef} hidden type="file" accept="image/*" multiple onChange={e => { addDefectPhotos(e.target.files); e.target.value = '' }} />
             </div>
           </div>
         )}
