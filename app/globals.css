@@ -265,7 +265,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-stat-head span { font-size: 13px; color: var(--muted); font-weight: 700; }
 .ho-bar { height: 10px; border-radius: 6px; background: var(--background); overflow: hidden; }
 .ho-bar i { display: block; height: 100%; background: var(--orange); border-radius: 6px; transition: width .3s; }
-.ho-count-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'unreceived rejected' 'completed accepted'; gap: 8px; }
+.ho-count-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'unreceived completed' 'rejected accepted'; gap: 8px; }
 .ho-count-item:nth-child(1) { grid-area: unreceived; }
 .ho-count-item:nth-child(2) { grid-area: rejected; }
 .ho-count-item:nth-child(3) { grid-area: completed; }

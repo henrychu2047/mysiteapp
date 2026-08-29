@@ -1,4 +1,4 @@
-const CACHE_NAME = 'site-photo-static-v14'
+const CACHE_NAME = 'site-photo-static-v15'
 const STATIC_RESOURCE = /\/_next\/static\//
 
 self.addEventListener('install', (event) => {
