@@ -899,9 +899,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 </div>
               ))}
             </div>
-
-
-            </div>
           </div>
         )}
 
