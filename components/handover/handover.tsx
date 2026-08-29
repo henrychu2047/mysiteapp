@@ -122,11 +122,11 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         setResponsibleDraft(createResponsiblePerson())
         setLoaded(true)
       })
-    setView('home')
+    setView(initialView)
     setSelTower(null)
     setSelFloor(null)
     setSelRoom(null)
-  }, [projectId])
+  }, [projectId, initialView])
 
   useEffect(() => {
     if (!loaded) return
