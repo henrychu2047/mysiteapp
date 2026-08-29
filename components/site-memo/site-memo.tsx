@@ -56,6 +56,9 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [polishing, setPolishing] = useState(false)
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pendingExport, setPendingExport] = useState<{ memo: Memo; fileName: string } | null>(null)
+  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [saveToast, setSaveToast] = useState('')
   const exportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -75,12 +78,29 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   }, [projectId])
 
   useEffect(() => {
-    if (ready) saveMemo(projectId, memo).catch(() => {})
-  }, [memo, projectId, ready])
+    if (!ready) return
+    setSaveState('saving')
+    Promise.all([saveMemo(projectId, memo), saveHistory(projectId, history)]).then(() => {
+      setSaveState('saved')
+      setLastSavedAt(new Date().toISOString())
+    }).catch(error => {
+      console.error('Site Memo 保存失敗:', error)
+      setSaveState('error')
+      setSaveToast('Site Memo 保存失敗，請檢查裝置儲存空間')
+      window.setTimeout(() => setSaveToast(''), 4000)
+    })
+  }, [memo, history, projectId, ready])
 
   useEffect(() => {
-    if (ready) saveHistory(projectId, history).catch(() => {})
-  }, [history, projectId, ready])
+    const warnBeforeLeave = (event: BeforeUnloadEvent) => {
+      if (saveState !== 'saved') {
+        event.preventDefault()
+        event.returnValue = '資料尚未保存，確定要離開嗎？'
+      }
+    }
+    window.addEventListener('beforeunload', warnBeforeLeave)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeave)
+  }, [saveState])
 
   const update = (partial: Partial<Memo>) => setMemo(current => ({ ...current, ...partial }))
   const updateRecipient = (partial: Partial<Memo['recipient']>) =>
@@ -252,6 +272,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
         <div className="memo-heading">
           <p className="eyebrow">SITE MEMO CONFIGURATION</p>
           <h2>公函六大方格配置</h2>
+          <p className="memo-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</p>
         </div>
 
         <div className="memo-grid">
@@ -285,6 +306,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           </button>
         </div>
       </main>
+      {saveToast && <div className="memo-save-toast" role="alert">{saveToast}</div>}
 
       <nav className="bottom-nav main-nav">
         <button onClick={() => onNavigate('photo')}>

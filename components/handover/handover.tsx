@@ -70,6 +70,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [view, setView] = useState<View>(initialView)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<RoomStatus | null>(null)
   const [toast, setToast] = useState('')
+  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
 
   // 選擇路徑
   const [selTower, setSelTower] = useState<string | null>(null)
@@ -126,8 +128,27 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   useEffect(() => {
     if (!loaded) return
-    saveHandover(projectId, { towers, responsiblePerson }).catch(() => undefined)
+    setSaveState('saving')
+    saveHandover(projectId, { towers, responsiblePerson }).then(() => {
+      setSaveState('saved')
+      setLastSavedAt(new Date().toISOString())
+    }).catch(error => {
+      console.error('制房移交資料保存失敗:', error)
+      setSaveState('error')
+      flash('保存失敗，請檢查裝置儲存空間')
+    })
   }, [towers, responsiblePerson, loaded, projectId])
+
+  useEffect(() => {
+    const warnBeforeLeave = (event: BeforeUnloadEvent) => {
+      if (saveState !== 'saved') {
+        event.preventDefault()
+        event.returnValue = '資料尚未保存，確定要離開嗎？'
+      }
+    }
+    window.addEventListener('beforeunload', warnBeforeLeave)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeave)
+  }, [saveState])
 
   const flash = (msg: string) => {
     setToast(msg)
@@ -425,7 +446,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       </header>
 
       <main className="ho-body">
-        {view !== 'home' && (
+      {view !== 'home' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
+      {view !== 'home' && (
           <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
         )}
         {view !== 'home' && <p className="ho-crumb">{crumbs()}</p>}
