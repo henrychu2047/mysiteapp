@@ -319,6 +319,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       const status: RoomStatus = hasDefect
         ? (draft.status === '拒絕簽收(有Defect)' ? '拒絕簽收(有Defect)' : '已收(有Defect)')
         : draft.status
+      const history = [...(r.handover.history || [])]
+      if (r.handover.status !== status) history.unshift({ id: uid(), at: nowIso(), action: '狀態變更', detail: '房間狀態已更新', from: r.handover.status, to: status })
+      defectDescriptions.forEach(description => history.unshift({ id: uid(), at: nowIso(), action: '新增 Defect', detail: description }))
+      if (r.handover.date !== draft.date) history.unshift({ id: uid(), at: nowIso(), action: '修改移交日期', detail: '移交日期已更新', from: r.handover.date || '未設定', to: draft.date || '未設定' })
       return {
         ...r,
         handover: {
@@ -326,6 +330,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           date: draft.date,
           status,
           defects,
+          history: history.slice(0, 100),
           updatedAt: nowIso(),
         },
       }
@@ -343,13 +348,13 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     const added = await Promise.all(
       Array.from(files).map(async file => ({ id: uid(), src: await stampHandoverImage(file, lines), createdAt: nowIso() })),
     )
-    updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, photos: [...r.handover.photos, ...added], updatedAt: nowIso() } }))
+    updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, photos: [...r.handover.photos, ...added], history: [...(r.handover.history || []), { id: uid(), at: nowIso(), action: '新增相片', detail: `新增 ${added.length} 張相片` }].slice(-100), updatedAt: nowIso() } }))
     flash('已加入相片')
   }
   const deleteRoomPhoto = (photoId: string) => {
     if (!selTower || !selFloor || !selRoom) return
     if (!confirm('確定刪除此相片嗎？')) return
-    updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, photos: r.handover.photos.filter(p => p.id !== photoId) } }))
+    updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, photos: r.handover.photos.filter(p => p.id !== photoId), history: [...(r.handover.history || []), { id: uid(), at: nowIso(), action: '刪除相片', detail: `刪除相片 ${photoId}` }].slice(-100), updatedAt: nowIso() } }))
   }
 
   // ---------- Defect ----------
@@ -362,13 +367,15 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     }
     updateRoom(selTower, selFloor, selRoom, r => {
       if (defectModal.id) {
+        const previous = r.handover.defects.find(d => d.id === defectModal.id)
+        if (!previous) return r
         return {
           ...r,
           handover: {
             ...r.handover,
-            defects: r.handover.defects.map(d =>
-              d.id !== defectModal.id ? d : { ...d, description: desc },
-            ),
+            defects: r.handover.defects.map(d => d.id !== defectModal.id ? d : { ...d, description: desc }),
+            history: previous.description === desc ? r.handover.history || [] : [...(r.handover.history || []), { id: uid(), at: nowIso(), action: '修改 Defect', detail: 'Defect 描述已更新', from: previous.description, to: desc }].slice(-100),
+            updatedAt: nowIso(),
           },
         }
       }
@@ -380,7 +387,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const deleteDefect = (defectId: string) => {
     if (!selTower || !selFloor || !selRoom) return
     if (!confirm('確定要刪除此 Defect 嗎？相關相片亦會被刪除。')) return
-    updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, defects: r.handover.defects.filter(d => d.id !== defectId) } }))
+    updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, defects: r.handover.defects.filter(d => d.id !== defectId), history: [...(r.handover.history || []), { id: uid(), at: nowIso(), action: '刪除 Defect', detail: `刪除 Defect：${r.handover.defects.find(d => d.id === defectId)?.description || defectId}` }].slice(-100), updatedAt: nowIso() } }))
     flash('已刪除 Defect')
   }
   // ---------- 備用 ----------
@@ -908,6 +915,19 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             <button className="ho-save-btn" onClick={saveDetail}>
               儲存
             </button>
+
+            <div className="ho-section ho-history-section">
+              <div className="ho-section-head"><strong>操作歷史</strong><span>{(room.handover.history || []).length} 筆</span></div>
+              {!room.handover.history?.length && <p className="ho-empty small">尚未有操作記錄。</p>}
+              <div className="ho-history-list">
+                {(room.handover.history || []).map(entry => (
+                  <div className="ho-history-item" key={entry.id}>
+                    <strong>{entry.action}</strong><small>{new Date(entry.at).toLocaleString('zh-HK', { hour12: false })}</small>
+                    <span>{entry.detail}</span>{entry.from && entry.to && <em>{entry.from} → {entry.to}</em>}
+                  </div>
+                ))}
+              </div>
+            </div>
 
           </div>
         )}

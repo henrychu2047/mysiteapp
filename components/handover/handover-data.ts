@@ -30,6 +30,15 @@ export type Defect = {
   photos: HandoverPhoto[]
 }
 
+export type HandoverHistoryEntry = {
+  id: string
+  at: string
+  action: string
+  detail: string
+  from?: string
+  to?: string
+}
+
 export type RoomHandover = {
   date: string
   personName: string
@@ -42,6 +51,7 @@ export type RoomHandover = {
   photos: HandoverPhoto[]
   defects: Defect[]
   updatedAt: string
+  history: HandoverHistoryEntry[]
 }
 
 export type Room = { id: string; name: string; handover: RoomHandover }
@@ -62,7 +72,7 @@ function normalizeTowers(towers: Tower[]): Tower[] {
       ...floor,
       rooms: floor.rooms.map(room => ({
         ...room,
-        handover: { ...room.handover, status: normalizeRoomStatus(room.handover.status) },
+        handover: { ...createRoomHandover(), ...room.handover, status: normalizeRoomStatus(room.handover.status), history: Array.isArray(room.handover.history) ? room.handover.history : [] },
       })),
     })),
   }))
@@ -85,6 +95,7 @@ export function createRoomHandover(): RoomHandover {
     photos: [],
     defects: [],
     updatedAt: '',
+    history: [],
   }
 }
 
