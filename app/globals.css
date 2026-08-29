@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+﻿@import 'tailwindcss';
 
 :root { --background: #eef1f3; --foreground: #15212b; --card: #ffffff; --muted: #687681; --line: #d6dde1; --navy: #15212b; --orange: #f26b38; --orange-soft: #fff0e9; --blue: #2477a9; --radius: 14px; }
 @theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-border: var(--line); --color-muted-foreground: var(--muted); --color-primary: var(--orange); --color-primary-foreground: #fff; --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Hiragino Sans GB', 'Noto Sans CJK TC', sans-serif; }
@@ -181,7 +181,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-add-row input { flex: 1; min-width: 0; min-height: 46px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--foreground); font-size: 16px; }
 .ho-add-row button { min-height: 46px; min-width: 46px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--orange); color: #fff; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
 .ho-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.ho-suggest { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 18px; background: #fff; color: var(--foreground); font-size: 12px; }
+.ho-suggest { min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 22px; background: #fff; color: var(--foreground); font-size: 13px; font-weight: 700; }
 .ho-tree-tower { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 10px; overflow: hidden; }
 .ho-tree-row { display: flex; align-items: center; gap: 4px; padding: 6px 8px; }
 .ho-tree-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--foreground); min-height: 44px; text-align: left; }
@@ -291,3 +291,4 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-sheet-input { width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--background); color: var(--foreground); font-size: 16px; }
 .ho-zoom { position: fixed; inset: 0; z-index: 380; background: rgba(0,0,0,.9); display: grid; place-items: center; padding: 16px; }
 .ho-zoom img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
