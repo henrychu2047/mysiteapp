@@ -2,34 +2,30 @@
 // 座 → 樓層 → 機房 三層階層，每間機房內含移交記錄、相片與 Defect。
 // 資料按 projectId 分開儲存在 IndexedDB。
 
-export const ROOM_STATUSES = ['未開始', '準備移交', '檢查中', '有 Defect', '已完成'] as const
+export const ROOM_STATUSES = ['未收', '已收(有Defect)', '拒絕簽收(有Defect)', '已完成'] as const
 export type RoomStatus = (typeof ROOM_STATUSES)[number]
-
-export const DEFECT_STATUSES = ['未完成', '跟進中', '已完成'] as const
-export type DefectStatus = (typeof DEFECT_STATUSES)[number]
 
 // 狀態顏色（配合現有設計 token）
 export const ROOM_STATUS_COLOR: Record<RoomStatus, string> = {
-  未開始: '#687681',
-  準備移交: '#2477a9',
-  檢查中: '#f26b38',
-  '有 Defect': '#c0392b',
-  已完成: '#2f9e56',
-}
-
-export const DEFECT_STATUS_COLOR: Record<DefectStatus, string> = {
-  未完成: '#c0392b',
-  跟進中: '#f26b38',
+  未收: '#687681',
+  '已收(有Defect)': '#f26b38',
+  '拒絕簽收(有Defect)': '#c0392b',
   已完成: '#2f9e56',
 }
 
 export type HandoverPhoto = { id: string; src: string; createdAt: string }
 
+export type ResponsiblePerson = {
+  name: string
+  company: string
+  contractor: string
+  department: string
+  position: string
+}
+
 export type Defect = {
   id: string
   description: string
-  status: DefectStatus
-  note: string
   createdAt: string
   photos: HandoverPhoto[]
 }
@@ -51,6 +47,30 @@ export type RoomHandover = {
 export type Room = { id: string; name: string; handover: RoomHandover }
 export type Floor = { id: string; name: string; rooms: Room[] }
 export type Tower = { id: string; name: string; floors: Floor[] }
+export type HandoverProjectData = { towers: Tower[]; responsiblePerson: ResponsiblePerson }
+
+function normalizeRoomStatus(status: unknown): RoomStatus {
+  if (ROOM_STATUSES.includes(status as RoomStatus)) return status as RoomStatus
+  if (status === '已開始' || status === '準備移交' || status === '檢查中' || status === '有 Defect') return '已收(有Defect)'
+  return '未收'
+}
+
+function normalizeTowers(towers: Tower[]): Tower[] {
+  return towers.map(tower => ({
+    ...tower,
+    floors: tower.floors.map(floor => ({
+      ...floor,
+      rooms: floor.rooms.map(room => ({
+        ...room,
+        handover: { ...room.handover, status: normalizeRoomStatus(room.handover.status) },
+      })),
+    })),
+  }))
+}
+
+export function createResponsiblePerson(): ResponsiblePerson {
+  return { name: '', company: '', contractor: '', department: '', position: '' }
+}
 
 export function createRoomHandover(): RoomHandover {
   return {
@@ -60,7 +80,7 @@ export function createRoomHandover(): RoomHandover {
     personDepartment: '',
     personPosition: '',
     personContractor: '',
-    status: '未開始',
+    status: '未收',
     note: '',
     photos: [],
     defects: [],
@@ -81,12 +101,12 @@ export const ROOM_NAME_SUGGESTIONS = [
 ]
 export const FLOOR_SUGGESTIONS = ['LG/F', 'G/F', '1/F', '2/F', '3/F', 'Podium', 'Roof']
 export const DEFECT_SUGGESTIONS = [
-  '控制箱標示缺失',
-  '水泵有滲水情況',
-  '防火門未能正常關閉',
-  '照明未完成安裝',
-  '沒有提供測試證書',
-  '管道保溫破損',
+  '未有門',
+  '油漆未完',
+  '未開牆身吼',
+  '未開地台吼',
+  '安全問題',
+  '其它',
 ]
 
 // ---------- 批量產生輔助 ----------
@@ -120,7 +140,7 @@ export function towerCompleted(tower: Tower) {
   return tower.floors.reduce((s, f) => s + f.rooms.filter(r => r.handover.status === '已完成').length, 0)
 }
 export function openDefectCount(room: Room) {
-  return room.handover.defects.filter(d => d.status !== '已完成').length
+  return room.handover.defects.length
 }
 
 // ---------- IndexedDB ----------
@@ -136,23 +156,51 @@ function openHandoverDb() {
   })
 }
 
-export function loadHandover(projectId: string): Promise<Tower[]> {
+function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
+  for (const tower of towers) {
+    for (const floor of tower.floors) {
+      for (const room of floor.rooms) {
+        const handover = room.handover
+        if (handover.personName || handover.personCompany || handover.personContractor || handover.personDepartment || handover.personPosition) {
+          return {
+            name: handover.personName || '',
+            company: handover.personCompany || '',
+            contractor: handover.personContractor || '',
+            department: handover.personDepartment || '',
+            position: handover.personPosition || '',
+          }
+        }
+      }
+    }
+  }
+  return createResponsiblePerson()
+}
+
+function normalizeProjectData(row: { towers?: Tower[]; responsiblePerson?: ResponsiblePerson } | undefined): HandoverProjectData {
+  const towers = Array.isArray(row?.towers) ? normalizeTowers(row.towers) : []
+  return {
+    towers,
+    responsiblePerson: row?.responsiblePerson || responsiblePersonFromLegacyRooms(towers),
+  }
+}
+
+export function loadHandover(projectId: string): Promise<HandoverProjectData> {
   return openHandoverDb().then(
     db =>
-      new Promise<Tower[]>((resolve, reject) => {
+      new Promise<HandoverProjectData>((resolve, reject) => {
         const request = db.transaction(HO_STORE, 'readonly').objectStore(HO_STORE).get(projectId)
-        request.onsuccess = () => resolve(request.result ? (request.result.towers as Tower[]) : [])
+        request.onsuccess = () => resolve(normalizeProjectData(request.result))
         request.onerror = () => reject(request.error)
       }),
   )
 }
 
-export function saveHandover(projectId: string, towers: Tower[]): Promise<void> {
+export function saveHandover(projectId: string, data: HandoverProjectData): Promise<void> {
   return openHandoverDb().then(
     db =>
       new Promise<void>((resolve, reject) => {
         const transaction = db.transaction(HO_STORE, 'readwrite')
-        transaction.objectStore(HO_STORE).put({ projectId, towers })
+        transaction.objectStore(HO_STORE).put({ projectId, ...data })
         transaction.oncomplete = () => resolve()
         transaction.onerror = () => reject(transaction.error)
       }),
@@ -160,15 +208,15 @@ export function saveHandover(projectId: string, towers: Tower[]): Promise<void> 
 }
 
 // 跨所有 Project 的資料（供 ZIP 備份使用）
-export function loadAllHandover(): Promise<Record<string, Tower[]>> {
+export function loadAllHandover(): Promise<Record<string, HandoverProjectData>> {
   return openHandoverDb().then(
     db =>
-      new Promise<Record<string, Tower[]>>((resolve, reject) => {
+      new Promise<Record<string, HandoverProjectData>>((resolve, reject) => {
         const request = db.transaction(HO_STORE, 'readonly').objectStore(HO_STORE).getAll()
         request.onsuccess = () => {
-          const map: Record<string, Tower[]> = {}
-          for (const row of request.result as { projectId: string; towers: Tower[] }[]) {
-            map[row.projectId] = row.towers || []
+          const map: Record<string, HandoverProjectData> = {}
+          for (const row of request.result as { projectId: string; towers?: Tower[]; responsiblePerson?: ResponsiblePerson }[]) {
+            map[row.projectId] = normalizeProjectData(row)
           }
           resolve(map)
         }
@@ -177,14 +225,17 @@ export function loadAllHandover(): Promise<Record<string, Tower[]>> {
   )
 }
 
-export function saveAllHandover(map: Record<string, Tower[]>): Promise<void> {
+export function saveAllHandover(map: Record<string, HandoverProjectData | Tower[]>): Promise<void> {
   return openHandoverDb().then(
     db =>
       new Promise<void>((resolve, reject) => {
         const transaction = db.transaction(HO_STORE, 'readwrite')
         const store = transaction.objectStore(HO_STORE)
         store.clear()
-        for (const [projectId, towers] of Object.entries(map)) store.put({ projectId, towers })
+        for (const [projectId, value] of Object.entries(map)) {
+          const data = Array.isArray(value) ? normalizeProjectData({ towers: value }) : normalizeProjectData(value)
+          store.put({ projectId, ...data })
+        }
         transaction.oncomplete = () => resolve()
         transaction.onerror = () => reject(transaction.error)
       }),

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeft,
   X,
   Users,
   FileText,
@@ -21,7 +20,6 @@ import {
   Upload,
   Pencil,
   ClipboardList,
-  Circle,
   Info,
 } from 'lucide-react'
 import {
@@ -47,7 +45,7 @@ type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
 
 type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 
-export function SiteMemo({ onBack, onNavigate }: { onBack: () => void; onNavigate: (mode: AppMode) => void }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; projectName: string }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [ready, setReady] = useState(false)
@@ -241,14 +239,10 @@ export function SiteMemo({ onBack, onNavigate }: { onBack: () => void; onNavigat
   return (
     <div className="memo-app">
       <header className="memo-topbar">
-        <button onClick={onBack} aria-label="返回首頁" className="memo-icon-btn">
-          <ArrowLeft size={22} />
+        <div className="brand-mark" aria-hidden="true">▦</div>
+        <button className="project-trigger" onClick={onBack} aria-label="返回並選擇 Project">
+          <strong>{projectName}</strong><span>⌄</span>
         </button>
-        <div className="memo-project">
-          <strong>CLP 1635</strong>
-          <span>Site Memo</span>
-        </div>
-        <span className="memo-ref">Ref: {memo.refNo}</span>
       </header>
 
       <main className="memo-body">
@@ -298,13 +292,13 @@ export function SiteMemo({ onBack, onNavigate }: { onBack: () => void; onNavigat
           <span><PenLine size={20} /></span>
           Site Memo
         </button>
-        <button onClick={() => onNavigate('handover')}>
+        <button onClick={onOpenMachineData}>
           <span><ClipboardList size={20} /></span>
           制房移交
         </button>
-        <button onClick={() => onNavigate('reserve')}>
-          <span><Circle size={20} /></span>
-          備用
+        <button onClick={() => onNavigate('handover')}>
+          <span><ClipboardList size={20} /></span>
+          機房資料
         </button>
         <button onClick={() => onNavigate('about')}>
           <span><Info size={20} /></span>
@@ -591,7 +585,6 @@ function MemoModal({ title, onClose, children }: { title: string; onClose: () =>
     <div className="memo-modal">
       <div className="memo-modal-bar">
         <button onClick={onClose}>
-          <ArrowLeft size={20} />
           返回
         </button>
         <strong>{title}</strong>
