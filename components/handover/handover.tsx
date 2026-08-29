@@ -55,6 +55,7 @@ type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 type Props = {
   onBack: () => void
   onNavigate: (mode: AppMode) => void
+  initialView?: 'home' | 'manage'
   projectId: string
   projectName: string
   onExportBackup: () => void | Promise<void>
@@ -65,10 +66,10 @@ type View = 'home' | 'manage' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'det
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 
-export function Handover({ onBack, onNavigate, projectId, projectName, onExportBackup, onImportBackup }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onExportBackup, onImportBackup }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [view, setView] = useState<View>('home')
+  const [view, setView] = useState<View>(initialView)
   const [toast, setToast] = useState('')
 
   // 選擇路徑
@@ -1116,11 +1117,11 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onExportB
           </span>
           制房移交
         </button>
-        <button onClick={() => onNavigate('reserve')}>
+        <button className="active" onClick={() => setView('manage')}>
           <span>
-            <Circle size={20} />
+            <Building2 size={20} />
           </span>
-          備用
+          機房資料
         </button>
         <button onClick={() => onNavigate('about')}>
           <span>

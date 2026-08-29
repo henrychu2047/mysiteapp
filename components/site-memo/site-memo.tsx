@@ -20,7 +20,6 @@ import {
   Upload,
   Pencil,
   ClipboardList,
-  Circle,
   Info,
 } from 'lucide-react'
 import {
@@ -46,7 +45,7 @@ type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
 
 type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 
-export function SiteMemo({ onBack, onNavigate, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; projectName: string }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; projectName: string }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [ready, setReady] = useState(false)
@@ -293,13 +292,13 @@ export function SiteMemo({ onBack, onNavigate, projectName }: { onBack: () => vo
           <span><PenLine size={20} /></span>
           Site Memo
         </button>
-        <button onClick={() => onNavigate('handover')}>
+        <button onClick={onOpenMachineData}>
           <span><ClipboardList size={20} /></span>
           制房移交
         </button>
-        <button onClick={() => onNavigate('reserve')}>
-          <span><Circle size={20} /></span>
-          備用
+        <button onClick={() => onNavigate('handover')}>
+          <span><ClipboardList size={20} /></span>
+          機房資料
         </button>
         <button onClick={() => onNavigate('about')}>
           <span><Info size={20} /></span>
