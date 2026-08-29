@@ -45,7 +45,7 @@ type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
 
 type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 
-export function SiteMemo({ onBack, onNavigate, onOpenMachineData, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; projectName: string }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectName: string }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [ready, setReady] = useState(false)
@@ -296,7 +296,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, projectName }:
           <span><ClipboardList size={20} /></span>
           制房移交
         </button>
-        <button onClick={() => onNavigate('handover')}>
+        <button onClick={() => (onOpenMachineDataManage ? onOpenMachineDataManage() : onNavigate('handover'))}>
           <span><ClipboardList size={20} /></span>
           機房資料
         </button>
