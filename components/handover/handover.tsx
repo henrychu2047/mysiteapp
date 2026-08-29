@@ -256,9 +256,38 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         rooms: genRooms.map(rn => ({ id: uid(), name: rn, handover: createRoomHandover() })),
       })),
     }))
-    setTowers(prev => [...prev, ...newTowers])
+    setTowers(prev => {
+      const merged = [...prev]
+      const mergeTower = (target: Tower, source: Tower) => {
+        for (const sourceFloor of source.floors) {
+          const targetFloor = target.floors.find(f => f.name === sourceFloor.name)
+          if (!targetFloor) {
+            target.floors.push(sourceFloor)
+            continue
+          }
+          for (const sourceRoom of sourceFloor.rooms) {
+            if (!targetFloor.rooms.some(r => r.name === sourceRoom.name)) targetFloor.rooms.push(sourceRoom)
+          }
+        }
+      }
+      for (const sourceTower of newTowers) {
+        const matchingTowers = merged.filter(t => t.name === sourceTower.name)
+        if (!matchingTowers.length) {
+          merged.push(sourceTower)
+          continue
+        }
+        const targetTower = matchingTowers[0]
+        for (const duplicateTower of matchingTowers.slice(1)) {
+          mergeTower(targetTower, duplicateTower)
+          const index = merged.indexOf(duplicateTower)
+          if (index >= 0) merged.splice(index, 1)
+        }
+        mergeTower(targetTower, sourceTower)
+      }
+      return merged
+    })
     setShowGen(false)
-    flash(`已產生 ${genTCount} 座、共 ${genTotalRooms} 間機房`)
+    flash(`已合併／產生 ${genTCount} 座、共 ${genTotalRooms} 間機房`)
   }
 
   // ---------- 移交詳細 ----------
