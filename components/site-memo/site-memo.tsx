@@ -1,0 +1,652 @@
+'use client'
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ArrowLeft,
+  X,
+  Users,
+  FileText,
+  Camera,
+  Paperclip,
+  Boxes,
+  PenLine,
+  Eye,
+  Download,
+  History,
+  Sparkles,
+  Plus,
+  Trash2,
+  Printer,
+  Copy,
+  Upload,
+  Pencil,
+} from 'lucide-react'
+import {
+  type Memo,
+  type HistoryRecord,
+  type MemoPhoto,
+  type MemoPdfAttachment,
+  PHOTO_QUICK_TAGS,
+  createDefaultMemo,
+  loadMemo,
+  saveMemo,
+  loadHistory,
+  saveHistory,
+  clone,
+  readFileAsDataUrl,
+  formatBytes,
+  nowStamp,
+  renderPdfToPages,
+} from './memo-data'
+import { MemoDocument } from './memo-document'
+
+type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
+
+export function SiteMemo({ onBack }: { onBack: () => void }) {
+  const [memo, setMemo] = useState<Memo>(createDefaultMemo)
+  const [history, setHistory] = useState<HistoryRecord[]>([])
+  const [ready, setReady] = useState(false)
+  const [modal, setModal] = useState<ModalId>(null)
+  const [overlay, setOverlay] = useState<'preview' | 'export' | 'history' | null>(null)
+  const [zoomImage, setZoomImage] = useState<string | null>(null)
+  const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
+  const [polishing, setPolishing] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pendingExport, setPendingExport] = useState<{ memo: Memo; fileName: string } | null>(null)
+  const exportRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([loadMemo(), loadHistory()]).then(([storedMemo, storedHistory]) => {
+      if (cancelled) return
+      if (storedMemo) setMemo(storedMemo)
+      setHistory(storedHistory)
+      setReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (ready) saveMemo(memo).catch(() => {})
+  }, [memo, ready])
+
+  useEffect(() => {
+    if (ready) saveHistory(history).catch(() => {})
+  }, [history, ready])
+
+  const update = (partial: Partial<Memo>) => setMemo(current => ({ ...current, ...partial }))
+  const updateRecipient = (partial: Partial<Memo['recipient']>) =>
+    setMemo(current => ({ ...current, recipient: { ...current.recipient, ...partial } }))
+  const updateSender = (partial: Partial<Memo['sender']>) =>
+    setMemo(current => ({ ...current, sender: { ...current.sender, ...partial } }))
+  const updateSpare = (partial: Partial<Memo['spareModule']>) =>
+    setMemo(current => ({ ...current, spareModule: { ...current.spareModule, ...partial } }))
+
+  const snapshot = (action: string) => {
+    const record: HistoryRecord = { recordId: `H-${Date.now()}`, savedAt: nowStamp(), action, memo: clone(memo) }
+    setHistory(current => [record, ...current])
+  }
+
+  async function polishItems() {
+    if (!memo.roughInput.trim() || polishing) return
+    setPolishing(true)
+    try {
+      const response = await fetch('/api/memo-polish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roughInput: memo.roughInput }),
+      })
+      const data = await response.json()
+      if (response.ok && Array.isArray(data.items) && data.items.length) {
+        update({ items: data.items })
+      } else {
+        alert(data.error || 'AI 潤色失敗')
+      }
+    } catch {
+      alert('AI 潤色失敗，請檢查網絡')
+    } finally {
+      setPolishing(false)
+    }
+  }
+
+  async function addPhotos(files: FileList | null) {
+    if (!files) return
+    const additions: MemoPhoto[] = []
+    for (const file of Array.from(files)) {
+      const previewUrl = await readFileAsDataUrl(file)
+      additions.push({ id: `P-${Date.now()}-${additions.length}`, name: file.name, tag: '', time: nowStamp(), customNote: '', previewUrl })
+    }
+    setMemo(current => ({ ...current, photos: [...current.photos, ...additions] }))
+  }
+
+  async function addPdf(files: FileList | null) {
+    if (!files || !files[0]) return
+    const file = files[0]
+    setPdfBusy(true)
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      const pages = await renderPdfToPages(dataUrl)
+      const attachment: MemoPdfAttachment = {
+        id: `A-${Date.now()}`,
+        title: file.name.replace(/\.pdf$/i, ''),
+        fileName: file.name,
+        dwgNo: '',
+        size: formatBytes(file.size),
+        dataUrl,
+        pages,
+        totalPages: pages.length,
+        note: '',
+      }
+      setMemo(current => ({ ...current, pdfAttachments: [...current.pdfAttachments, attachment] }))
+    } catch {
+      alert('PDF 解析失敗，請確認檔案格式')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
+  // Export any memo to PDF via html2pdf.js using the hidden render target.
+  useEffect(() => {
+    if (!pendingExport || !exportRef.current) return
+    let cancelled = false
+    const run = async () => {
+      const html2pdf = (await import('html2pdf.js')).default
+      await new Promise(resolve => setTimeout(resolve, 120))
+      if (cancelled) return
+      await html2pdf()
+        .set({
+          margin: 0,
+          filename: pendingExport.fileName,
+          image: { type: 'jpeg', quality: 0.96 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] },
+        })
+        .from(exportRef.current)
+        .save()
+      if (!cancelled) setPendingExport(null)
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [pendingExport])
+
+  const exportPdf = (target: Memo) => {
+    snapshot('下載 PDF')
+    setOverlay(null)
+    setPendingExport({ memo: target, fileName: `Site_Memo_${target.refNo}.pdf` })
+  }
+
+  const memoAsText = (target: Memo) => {
+    const lines = [
+      `${target.sender.jvName}`,
+      `Date: ${target.date}　Our Ref: ${target.refNo}　${target.delivery}`,
+      '',
+      `${target.recipient.company}`,
+      ...target.recipient.addressLines,
+      `Attn: ${target.recipient.attn}`,
+      '',
+      'Dear Sir/Madam,',
+      `${target.sender.contractNo}`,
+      `${target.sender.projectTitle}`,
+      `${target.sender.substationTitle}`,
+      '',
+      target.subject,
+      '',
+      ...target.items.map((item, index) => `${index + 1}. - ${item}`),
+      '',
+      target.legalClause,
+      '',
+      'Yours faithfully,',
+      target.sender.jvName,
+      target.sender.signerName,
+      target.sender.signerRole,
+    ]
+    return lines.join('\n')
+  }
+
+  const copyText = (target: Memo) => {
+    snapshot('複製文字')
+    navigator.clipboard?.writeText(memoAsText(target)).then(
+      () => alert('公函文字已複製'),
+      () => alert('複製失敗'),
+    )
+    setOverlay(null)
+  }
+
+  const printMemo = () => {
+    snapshot('列印')
+    setOverlay(null)
+    setOverlay('preview')
+    setTimeout(() => window.print(), 200)
+  }
+
+  const cards = [
+    { id: 1 as const, icon: Users, title: '收件人', hint: memo.recipient.company },
+    { id: 2 as const, icon: FileText, title: '內容與事件', hint: `${memo.items.length} 項工項` },
+    { id: 3 as const, icon: Camera, title: '巡查照片', hint: `${memo.photos.length} 張` },
+    { id: 4 as const, icon: Paperclip, title: '附件', hint: `${memo.pdfAttachments.length} 份圖紙` },
+    { id: 5 as const, icon: Boxes, title: '備用槽', hint: `EOT ${memo.spareModule.delayDays} 日` },
+    { id: 6 as const, icon: PenLine, title: '發件人資料', hint: memo.signature ? '已簽名' : '未簽名' },
+  ]
+
+  return (
+    <div className="memo-app">
+      <header className="memo-topbar">
+        <button onClick={onBack} aria-label="返回首頁" className="memo-icon-btn">
+          <ArrowLeft size={22} />
+        </button>
+        <div className="memo-project">
+          <strong>CLP 1635</strong>
+          <span>Site Memo</span>
+        </div>
+        <span className="memo-ref">Ref: {memo.refNo}</span>
+      </header>
+
+      <main className="memo-body">
+        <div className="memo-heading">
+          <p className="eyebrow">SITE MEMO CONFIGURATION</p>
+          <h2>公函六大方格配置</h2>
+        </div>
+
+        <div className="memo-grid">
+          {cards.map(card => {
+            const Icon = card.icon
+            return (
+              <button key={card.id} className="memo-card" onClick={() => setModal(card.id)}>
+                <Icon size={26} className="memo-card-icon" />
+                <strong>{card.title}</strong>
+                <span>{card.hint}</span>
+              </button>
+            )
+          })}
+        </div>
+      </main>
+
+      <nav className="memo-actions">
+        <button onClick={() => setOverlay('preview')}>
+          <Eye size={20} />
+          即時預覽
+        </button>
+        <button onClick={() => setOverlay('export')}>
+          <Download size={20} />
+          導出 PDF
+        </button>
+        <button onClick={() => setOverlay('history')}>
+          <History size={20} />
+          出函記錄
+        </button>
+      </nav>
+
+      {modal === 1 && (
+        <MemoModal title="收件人" onClose={() => setModal(null)}>
+          <Field label="收件公司">
+            <input value={memo.recipient.company} onChange={e => updateRecipient({ company: e.target.value })} />
+          </Field>
+          <Field label="分行地址 (每行一條)">
+            <textarea
+              rows={3}
+              value={memo.recipient.addressLines.join('\n')}
+              onChange={e => updateRecipient({ addressLines: e.target.value.split('\n') })}
+            />
+          </Field>
+          <Field label="受文人 (Attn)">
+            <input value={memo.recipient.attn} onChange={e => updateRecipient({ attn: e.target.value })} />
+          </Field>
+          <Field label="傳送方式">
+            <input value={memo.delivery} onChange={e => update({ delivery: e.target.value })} />
+          </Field>
+          <Field label="電郵">
+            <input value={memo.recipient.email} onChange={e => updateRecipient({ email: e.target.value })} />
+          </Field>
+        </MemoModal>
+      )}
+
+      {modal === 2 && (
+        <MemoModal title="內容與事件" onClose={() => setModal(null)}>
+          <Field label="粗略巡查要點">
+            <textarea rows={5} value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
+          </Field>
+          <button className="memo-ai-btn" onClick={polishItems} disabled={polishing}>
+            <Sparkles size={18} />
+            {polishing ? 'AI 潤色中…' : '一鍵 AI 行話潤色'}
+          </button>
+          <div className="memo-items">
+            <div className="memo-items-head">
+              <span>工項 ({memo.items.length})</span>
+              <button onClick={() => update({ items: [...memo.items, ''] })}>
+                <Plus size={16} />
+                新增
+              </button>
+            </div>
+            {memo.items.map((item, index) => (
+              <div className="memo-item-row" key={index}>
+                <span>{index + 1}.</span>
+                <textarea
+                  rows={2}
+                  value={item}
+                  onChange={e => update({ items: memo.items.map((v, i) => (i === index ? e.target.value : v)) })}
+                />
+                <button onClick={() => update({ items: memo.items.filter((_, i) => i !== index) })} aria-label="刪除工項">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </MemoModal>
+      )}
+
+      {modal === 3 && (
+        <MemoModal title="巡查照片" onClose={() => setModal(null)}>
+          <label className="memo-upload">
+            <Upload size={18} />
+            上載相片
+            <input type="file" accept="image/*" multiple hidden onChange={e => addPhotos(e.target.files)} />
+          </label>
+          {memo.photos.map(photo => (
+            <div className="memo-photo-edit" key={photo.id}>
+              <img src={photo.previewUrl || '/placeholder.svg'} alt={photo.name} />
+              <div className="memo-photo-tags">
+                {PHOTO_QUICK_TAGS.map(tag => (
+                  <button
+                    key={tag}
+                    className={photo.tag === tag ? 'active' : ''}
+                    onClick={() => setMemo(c => ({ ...c, photos: c.photos.map(p => (p.id === photo.id ? { ...p, tag } : p)) }))}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <input
+                placeholder="補充說明"
+                value={photo.customNote}
+                onChange={e => setMemo(c => ({ ...c, photos: c.photos.map(p => (p.id === photo.id ? { ...p, customNote: e.target.value } : p)) }))}
+              />
+              <button className="memo-photo-del" onClick={() => setMemo(c => ({ ...c, photos: c.photos.filter(p => p.id !== photo.id) }))}>
+                <Trash2 size={15} />
+                移除此相
+              </button>
+            </div>
+          ))}
+        </MemoModal>
+      )}
+
+      {modal === 4 && (
+        <MemoModal title="附件圖紙" onClose={() => setModal(null)}>
+          <label className="memo-upload">
+            <Upload size={18} />
+            {pdfBusy ? 'PDF 解析中…' : '上載 PDF 圖紙'}
+            <input type="file" accept="application/pdf" hidden disabled={pdfBusy} onChange={e => addPdf(e.target.files)} />
+          </label>
+          {memo.pdfAttachments.map(attachment => (
+            <div className="memo-attach-edit" key={attachment.id}>
+              <div className="memo-attach-meta">
+                <strong>{attachment.fileName}</strong>
+                <span>
+                  {attachment.size}・{attachment.totalPages} 頁
+                </span>
+              </div>
+              <input
+                placeholder="圖紙編號 (DWG No.)"
+                value={attachment.dwgNo}
+                onChange={e =>
+                  setMemo(c => ({ ...c, pdfAttachments: c.pdfAttachments.map(a => (a.id === attachment.id ? { ...a, dwgNo: e.target.value } : a)) }))
+                }
+              />
+              <div className="memo-attach-thumbs">
+                {attachment.pages.map(page => (
+                  <img key={page.pageNumber} src={page.imageUrl || '/placeholder.svg'} alt={`第 ${page.pageNumber} 頁`} onClick={() => setZoomImage(page.imageUrl)} />
+                ))}
+              </div>
+              <button className="memo-photo-del" onClick={() => setMemo(c => ({ ...c, pdfAttachments: c.pdfAttachments.filter(a => a.id !== attachment.id) }))}>
+                <Trash2 size={15} />
+                移除此附件
+              </button>
+            </div>
+          ))}
+        </MemoModal>
+      )}
+
+      {modal === 5 && (
+        <MemoModal title={memo.spareModule.title} onClose={() => setModal(null)}>
+          <Field label="工期延誤天數 (EOT)">
+            <input
+              type="number"
+              value={memo.spareModule.delayDays}
+              onChange={e => updateSpare({ delayDays: Number(e.target.value) || 0 })}
+            />
+          </Field>
+          <Field label="關鍵路徑描述">
+            <textarea rows={3} value={memo.spareModule.criticalPath} onChange={e => updateSpare({ criticalPath: e.target.value })} />
+          </Field>
+          <Field label="備註">
+            <textarea rows={3} value={memo.spareModule.notes} onChange={e => updateSpare({ notes: e.target.value })} />
+          </Field>
+        </MemoModal>
+      )}
+
+      {modal === 6 && (
+        <MemoModal title="發件人資料" onClose={() => setModal(null)}>
+          <Field label="JV 名稱">
+            <input value={memo.sender.jvName} onChange={e => updateSender({ jvName: e.target.value })} />
+          </Field>
+          <Field label="項目經理姓名">
+            <input value={memo.sender.signerName} onChange={e => updateSender({ signerName: e.target.value })} />
+          </Field>
+          <Field label="職位">
+            <input value={memo.sender.signerRole} onChange={e => updateSender({ signerRole: e.target.value })} />
+          </Field>
+          <Field label="電子手寫簽名">
+            <SignaturePad value={memo.signature} onChange={signature => update({ signature })} />
+          </Field>
+        </MemoModal>
+      )}
+
+      {overlay === 'export' && (
+        <MemoModal title="導出 PDF" onClose={() => setOverlay(null)}>
+          <button className="memo-menu-btn" onClick={() => exportPdf(memo)}>
+            <Download size={18} />
+            一鍵下載標準 A4 直身 PDF
+          </button>
+          <button className="memo-menu-btn" onClick={printMemo}>
+            <Printer size={18} />
+            系統列印
+          </button>
+          <button className="memo-menu-btn" onClick={() => copyText(memo)}>
+            <Copy size={18} />
+            複製公函文字
+          </button>
+        </MemoModal>
+      )}
+
+      {overlay === 'history' && (
+        <MemoModal title="出函記錄" onClose={() => setOverlay(null)}>
+          {history.length === 0 && <p className="memo-empty">尚無出函記錄。下載、列印或複製公函時會自動存檔。</p>}
+          {history.map(record => (
+            <div className="memo-history-row" key={record.recordId}>
+              <div className="memo-history-meta">
+                <strong>{record.memo.refNo}</strong>
+                <span>
+                  {record.savedAt}・{record.action}
+                </span>
+              </div>
+              <div className="memo-history-actions">
+                <button onClick={() => setPreviewingHistory(record)} aria-label="預覽記錄">
+                  <Eye size={16} />
+                </button>
+                <button onClick={() => exportPdf(record.memo)} aria-label="下載 PDF">
+                  <Download size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setMemo(clone(record.memo))
+                    setOverlay(null)
+                    alert('已載入此記錄至配置台')
+                  }}
+                  aria-label="載入"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button onClick={() => setHistory(current => current.filter(r => r.recordId !== record.recordId))} aria-label="刪除">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </MemoModal>
+      )}
+
+      {overlay === 'preview' && (
+        <div className="memo-preview-overlay">
+          <div className="memo-preview-bar">
+            <button onClick={() => setOverlay(null)}>
+              <X size={20} />
+            </button>
+            <span>A4 直身預覽</span>
+            <button onClick={() => exportPdf(memo)}>
+              <Download size={18} />
+            </button>
+          </div>
+          <div className="memo-preview-scroll">
+            <MemoDocument memo={memo} onZoomImage={setZoomImage} />
+          </div>
+        </div>
+      )}
+
+      {previewingHistory && (
+        <div className="memo-preview-overlay">
+          <div className="memo-preview-bar">
+            <button onClick={() => setPreviewingHistory(null)}>
+              <X size={20} />
+            </button>
+            <span>記錄預覽・{previewingHistory.memo.refNo}</span>
+            <button onClick={() => exportPdf(previewingHistory.memo)}>
+              <Download size={18} />
+            </button>
+          </div>
+          <div className="memo-preview-scroll">
+            <MemoDocument memo={previewingHistory.memo} onZoomImage={setZoomImage} />
+          </div>
+        </div>
+      )}
+
+      {zoomImage && (
+        <div className="memo-zoom" onClick={() => setZoomImage(null)}>
+          <img src={zoomImage || '/placeholder.svg'} alt="放大圖紙" />
+        </div>
+      )}
+
+      <div className="memo-export-target" aria-hidden>
+        <div ref={exportRef}>{pendingExport && <MemoDocument memo={pendingExport.memo} />}</div>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="memo-field">
+      <span>{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function MemoModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="memo-modal">
+      <div className="memo-modal-bar">
+        <button onClick={onClose}>
+          <ArrowLeft size={20} />
+          返回
+        </button>
+        <strong>{title}</strong>
+        <button onClick={onClose} aria-label="關閉">
+          <X size={22} />
+        </button>
+      </div>
+      <div className="memo-modal-body">{children}</div>
+    </div>
+  )
+}
+
+function SignaturePad({ value, onChange }: { value: string | null; onChange: (value: string | null) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawing = useRef(false)
+  const hasStroke = useRef(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.lineWidth = 2.2
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = '#15212b'
+    if (value) {
+      const image = new Image()
+      image.onload = () => ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+      image.src = value
+    }
+  }, [value])
+
+  const pos = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top }
+  }
+
+  const start = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    drawing.current = true
+    const ctx = canvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = pos(event)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+  }
+
+  const move = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current) return
+    const ctx = canvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const { x, y } = pos(event)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+    hasStroke.current = true
+  }
+
+  const end = () => {
+    if (!drawing.current) return
+    drawing.current = false
+    if (hasStroke.current && canvasRef.current) onChange(canvasRef.current.toDataURL('image/png'))
+  }
+
+  const clear = () => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+    hasStroke.current = false
+    onChange(null)
+  }
+
+  return (
+    <div className="memo-sign">
+      <canvas
+        ref={canvasRef}
+        width={320}
+        height={130}
+        onPointerDown={start}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerLeave={end}
+        style={{ touchAction: 'none' }}
+      />
+      <button type="button" onClick={clear}>
+        清除重簽
+      </button>
+    </div>
+  )
+}
