@@ -45,7 +45,7 @@ type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
 
 type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 
-export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectName: string }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [ready, setReady] = useState(false)
@@ -60,7 +60,10 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([loadMemo(), loadHistory()]).then(([storedMemo, storedHistory]) => {
+    setReady(false)
+    setMemo(createDefaultMemo())
+    setHistory([])
+    Promise.all([loadMemo(projectId), loadHistory(projectId)]).then(([storedMemo, storedHistory]) => {
       if (cancelled) return
       if (storedMemo) setMemo(storedMemo)
       setHistory(storedHistory)
@@ -69,15 +72,15 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [projectId])
 
   useEffect(() => {
-    if (ready) saveMemo(memo).catch(() => {})
-  }, [memo, ready])
+    if (ready) saveMemo(projectId, memo).catch(() => {})
+  }, [memo, projectId, ready])
 
   useEffect(() => {
-    if (ready) saveHistory(history).catch(() => {})
-  }, [history, ready])
+    if (ready) saveHistory(projectId, history).catch(() => {})
+  }, [history, projectId, ready])
 
   const update = (partial: Partial<Memo>) => setMemo(current => ({ ...current, ...partial }))
   const updateRecipient = (partial: Partial<Memo['recipient']>) =>

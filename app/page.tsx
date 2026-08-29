@@ -6,11 +6,12 @@ import JSZip from 'jszip'
 import { Camera, PenLine, ClipboardList, Building2, Info } from 'lucide-react'
 import { SiteMemo } from '@/components/site-memo/site-memo'
 import { Handover } from '@/components/handover/handover'
+import { loadAllMemos, saveAllMemos } from '@/components/site-memo/memo-data'
 import { loadAllHandover, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
 
 type Photo = { id: string; src: string; cleanSrc: string; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string }
 type Category = { name: string; icon: string }
-type ProjectSettings = { categories: Category[]; tags: Record<string, string>; note: string; settingsOptions: Record<string, string[]> }
+type ProjectSettings = { categories: Category[]; tags: Record<string, string>; note: string; settingsOptions: Record<string, string[]>; noteHistory: string[] }
 type Project = { id: string; name: string; settings?: ProjectSettings }
 
 const DEFAULT_PROJECT: Project = { id: 'default-project', name: '我的 Project' }
@@ -38,6 +39,7 @@ const createProjectSettings = (): ProjectSettings => ({
   tags: {},
   note: '',
   settingsOptions: tagOptions,
+  noteHistory: [],
 })
 
 const PHOTO_DB = 'site-photo-db'
@@ -171,8 +173,10 @@ export default function Page() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const loadedProjectRef = useRef('')
+  const switchingProjectRef = useRef(false)
   const folderHandleRef = useRef<any>(null)
   const [folderConnected, setFolderConnected] = useState(false)
+  const backupRef = useRef<HTMLInputElement>(null)
 
   const [isOffline, setIsOffline] = useState(false)
   const [storageStatus, setStorageStatus] = useState('本機保存中')
@@ -211,16 +215,26 @@ export default function Page() {
       const savedCurrent = localStorage.getItem(CURRENT_PROJECT_KEY)
       if (savedProjects) {
         const parsed = JSON.parse(savedProjects) as Project[]
-        if (Array.isArray(parsed) && parsed.length) setProjects(parsed.map(project => ({ ...project, settings: { ...createProjectSettings(), ...(project.settings || {}) } })))
+        if (Array.isArray(parsed) && parsed.length) setProjects(parsed.map(project => ({ ...project, settings: { ...createProjectSettings(), ...(project.settings || {}), categories: project.settings?.categories || defaultCategories, tags: project.settings?.tags || {}, note: project.settings?.note || '', settingsOptions: project.settings?.settingsOptions || tagOptions, noteHistory: project.settings?.noteHistory || [] } })))
       }
       if (savedCurrent) setCurrentProjectId(savedCurrent)
       localStorage.removeItem('site-photo-records')
-      const memory = localStorage.getItem('site-photo-memory')
-      const savedOptions = localStorage.getItem('site-photo-options')
-      if (memory) { const m = JSON.parse(memory); setTags(m.tags || {}); setNote(m.note || '') }
-      const savedNoteHistory = localStorage.getItem('site-photo-note-history')
-      if (savedNoteHistory) setNoteHistory(JSON.parse(savedNoteHistory).slice(0, 10))
-      if (savedOptions) { const saved = JSON.parse(savedOptions); if (saved['其它'] && !saved['收貨相關']) { saved['收貨相關'] = saved['其它']; delete saved['其它'] } if (saved['備註'] && !saved['房間名稱']) { saved['房間名稱'] = saved['備註']; delete saved['備註'] } setSettingsOptions({ ...tagOptions, ...saved }) }
+      const legacyMemory = localStorage.getItem('site-photo-memory')
+      const legacyOptions = localStorage.getItem('site-photo-options')
+      const legacyNoteHistory = localStorage.getItem('site-photo-note-history')
+      const savedProjectList = savedProjects ? JSON.parse(savedProjects) as Project[] : []
+      const fallbackSettings = createProjectSettings()
+      if (legacyMemory || legacyOptions || legacyNoteHistory) {
+        const memory = legacyMemory ? JSON.parse(legacyMemory) : {}
+        const saved = legacyOptions ? JSON.parse(legacyOptions) : {}
+        if (saved['其它'] && !saved['收貨相關']) { saved['收貨相關'] = saved['其它']; delete saved['其它'] }
+        if (saved['備註'] && !saved['房間名稱']) { saved['房間名稱'] = saved['備註']; delete saved['備註'] }
+        const migratedSettings = { ...fallbackSettings, tags: memory.tags || {}, note: memory.note || '', settingsOptions: { ...tagOptions, ...saved }, noteHistory: legacyNoteHistory ? JSON.parse(legacyNoteHistory).slice(0, 10) : [] }
+        const migratedProjects = (savedProjectList.length ? savedProjectList : [{ ...DEFAULT_PROJECT }]).map(project => ({ ...project, settings: project.settings || { ...migratedSettings, categories: migratedSettings.categories.map(category => ({ ...category })), tags: { ...migratedSettings.tags }, settingsOptions: Object.fromEntries(Object.entries(migratedSettings.settingsOptions).map(([key, values]) => [key, [...values]])), noteHistory: [...migratedSettings.noteHistory] } }))
+        setProjects(migratedProjects)
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(migratedProjects))
+        localStorage.removeItem('site-photo-memory'); localStorage.removeItem('site-photo-options'); localStorage.removeItem('site-photo-note-history')
+      }
     } catch { /* 儲存空間不可用時仍可繼續拍攝 */ }
     setSettingsReady(true)
   }, [])
@@ -230,22 +244,20 @@ export default function Page() {
   }, [settingsReady, photos])
   useEffect(() => {
     if (!settingsReady || loadedProjectRef.current === currentProjectId) return
-    const projectSettings = projects.find(project => project.id === currentProjectId)?.settings
-    if (projectSettings) { setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setSettingsOptions(projectSettings.settingsOptions) }
+    const projectSettings = projects.find(project => project.id === currentProjectId)?.settings || createProjectSettings()
+    setCategories(projectSettings.categories)
+    setTags(projectSettings.tags)
+    setNote(projectSettings.note)
+    setNoteHistory(projectSettings.noteHistory || [])
+    setSettingsOptions(projectSettings.settingsOptions)
+    setSelectedNotes([])
     loadedProjectRef.current = currentProjectId
+    switchingProjectRef.current = false
   }, [settingsReady, currentProjectId, projects])
   useEffect(() => {
-    if (!settingsReady) return
-    setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, settings: { categories, tags, note, settingsOptions } } : project))
-  }, [settingsReady, currentProjectId, categories, tags, note, settingsOptions])
-  useEffect(() => {
-    if (!settingsReady) return
-    try {
-      localStorage.setItem('site-photo-memory', JSON.stringify({ tags: Object.fromEntries(Object.entries(tags).filter(([, value]) => value && value !== 'N/A')), note }))
-      localStorage.setItem('site-photo-options', JSON.stringify(settingsOptions))
-    } catch { /* 記憶不可用不影響拍攝 */ }
-  }, [settingsReady, tags, note, settingsOptions])
-  useEffect(() => { try { localStorage.setItem('site-photo-note-history', JSON.stringify(noteHistory)) } catch { /* ignore */ } }, [noteHistory])
+    if (!settingsReady || switchingProjectRef.current) return
+    setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, settings: { categories, tags, note, settingsOptions, noteHistory } } : project))
+  }, [settingsReady, currentProjectId, categories, tags, note, settingsOptions, noteHistory])
   const rememberNote = () => {
     const value = note.trim()
     if (!value) return
@@ -345,12 +357,14 @@ export default function Page() {
     if (!name) return
     if (projects.some(project => project.name === name)) { alert('Project 名稱已存在'); return }
     const project = { id: crypto.randomUUID(), name }
-    setProjects(current => [...current, project])
+    switchingProjectRef.current = true
+    setProjects(current => [...current, { ...project, settings: createProjectSettings() }])
     setCurrentProjectId(project.id)
     const projectSettings = project.settings || createProjectSettings()
     setCategories(projectSettings.categories)
     setTags(projectSettings.tags)
     setNote(projectSettings.note)
+    setNoteHistory(projectSettings.noteHistory || [])
     setSettingsOptions(projectSettings.settingsOptions)
     setNewProjectName('')
     setProjectPanel(false)
@@ -433,6 +447,7 @@ export default function Page() {
     const zip = new JSZip()
     zip.file('projects.json', JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), currentProjectId, projects }, null, 2))
     try { const handover = await loadAllHandover(); zip.file('handover.json', JSON.stringify(handover, null, 2)) } catch { /* 制房移交資料不可用時仍可匯出相片 */ }
+    try { const memos = await loadAllMemos(); zip.file('site-memo.json', JSON.stringify(memos, null, 2)) } catch { /* Site Memo 資料不可用時仍可匯出其它資料 */ }
     for (const project of projects) {
       const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}`
       zip.file(`${prefix}/settings.json`, JSON.stringify(project.settings || {}, null, 2))
@@ -461,13 +476,16 @@ export default function Page() {
       }
       const handoverFile = zip.file('handover.json')
       if (handoverFile) { try { await saveAllHandover(JSON.parse(await handoverFile.async('text')) as Record<string, HandoverProjectData | Tower[]>) } catch { /* 制房移交資料格式不正確時略過 */ } }
-      setProjects(data.projects); setCurrentProjectId(data.currentProjectId || data.projects[0]?.id || DEFAULT_PROJECT.id); setPhotos(restored); alert('ZIP 備份已還原')
+      const memoFile = zip.file('site-memo.json')
+      if (memoFile) { try { await saveAllMemos(JSON.parse(await memoFile.async('text'))) } catch { /* Site Memo 資料格式不正確時略過 */ } }
+      const restoredProjects = data.projects.map((project: Project) => ({ ...project, settings: { ...createProjectSettings(), ...(project.settings || {}), noteHistory: project.settings?.noteHistory || [] } }))
+      setProjects(restoredProjects); setCurrentProjectId(data.currentProjectId || restoredProjects[0]?.id || DEFAULT_PROJECT.id); setPhotos(restored); alert('ZIP 備份已還原')
     } catch { alert('ZIP 備份檔案無法讀取') }
   }
 
-  if (appMode === 'memo') return <SiteMemo projectName={currentProject.name} onBack={() => setAppMode('photo')} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('manage'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('manage'); setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } }} />
+  if (appMode === 'memo') return <SiteMemo projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('photo')} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('manage'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('manage'); setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } }} />
 
-  if (appMode === 'handover') return <Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} onBack={() => { setAppMode('photo'); setTab('home'); setActive(null) }} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } if (mode === 'handover') { setHandoverView('manage') } }} onExportBackup={exportLocalBackup} onImportBackup={importLocalBackup} />
+  if (appMode === 'handover') return <Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} onBack={() => { setAppMode('photo'); setTab('home'); setActive(null) }} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } if (mode === 'handover') { setHandoverView('manage') } }} />
 
   return <>
     {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
@@ -475,18 +493,18 @@ export default function Page() {
       <header className="topbar">
         <div className="brand-mark" aria-hidden="true">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button>
       </header>
-      {appMode === 'photo' && tab === 'home' && !active && <section className="content"><div className="quick-card-grid"><button className="quick-card" onClick={() => { setTab('photos'); setActive(null) }}><span>▧</span><div><strong>相片集</strong><small>{projectPhotos.length} 張相片</small></div></button><button className="quick-card" onClick={() => { setTab('settings'); setActive(null) }}><span>⚙</span><div><strong>設定</strong><small>類別與備份</small></div></button></div><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{projectPhotos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
+      {appMode === 'photo' && tab === 'home' && !active && <section className="content"><div className="quick-card-grid"><button className="quick-card" onClick={() => { setTab('photos'); setActive(null) }}><span>▧</span><div><strong>相片集</strong><small>{projectPhotos.length} 張相片</small></div></button><button className="quick-card" onClick={() => { setTab('settings'); setActive(null) }}><span>⚙</span><div><strong>設定</strong><small>類別與選項</small></div></button></div><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{projectPhotos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
       {appMode === 'photo' && tab === 'home' && active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>‹ 返回工程類別</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} 張</span></div><div className="capture-actions"><button className="capture-button camera" onClick={startContinuousCamera}><span>▣</span><div><strong>連續拍攝</strong><small>拍完可立即拍下一張</small></div></button><button className="capture-button secondary-camera" onClick={() => cameraRef.current?.click()}><span>□</span><div><strong>立即拍照</strong><small>使用 iPhone 原生相機</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>▧</span><div><strong>選擇相簿</strong><small>可一次匯入多張</small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={e => importFiles(e.target.files)} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={e => importFiles(e.target.files)} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>拍攝資訊</h3></div><span className="memory-dot">● 已記憶</span></div><div className="tag-grid">{['樓層', '機房', '房間名稱', '安全', '收貨相關', '事項'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '選擇'}</b></button>)}</div><label className="note-field"><span>文字備註</span><input value={note} onChange={e => setNote(e.target.value)} onBlur={rememberNote} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) { rememberNote(); e.currentTarget.blur() } }} placeholder="輸入本次拍攝的補充說明..." /></label>{noteHistory.length > 0 && <div className="note-history"><small>最近使用</small><div>{noteHistory.map(item => <button type="button" key={item} onClick={() => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} className={selectedNotes.includes(item) ? 'selected' : ''} aria-pressed={selectedNotes.includes(item)}>{item}</button>)}</div></div>}</div></section>}
-      {appMode === 'photo' && tab === 'settings' && <section className="content settings-page"><button className="back-link" onClick={() => { setTab('home'); setActive(null) }}>‹ 返回工程類別</button><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><div className="project-name-setting"><label htmlFor="project-name">Project 名稱</label><input id="project-name" value={currentProject.name} onChange={e => { const name = e.target.value; setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, name } : project)) }} placeholder="輸入 Project 名稱" /></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p><div className="local-storage-card"><strong>{storageStatus}</strong><span>照片、Project 及設定會保存在此裝置</span><div className="backup-actions"><button onClick={exportLocalBackup}>匯出 ZIP 備份</button><label>匯入備份<input type="file" accept="application/zip,.zip" hidden onChange={e => importLocalBackup(e.target.files?.[0])} /></label></div></div>{['樓層', '機房', '事項', '安全', '收貨相關', '房間名稱'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
+      {appMode === 'photo' && tab === 'settings' && <section className="content settings-page"><button className="back-link" onClick={() => { setTab('home'); setActive(null) }}>‹ 返回工程類別</button><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><div className="project-name-setting"><label htmlFor="project-name">Project 名稱</label><input id="project-name" value={currentProject.name} onChange={e => { const name = e.target.value; setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, name } : project)) }} placeholder="輸入 Project 名稱" /></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p><div className="local-storage-card"><strong>{storageStatus}</strong><span>照片、Project 及設定會保存在此裝置</span></div>{['樓層', '機房', '事項', '安全', '收貨相關', '房間名稱'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
       {appMode === 'photo' && tab === 'photos' && <section className="content"><button className="back-link" onClick={() => { setTab('home'); setActive(null) }}>‹ 返回工程類別</button><div className="section-heading photo-heading"><div><p className="eyebrow">PHOTO ARCHIVE</p><h2>相片集</h2></div><div className="photo-actions"><span className="photo-total">已選 {selected.length} 張</span><button className="select-all-button" onClick={() => setSelected(selected.length === projectPhotos.length ? [] : projectPhotos.map(photo => photo.id))} disabled={!projectPhotos.length}>{selected.length === projectPhotos.length && projectPhotos.length ? '取消全選' : '全選'}</button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>一小時內</button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 24 * 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>一日內</button><div className="export-bar"><button onClick={exportExcel}>匯出 Excel</button><button onClick={exportPdf}>匯出 PDF</button></div></div></div><div className="photo-grid">{projectPhotos.map(p => <div className="photo-card" key={p.id}><button className="photo-open" onClick={() => setDetail(p)}><img src={p.src} alt={`${p.category} ${p.createdAt}`} /></button><label className="check"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(s => e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id))} /><span /></label></div>)}{!projectPhotos.length && <div className="empty-state">尚未有相片記錄<br /><small>進入工程類別開始拍攝</small></div>}</div><div id="pdf-report" className="pdf-report" aria-hidden="true"><h1>地盤相片記錄報表</h1>{photos.filter(p => selected.includes(p.id)).map(p => <article key={p.id}><img src={p.src} alt="" /><div><b>{p.category}</b><p>{Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>{p.note}</p><small>{new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>)}</div></section>}
-      {appMode === 'about' && <section className="content info-page"><button className="back-link" onClick={() => setAppMode('photo')}>‹ 返回拍照記錄</button><div className="section-heading"><div><p className="eyebrow">ABOUT</p><h2>資料</h2></div></div><div className="about-block"><h3>關於此 App</h3><p>這是一個為地盤工程而設的流動記錄工具，支援離線使用，所有相片與資料均保存在本機裝置。主要功能包括：拍照記錄（自動加上工程類別、樓層、機房等智能標籤並生成 Excel／PDF 報表）、Site Memo（一鍵生成 A4 Site Meno）及制房移交。</p></div><div className="about-block profile-block"><h3>開發及使用者資料</h3><div className="profile-card"><div className="profile-avatar" aria-hidden="true">HC</div><div className="profile-meta"><strong>Henry Chu</strong><span>Project Manager</span><span>Southa Technical Ltd</span><a href="mailto:chuwing134538@gmail.com" className="profile-email">chuwing134538@gmail.com</a></div></div></div></section>}
+      {appMode === 'about' && <section className="content info-page"><button className="back-link" onClick={() => setAppMode('photo')}>‹ 返回拍照記錄</button><div className="section-heading"><div><p className="eyebrow">ABOUT</p><h2>資料</h2></div></div><div className="about-block"><h3>關於此 App</h3><p>這是一個為地盤工程而設的流動記錄工具，支援離線使用，所有相片與資料均保存在本機裝置。主要功能包括：拍照記錄（自動加上工程類別、樓層、機房等智能標籤並生成 Excel／PDF 報表）、Site Memo（一鍵生成 A4 Site Meno）及制房移交。</p></div><div className="about-block"><h3>完整資料備份</h3><p>備份整個 App 的 Project、相片、Site Memo 及制房移交資料。</p><div className="backup-actions"><button type="button" onClick={exportLocalBackup}>匯出完整備份</button><button type="button" onClick={() => backupRef.current?.click()}>匯入完整備份</button><input ref={backupRef} hidden type="file" accept="application/zip,.zip" onChange={async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file || !confirm('匯入資料會取代目前 App 的全部資料。是否繼續？')) return; await importLocalBackup(file) }} /></div></div><div className="about-block profile-block"><h3>開發及使用者資料</h3><div className="profile-card"><div className="profile-avatar" aria-hidden="true">HC</div><div className="profile-meta"><strong>Henry Chu</strong><span>Project Manager</span><span>Southa Technical Ltd</span><a href="mailto:chuwing134538@gmail.com" className="profile-email">chuwing134538@gmail.com</a></div></div></div></section>}
       <nav className="bottom-nav main-nav"><button className={appMode === 'photo' ? 'active' : ''} onClick={() => { setAppMode('photo'); setTab('home'); setActive(null) }}><span><Camera size={20} /></span>拍照記錄</button><button className={appMode === 'memo' ? 'active' : ''} onClick={() => setAppMode('memo')}><span><PenLine size={20} /></span>Site Memo</button><button className={appMode === 'handover' ? 'active' : ''} onClick={() => { setHandoverView('home'); setAppMode('handover') }}><span><ClipboardList size={20} /></span>制房移交</button><button className={appMode === 'handover' ? 'active' : ''} onClick={() => { setHandoverView('manage'); setAppMode('handover') }}><span><Building2 size={20} /></span>機房資料</button><button className={appMode === 'about' ? 'active' : ''} onClick={() => setAppMode('about')}><span><Info size={20} /></span>資料</button></nav>
     </main>
     {continuousCamera && <div className="overlay dark-overlay camera-overlay"><div className="camera-sheet"><div className="camera-topline"><span className="camera-spacer" aria-hidden="true" /><button className={`camera-flash ${flashEnabled ? 'selected' : ''}`} onClick={toggleFlash} aria-label="切換閃光燈">ϟ<span>{flashEnabled ? 'ON' : 'A'}</span></button><div className="camera-status"><i /> LIVE · {currentPhotos.length} 張</div></div>{captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}<div className="camera-frame"><video ref={videoRef} autoPlay playsInline muted /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /><div className="zoom-controls" aria-label="縮放倍率"><button onClick={() => changeZoom(.5)} className={zoomLevel === .5 ? 'selected' : ''}>0.5</button><button onClick={() => changeZoom(1)} className={zoomLevel === 1 ? 'selected' : ''}>1×</button><button onClick={() => changeZoom(2)} className={zoomLevel === 2 ? 'selected' : ''}>2</button><button onClick={() => changeZoom(5)} className={zoomLevel === 5 ? 'selected' : ''}>5</button></div></div>{cameraError && <p className="camera-error">{cameraError}</p>}<div className="camera-toolbar"><button className="camera-control" onClick={stopContinuousCamera} aria-label="取消拍攝">×</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={captureContinuousPhoto} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button><button className="camera-control" aria-label="切換鏡頭">↻</button></div></div></div>}
     {cameraError && !continuousCamera && <div className="camera-error-banner">{cameraError}</div>}
     {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>×</button></div><button className="option option-na" key="__NA__" onClick={() => { setTags(t => ({ ...t, [picker]: 'N/A' })); setPicker(null) }}>N/A（不適用）<span>{tags[picker] === 'N/A' ? '✓' : '›'}</span></button>{(settingsOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '✓' : '›'}</span></button>)}<div className="custom-option"><input id="custom" placeholder="新增自訂項目" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>新增</button></div></div></div>}
     {detail && <div className="overlay dark-overlay" onClick={() => setDetail(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="detail-back" onClick={() => setDetail(null)} aria-label="返回相片集">‹ 返回</button><button className="close light" onClick={() => setDetail(null)} aria-label="關閉相片詳情">×</button><img src={detail.src} alt="相片詳情" /><div className="detail-copy"><b>{detail.category}</b><p className="detail-tags">{Object.entries(detail.tags).filter(([,v]) => v && v !== 'N/A').map(([k,v]) => <span key={k}>{k}: {v}</span>)}{!Object.values(detail.tags).some(v => v && v !== 'N/A') && <span>未設定標籤</span>}</p><p>{detail.note || '沒有備註'}</p><small>{new Date(detail.createdAt).toLocaleString('zh-HK')}</small></div></div></div>}
-    {projectPanel && <div className="overlay" onClick={() => setProjectPanel(false)}><div className="sheet project-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">PROJECTS</p><h3>選擇 Project</h3></div><button className="close" onClick={() => setProjectPanel(false)} aria-label="關閉">×</button></div>{projects.map(project => <button className={`option ${project.id === currentProject.id ? 'chosen' : ''}`} key={project.id} onClick={() => { const projectSettings = project.settings || createProjectSettings(); setCurrentProjectId(project.id); setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setSettingsOptions(projectSettings.settingsOptions); setProjectPanel(false); setActive(null); setSelected([]) }}><span>{project.name}<small>{photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === project.id).length} 張相片</small></span><b>{project.id === currentProject.id ? '✓' : '›'}</b></button>)}<div className="project-add"><input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="輸入新 Project 名稱" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addProject() }} /><button onClick={addProject}>新增</button></div></div></div>}
+    {projectPanel && <div className="overlay" onClick={() => setProjectPanel(false)}><div className="sheet project-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">PROJECTS</p><h3>選擇 Project</h3></div><button className="close" onClick={() => setProjectPanel(false)} aria-label="關閉">×</button></div>{projects.map(project => <button className={`option ${project.id === currentProject.id ? 'chosen' : ''}`} key={project.id} onClick={() => { const projectSettings = project.settings || createProjectSettings(); switchingProjectRef.current = true; setCurrentProjectId(project.id); setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setNoteHistory(projectSettings.noteHistory || []); setSettingsOptions(projectSettings.settingsOptions); setSelectedNotes([]); setProjectPanel(false); setActive(null); setSelected([]) }}><span>{project.name}<small>{photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === project.id).length} 張相片</small></span><b>{project.id === currentProject.id ? '✓' : '›'}</b></button>)}<div className="project-add"><input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="輸入新 Project 名稱" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addProject() }} /><button onClick={addProject}>新增</button></div></div></div>}
     {newCategory && <div className="overlay" onClick={() => setNewCategory(false)}><div className="sheet small-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">NEW CATEGORY</p><h3>新增工程類別</h3></div><button className="close" onClick={() => setNewCategory(false)}>×</button></div><input className="category-input" autoFocus placeholder="例如：外牆工程" onKeyDown={e => { if (e.key === 'Enter') addCategory(e.currentTarget.value) }} /><button className="primary-button" onClick={() => addCategory((document.querySelector('.category-input') as HTMLInputElement).value)}>建立類別</button></div></div>}
   </>
 }

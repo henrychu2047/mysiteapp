@@ -29,6 +29,8 @@ export type Memo = {
 
 export type HistoryRecord = { recordId: string; savedAt: string; action: string; memo: Memo }
 
+const DEFAULT_PROJECT_ID = 'default-project'
+
 export const PHOTO_QUICK_TAGS = [
   '天台石屎座防水層未做',
   '外牆未完成批盪',
@@ -126,10 +128,49 @@ function writeMemoKey(key: string, value: unknown) {
   )
 }
 
-export const loadMemo = () => readMemoKey<Memo>('current')
-export const saveMemo = (memo: Memo) => writeMemoKey('current', memo)
-export const loadHistory = () => readMemoKey<HistoryRecord[]>('history').then(records => records || [])
-export const saveHistory = (records: HistoryRecord[]) => writeMemoKey('history', records)
+const projectKey = (projectId: string, type: 'current' | 'history') => `${type}:${projectId || DEFAULT_PROJECT_ID}`
+
+export const loadMemo = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<Memo>(projectKey(projectId, 'current')).then(stored => stored || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<Memo>('current') : null))
+export const saveMemo = (projectId: string, memo: Memo) => writeMemoKey(projectKey(projectId, 'current'), memo)
+export const loadHistory = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<HistoryRecord[]>(projectKey(projectId, 'history')).then(records => records || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<HistoryRecord[]>('history') : null)).then(records => records || [])
+export const saveHistory = (projectId: string, records: HistoryRecord[]) => writeMemoKey(projectKey(projectId, 'history'), records)
+
+export async function loadAllMemos(): Promise<Record<string, { memo: Memo | null; history: HistoryRecord[] }>> {
+  const db = await openMemoDb()
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(MEMO_STORE, 'readonly').objectStore(MEMO_STORE).getAll()
+    request.onsuccess = () => {
+      const result: Record<string, { memo: Memo | null; history: HistoryRecord[] }> = {}
+      for (const row of request.result as { key: string; value: unknown }[]) {
+        const match = /^(current|history):(.+)$/.exec(row.key)
+        const legacyType = row.key === 'current' || row.key === 'history' ? row.key : null
+        if (!match && !legacyType) continue
+        const type = match ? match[1] : legacyType as 'current' | 'history'
+        const projectId = match ? match[2] : DEFAULT_PROJECT_ID
+        result[projectId] ||= { memo: null, history: [] }
+        if (type === 'current') result[projectId].memo = row.value as Memo
+        else result[projectId].history = Array.isArray(row.value) ? row.value as HistoryRecord[] : []
+      }
+      resolve(result)
+    }
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function saveAllMemos(map: Record<string, { memo?: Memo | null; history?: HistoryRecord[] }>): Promise<void> {
+  const db = await openMemoDb()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(MEMO_STORE, 'readwrite')
+    const store = transaction.objectStore(MEMO_STORE)
+    store.clear()
+    for (const [projectId, value] of Object.entries(map)) {
+      if (value.memo) store.put({ key: projectKey(projectId, 'current'), value: value.memo })
+      store.put({ key: projectKey(projectId, 'history'), value: value.history || [] })
+    }
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+  })
+}
 
 export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T

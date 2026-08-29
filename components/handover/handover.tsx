@@ -11,7 +11,6 @@ import {
   ClipboardCheck,
   UserRound,
   BarChart3,
-  DatabaseBackup,
   Plus,
   Pencil,
   Trash2,
@@ -56,15 +55,13 @@ type Props = {
   initialView?: 'home' | 'manage'
   projectId: string
   projectName: string
-  onExportBackup: () => void | Promise<void>
-  onImportBackup: (file: File | undefined) => void | Promise<void>
 }
 
-type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list' | 'backup'
+type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onExportBackup, onImportBackup }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home' }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -104,7 +101,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [zoom, setZoom] = useState<string | null>(null)
 
   const roomPhotoRef = useRef<HTMLInputElement>(null)
-  const importRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setLoaded(false)
@@ -476,11 +472,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <BarChart3 size={30} className="ho-home-icon" />
                 <strong>統計</strong>
                 <span>移交比率</span>
-              </button>
-              <button className="ho-home-card" onClick={() => setView('backup')}>
-                <DatabaseBackup size={30} className="ho-home-icon" />
-                <strong>備用</strong>
-                <span>資料備份及設定</span>
               </button>
             </div>
           </>
@@ -997,49 +988,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           </div>
         )}
 
-        {/* ===== 備用 ===== */}
-        {view === 'backup' && (
-          <div className="ho-backup">
-            <div className="ho-backup-card">
-              <strong>資料備份</strong>
-              <span>制房移交資料會併入整個 App 的 ZIP 備份一起匯出／匯入。</span>
-              <div className="ho-backup-actions">
-                <button onClick={() => onExportBackup()}>匯出資料</button>
-                <button onClick={() => importRef.current?.click()}>匯入資料</button>
-                <input
-                  ref={importRef}
-                  hidden
-                  type="file"
-                  accept="application/zip,.zip"
-                  onChange={async e => {
-                    const file = e.target.files?.[0]
-                    e.target.value = ''
-                    if (!file) return
-                    if (!confirm('匯入資料會取代目前 App 的全部資料。是否繼續？')) return
-                    await onImportBackup(file)
-                    const data = await loadHandover(projectId).catch(() => ({ towers: [], responsiblePerson: createResponsiblePerson() }))
-                    setTowers(data.towers)
-                    setResponsiblePerson(data.responsiblePerson)
-                    setResponsibleDraft(data.responsiblePerson)
-                    flash('資料已成功匯入。')
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="ho-backup-card danger">
-              <strong>清除所有資料</strong>
-              <span>移除目前 App 內所有座數、樓層、機房、移交記錄、Defect 及相片。</span>
-              <button className="ho-clear-btn" onClick={clearAll}>
-                清除所有制房移交資料
-              </button>
-            </div>
-
-            <div className="ho-note-card">
-              資料儲存在目前裝置及瀏覽器內。若清除瀏覽器資料、更換裝置、使用無痕模式或重設手機，紀錄可能會遺失。請定期匯出資料作備份。
-            </div>
-          </div>
-        )}
       </main>
 
       {toast && (
