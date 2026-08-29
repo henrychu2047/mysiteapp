@@ -82,7 +82,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .memo-card-icon { color: var(--orange); }
 .memo-card strong { font-size: 15px; }
 .memo-card span { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.memo-app .main-nav { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; width: 100%; max-width: none; min-width: 0; margin: 0; transform: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding-bottom: env(safe-area-inset-bottom); }
+.memo-app .main-nav { position: fixed; z-index: 50; bottom: 0; left: 50%; transform: translateX(-50%); width: min(680px, 100%); max-width: 680px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding-bottom: env(safe-area-inset-bottom); }
 .memo-app .main-nav > button { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .memo-modal { position: fixed; inset: 0; z-index: 300; background: var(--background); display: flex; flex-direction: column; }
 .memo-modal-bar { display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top)) 14px 14px; background: var(--navy); color: #fff; }
