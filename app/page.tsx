@@ -100,6 +100,11 @@ function loadBrowserLibrary(src: string, globalName: string) {
   })
 }
 
+function createId() {
+  if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
+}
+
 function dataUrlToBlob(dataUrl: string) {
   const [header, encoded] = dataUrl.split(',')
   const binary = atob(encoded)
@@ -132,14 +137,17 @@ function stampImage(file: File, category: string, tags: Record<string, string> =
       const image = new Image()
       image.onload = () => {
         const canvas = document.createElement('canvas')
-        canvas.width = image.width
-        canvas.height = image.height
+        const sourceWidth = image.naturalWidth || image.width
+        const sourceHeight = image.naturalHeight || image.height
+        const scale = Math.min(1, 4096 / Math.max(sourceWidth, sourceHeight))
+        canvas.width = Math.max(1, Math.round(sourceWidth * scale))
+        canvas.height = Math.max(1, Math.round(sourceHeight * scale))
         const ctx = canvas.getContext('2d')
         if (!ctx) {
           reject(new Error('無法建立圖片處理器'))
           return
         }
-        ctx.drawImage(image, 0, 0)
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
         const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.82)
         const originalBlob = dataUrlToBlob(canvas.toDataURL('image/jpeg', 0.78))
         const thumbnailCanvas = document.createElement('canvas')
@@ -406,7 +414,7 @@ export default function Page() {
       ctx.drawImage(video, 0, 0)
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
       const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active, tags, note, currentProject.name)
-      const photo = { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+      const photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
       setPhotos(p => [photo, ...p])
       await saveToProjectFolder(photo)
       setCameraError('')
@@ -422,7 +430,7 @@ export default function Page() {
     for (const file of Array.from(files)) {
       try {
         const result = await stampImage(file, active, tags, note, currentProject.name)
-        const photo: Photo = { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+        const photo: Photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
         added.push(photo)
         setPhotos(current => [photo, ...current])
         await saveToProjectFolder(photo)
@@ -442,7 +450,7 @@ export default function Page() {
     const name = newProjectName.trim()
     if (!name) return
     if (projects.some(project => project.name === name)) { alert('Project 名稱已存在'); return }
-    const project = { id: crypto.randomUUID(), name, settings: createProjectSettings() }
+    const project = { id: createId(), name, settings: createProjectSettings() }
     switchingProjectRef.current = true
     setProjects(current => [...current, project])
     setCurrentProjectId(project.id)
