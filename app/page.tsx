@@ -513,20 +513,39 @@ export default function Page() {
     try {
       const zip = await JSZip.loadAsync(file)
       const manifest = zip.file('projects.json'); if (!manifest) throw new Error('找不到 projects.json')
-      const data = JSON.parse(await manifest.async('text'))
-      if (!Array.isArray(data.projects)) throw new Error('格式不正確')
+      const raw = JSON.parse(await manifest.async('text')) as { version?: unknown; projects?: unknown; currentProjectId?: unknown }
+      const version = typeof raw.version === 'number' ? raw.version : 1
+      if (version > 2) throw new Error(`不支援的備份版本：${version}`)
+      if (!Array.isArray(raw.projects) || !raw.projects.length) throw new Error('備份沒有有效 Project')
+      const projectsToRestore = raw.projects.map((value, index) => {
+        if (!value || typeof value !== 'object') throw new Error(`Project ${index + 1} 格式不正確`)
+        const project = value as Partial<Project>
+        if (typeof project.id !== 'string' || !project.id.trim() || typeof project.name !== 'string' || !project.name.trim()) throw new Error(`Project ${index + 1} 缺少有效名稱或 ID`)
+        return { ...project, id: project.id.trim(), name: project.name.trim(), settings: { ...createProjectSettings(), ...(project.settings || {}), categories: project.settings?.categories || defaultCategories, tags: project.settings?.tags || {}, note: project.settings?.note || '', settingsOptions: project.settings?.settingsOptions || tagOptions, noteHistory: project.settings?.noteHistory || [] } } as Project
+      })
+      const selectedProjectId = typeof raw.currentProjectId === 'string' && projectsToRestore.some(project => project.id === raw.currentProjectId) ? raw.currentProjectId : projectsToRestore[0].id
+      const photoCount = Object.values(zip.files).filter(entry => !entry.dir && /\/photos\/[^/]+\.jpg$/i.test(entry.name)).length
+      const memoFile = zip.file('site-memo.json')
+      const handoverFile = zip.file('handover.json')
+      if (!confirm(`確認匯入此備份？\nProject：${projectsToRestore.length} 個\n相片：${photoCount} 張\nSite Memo：${memoFile ? '有' : '無'}\n制房移交：${handoverFile ? '有' : '無'}\n\n匯入前會先下載目前資料作為復原備份。`)) return
+      await exportLocalBackup()
       const restored: Photo[] = []
-      for (const project of data.projects) {
+      for (const project of projectsToRestore) {
         const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}/photos/`
         const entries = Object.values(zip.files).filter(entry => !entry.dir && entry.name.startsWith(prefix)) as JSZip.JSZipObject[]
         for (const entry of entries) { const blob = await entry.async('blob'); const src = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob) }); restored.push({ id: entry.name.split('/').pop()!.replace(/\\.jpg$/, ''), src, cleanSrc: src, category: project.settings?.categories?.[0]?.name || '其它', tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id }) }
       }
-      const handoverFile = zip.file('handover.json')
-      if (handoverFile) { try { await saveAllHandover(JSON.parse(await handoverFile.async('text')) as Record<string, HandoverProjectData | Tower[]>) } catch { /* 制房移交資料格式不正確時略過 */ } }
-      const memoFile = zip.file('site-memo.json')
-      if (memoFile) { try { await saveAllMemos(JSON.parse(await memoFile.async('text'))) } catch { /* Site Memo 資料格式不正確時略過 */ } }
-      const restoredProjects = data.projects.map((project: Project) => ({ ...project, settings: { ...createProjectSettings(), ...(project.settings || {}), noteHistory: project.settings?.noteHistory || [] } }))
-      setProjects(restoredProjects); setCurrentProjectId(data.currentProjectId || restoredProjects[0]?.id || DEFAULT_PROJECT.id); setPhotos(restored); alert('ZIP 備份已還原')
+      if (handoverFile) {
+        const handoverData = JSON.parse(await handoverFile.async('text'))
+        if (!handoverData || typeof handoverData !== 'object') throw new Error('制房移交資料格式不正確')
+        await saveAllHandover(handoverData as Record<string, HandoverProjectData | Tower[]>)
+      }
+      if (memoFile) {
+        const memoData = JSON.parse(await memoFile.async('text'))
+        if (!memoData || typeof memoData !== 'object' || Array.isArray(memoData)) throw new Error('Site Memo 資料格式不正確')
+        await saveAllMemos(memoData)
+      }
+      setProjects(projectsToRestore); setCurrentProjectId(selectedProjectId); setPhotos(restored); alert('ZIP 備份已還原')
     } catch { alert('ZIP 備份檔案無法讀取') }
   }
 
