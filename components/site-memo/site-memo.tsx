@@ -21,7 +21,6 @@ import {
   Pencil,
   ClipboardList,
   Info,
-  ChevronLeft,
 } from 'lucide-react'
 import {
   type Memo,
@@ -240,7 +239,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   return (
     <div className="memo-app">
       <header className="memo-topbar">
-        <button className="topbar-back" onClick={onBack} aria-label="返回拍照記錄"><ChevronLeft size={24} /></button>
         <div className="brand-mark" aria-hidden="true">▦</div>
         <button className="project-trigger" onClick={onBack} aria-label="返回並選擇 Project">
           <strong>{projectName}</strong><span>⌄</span>
