@@ -200,7 +200,7 @@ export function nowStamp() {
 // Render a PDF file into an array of high-resolution PNG page images using pdfjs-dist.
 export async function renderPdfToPages(dataUrl: string): Promise<MemoPdfPage[]> {
   const pdfjs = await import('pdfjs-dist')
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
   const base64 = dataUrl.split(',')[1] || ''
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
