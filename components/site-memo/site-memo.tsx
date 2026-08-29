@@ -131,7 +131,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
         alert(data.error || 'AI 潤色失敗')
       }
     } catch {
-      alert('AI 潤色失敗，請檢查網絡')
+      alert('AI 潤色失敗，請檢查網絡或確認 Vercel 已設定 AI API Key')
     } finally {
       setPolishing(false)
     }

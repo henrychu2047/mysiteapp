@@ -3,6 +3,8 @@ import { generateText } from 'ai'
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
+const GEMINI_MODEL = 'gemini-2.5-flash'
+
 const SYSTEM_PROMPT = `你是一位資深香港建造業機電工程 (M&E) 合約專家，專責撰寫地盤公函 (Site Memo)。
 使用者會提供口語、粗略的巡查要點，請將其潤色為正式、專業的香港工程合約行話。
 
@@ -20,11 +22,34 @@ export async function POST(request: Request) {
       return Response.json({ error: '缺少輸入內容' }, { status: 400 })
     }
 
-    const { text } = await generateText({
-      model: 'google/gemini-2.5-flash',
-      system: SYSTEM_PROMPT,
-      prompt: `請潤色以下巡查要點：\n\n${roughInput.trim()}`,
-    })
+    const prompt = `請潤色以下巡查要點：\n\n${roughInput.trim()}`
+    let text = ''
+
+    if (process.env.AI_GATEWAY_API_KEY) {
+      ;({ text } = await generateText({
+        model: `google/${GEMINI_MODEL}`,
+        system: SYSTEM_PROMPT,
+        prompt,
+      }))
+    } else if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2 },
+          }),
+        },
+      )
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error?.message || 'Google AI request failed')
+      text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    } else {
+      return Response.json({ error: '未設定 AI API Key，請在部署平台加入 AI_GATEWAY_API_KEY 或 GOOGLE_GENERATIVE_AI_API_KEY' }, { status: 503 })
+    }
 
     const items = text
       .split('\n')
