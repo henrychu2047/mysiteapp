@@ -545,7 +545,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               <p className="eyebrow">ROOM DATA</p>
               <h2>機房資料</h2>
             </div>
-            {/* 批量產生 */
+            {/* 批量產生 */}
             <button className="ho-gen-toggle" onClick={() => setShowGen(v => !v)}>
               <Wand2 size={18} />
               <span>批量產生座數／樓層／機房</span>
