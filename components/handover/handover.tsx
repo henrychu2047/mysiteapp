@@ -24,9 +24,7 @@ import {
 } from 'lucide-react'
 import {
   ROOM_STATUSES,
-  DEFECT_STATUSES,
   ROOM_STATUS_COLOR,
-  DEFECT_STATUS_COLOR,
   FLOOR_SUGGESTIONS,
   ROOM_NAME_SUGGESTIONS,
   DEFECT_SUGGESTIONS,
@@ -102,7 +100,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [draft, setDraft] = useState<RoomHandover | null>(null)
 
   // Defect 編輯
-  const [defectModal, setDefectModal] = useState<{ id: string | null; description: string; status: DefectStatus; note: string } | null>(null)
+  const [defectModal, setDefectModal] = useState<{ id: string | null; description: string } | null>(null)
   const [zoom, setZoom] = useState<string | null>(null)
 
   const roomPhotoRef = useRef<HTMLInputElement>(null)
@@ -323,12 +321,12 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           handover: {
             ...r.handover,
             defects: r.handover.defects.map(d =>
-              d.id !== defectModal.id ? d : { ...d, description: desc, status: defectModal.status, note: defectModal.note },
+              d.id !== defectModal.id ? d : { ...d, description: desc },
             ),
           },
         }
       }
-      const d: Defect = { id: uid(), description: desc, status: defectModal.status, note: defectModal.note, createdAt: nowIso(), photos: [] }
+      const d: Defect = { id: uid(), description: desc, status: '未完成', note: '', createdAt: nowIso(), photos: [] }
       return { ...r, handover: { ...r.handover, defects: [...r.handover.defects, d] } }
     })
     setDefectModal(null)
@@ -339,13 +337,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     if (!confirm('確定要刪除此 Defect 嗎？相關相片亦會被刪除。')) return
     updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, defects: r.handover.defects.filter(d => d.id !== defectId) } }))
     flash('已刪除 Defect')
-  }
-  const changeDefectStatus = (defectId: string, status: DefectStatus) => {
-    if (!selTower || !selFloor || !selRoom) return
-    updateRoom(selTower, selFloor, selRoom, r => ({
-      ...r,
-      handover: { ...r.handover, defects: r.handover.defects.map(d => (d.id !== defectId ? d : { ...d, status })) },
-    }))
   }
   // ---------- 備用 ----------
   const clearAll = async () => {
@@ -387,7 +378,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     n: towers.reduce((sum, t) => sum + t.floors.reduce((a, f) => a + f.rooms.filter(r => r.handover.status === s).length, 0), 0),
   }))
   const allDefects: Defect[] = towers.flatMap(t => t.floors.flatMap(f => f.rooms.flatMap(r => r.handover.defects)))
-  const defectCounts = DEFECT_STATUSES.map(s => ({ s, n: allDefects.filter(d => d.status === s).length }))
 
   return (
     <div className="ho-app">
@@ -830,7 +820,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             <div className="ho-section">
               <div className="ho-section-head">
                 <strong>Defect</strong>
-                <button className="ho-add-photo" onClick={() => setDefectModal({ id: null, description: '', status: '未完成', note: '' })}>
+                <button className="ho-add-photo" onClick={() => setDefectModal({ id: null, description: '' })}>
                   <Plus size={16} />新增 Defect
                 </button>
               </div>
@@ -839,11 +829,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 {room.handover.defects.map(d => (
                   <div className="ho-defect-card" key={d.id}>
                     <div className="ho-defect-top">
-                      <span className="ho-badge" style={{ background: DEFECT_STATUS_COLOR[d.status] }}>
-                        {d.status}
-                      </span>
                       <div className="ho-defect-ops">
-                        <button aria-label="編輯 Defect" onClick={() => setDefectModal({ id: d.id, description: d.description, status: d.status, note: d.note })}>
+                        <button aria-label="編輯 Defect" onClick={() => setDefectModal({ id: d.id, description: d.description })}>
                           <Pencil size={15} />
                         </button>
                         <button className="danger" aria-label="刪除 Defect" onClick={() => deleteDefect(d.id)}>
@@ -853,14 +840,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                     </div>
                     <p className="ho-defect-desc">{d.description}</p>
                     <small className="ho-defect-date">建立：{new Date(d.createdAt).toLocaleString('zh-HK', { hour12: false })}</small>
-                    {d.note && <p className="ho-defect-note">{d.note}</p>}
-                    <div className="ho-defect-status-row">
-                      {DEFECT_STATUSES.map(s => (
-                        <button key={s} className={`ho-mini-status ${d.status === s ? 'active' : ''}`} onClick={() => changeDefectStatus(d.id, s)}>
-                          {s}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 ))}
               </div>
@@ -921,13 +900,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <span className="ho-count-label">Defect 總數</span>
                 <b>{allDefects.length}</b>
               </div>
-              {defectCounts.map(({ s, n }) => (
-                <div className="ho-count-item" key={s}>
-                  <span className="ho-dot" style={{ background: DEFECT_STATUS_COLOR[s] }} />
-                  <span className="ho-count-label">{s}</span>
-                  <b>{n}</b>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -1036,30 +1008,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 value={defectModal.description}
                 onChange={e => setDefectModal({ ...defectModal, description: e.target.value })}
                 placeholder="快選中沒有合適項目時，可自行輸入"
-              />
-            </label>
-            <div className="ho-field">
-              <span>Defect 狀態</span>
-              <div className="ho-status-picker">
-                {DEFECT_STATUSES.map(s => (
-                  <button
-                    key={s}
-                    className={`ho-status-opt ${defectModal.status === s ? 'active' : ''}`}
-                    style={defectModal.status === s ? { background: DEFECT_STATUS_COLOR[s], borderColor: DEFECT_STATUS_COLOR[s], color: '#fff' } : {}}
-                    onClick={() => setDefectModal({ ...defectModal, status: s })}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="ho-field">
-              <span>備註</span>
-              <textarea
-                rows={2}
-                value={defectModal.note}
-                onChange={e => setDefectModal({ ...defectModal, note: e.target.value })}
-                placeholder="例如：已通知承辦商、預計下星期完成…"
               />
             </label>
             <button className="ho-save-btn" onClick={saveDefect}>

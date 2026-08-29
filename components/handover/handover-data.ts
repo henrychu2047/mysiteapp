@@ -5,20 +5,11 @@
 export const ROOM_STATUSES = ['未收', '已收(有Defect)', '拒絕簽收(有Defect)', '已完成'] as const
 export type RoomStatus = (typeof ROOM_STATUSES)[number]
 
-export const DEFECT_STATUSES = ['未完成', '跟進中', '已完成'] as const
-export type DefectStatus = (typeof DEFECT_STATUSES)[number]
-
 // 狀態顏色（配合現有設計 token）
 export const ROOM_STATUS_COLOR: Record<RoomStatus, string> = {
   未收: '#687681',
   '已收(有Defect)': '#f26b38',
   '拒絕簽收(有Defect)': '#c0392b',
-  已完成: '#2f9e56',
-}
-
-export const DEFECT_STATUS_COLOR: Record<DefectStatus, string> = {
-  未完成: '#c0392b',
-  跟進中: '#f26b38',
   已完成: '#2f9e56',
 }
 
@@ -35,8 +26,6 @@ export type ResponsiblePerson = {
 export type Defect = {
   id: string
   description: string
-  status: DefectStatus
-  note: string
   createdAt: string
   photos: HandoverPhoto[]
 }
@@ -151,7 +140,7 @@ export function towerCompleted(tower: Tower) {
   return tower.floors.reduce((s, f) => s + f.rooms.filter(r => r.handover.status === '已完成').length, 0)
 }
 export function openDefectCount(room: Room) {
-  return room.handover.defects.filter(d => d.status !== '已完成').length
+  return room.handover.defects.length
 }
 
 // ---------- IndexedDB ----------
