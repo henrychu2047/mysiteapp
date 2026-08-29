@@ -160,6 +160,22 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-home-card strong { font-size: 20px; }
 .ho-home-card span { font-size: 12px; color: var(--muted); line-height: 1.4; }
 
+/* 批量產生 */
+.ho-gen-toggle { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 14px; margin-bottom: 12px; border: 1px solid var(--orange); border-radius: var(--radius); background: var(--orange-soft); color: var(--foreground); font-weight: 700; font-size: 15px; }
+.ho-gen-toggle span { flex: 1; text-align: left; }
+.ho-gen-toggle svg:first-child { color: var(--orange); }
+.ho-gen-panel { display: grid; gap: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.ho-gen-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ho-gen-row .ho-field span { font-size: 13px; font-weight: 700; color: var(--muted); }
+.ho-gen-row .ho-field input { width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--background); color: var(--foreground); font-size: 16px; }
+.ho-gen-hint { margin: -4px 0 2px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.ho-gen-note { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.ho-seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.ho-seg button { flex: 1; min-height: 48px; border: 0; background: var(--background); color: var(--muted); font-size: 14px; font-weight: 700; }
+.ho-seg button + button { border-left: 1px solid var(--line); }
+.ho-seg button.on { background: var(--navy); color: #fff; }
+.ho-suggest.on { display: inline-flex; align-items: center; gap: 4px; background: var(--orange); border-color: var(--orange); color: #fff; }
+
 /* 機房資料樹狀 */
 .ho-add-row { display: flex; gap: 8px; margin-bottom: 14px; }
 .ho-add-row.small { margin-bottom: 8px; }

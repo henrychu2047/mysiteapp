@@ -20,6 +20,8 @@ import {
   X,
   Image as ImageIcon,
   AlertTriangle,
+  Wand2,
+  Check,
 } from 'lucide-react'
 import {
   ROOM_STATUSES,
@@ -29,6 +31,7 @@ import {
   FLOOR_SUGGESTIONS,
   ROOM_NAME_SUGGESTIONS,
   DEFECT_SUGGESTIONS,
+  buildFloorNames,
   createRoomHandover,
   loadHandover,
   saveHandover,
@@ -81,6 +84,15 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onExportB
   const [newFloor, setNewFloor] = useState<Record<string, string>>({})
   const [newRoom, setNewRoom] = useState<Record<string, string>>({})
   const [edit, setEdit] = useState<{ type: 'tower' | 'floor' | 'room'; towerId: string; floorId?: string; roomId?: string; name: string } | null>(null)
+
+  // 批量產生
+  const [showGen, setShowGen] = useState(false)
+  const [genTowers, setGenTowers] = useState('3')
+  const [genPrefix, setGenPrefix] = useState('Tower')
+  const [genFloors, setGenFloors] = useState('20')
+  const [genStartGF, setGenStartGF] = useState(true)
+  const [genRooms, setGenRooms] = useState<string[]>([])
+  const [genCustom, setGenCustom] = useState('')
 
   // 移交詳細頁草稿（文字欄位）
   const [draft, setDraft] = useState<RoomHandover | null>(null)
@@ -206,6 +218,42 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onExportB
     )
     setEdit(null)
     flash('已更新')
+  }
+
+  // ---------- 批量產生 ----------
+  const toggleGenRoom = (name: string) =>
+    setGenRooms(prev => (prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]))
+  const addGenCustom = () => {
+    const v = genCustom.trim()
+    if (!v) return
+    setGenRooms(prev => (prev.includes(v) ? prev : [...prev, v]))
+    setGenCustom('')
+  }
+  const genTCount = Math.max(0, Math.floor(Number(genTowers) || 0))
+  const genFCount = Math.max(0, Math.floor(Number(genFloors) || 0))
+  const genTotalRooms = genTCount * genFCount * genRooms.length
+  const runGenerate = () => {
+    const prefix = genPrefix.trim() || 'Tower'
+    if (genTCount < 1) return flash('請輸入座數')
+    if (genFCount < 1) return flash('請輸入樓層數')
+    if (!genRooms.length) return flash('請至少選擇一個機房')
+    const base = towers.length
+      ? `將在現有資料後方新增 ${genTCount} 座 × ${genFCount} 層 × ${genRooms.length} 機房（共 ${genTotalRooms} 間機房）。是否繼續？`
+      : `將產生 ${genTCount} 座 × ${genFCount} 層 × ${genRooms.length} 機房（共 ${genTotalRooms} 間機房）。是否繼續？`
+    if (!confirm(base)) return
+    const floorNames = buildFloorNames(genFCount, genStartGF)
+    const newTowers: Tower[] = Array.from({ length: genTCount }, (_, ti) => ({
+      id: uid(),
+      name: `${prefix} ${ti + 1}`,
+      floors: floorNames.map(fn => ({
+        id: uid(),
+        name: fn,
+        rooms: genRooms.map(rn => ({ id: uid(), name: rn, handover: createRoomHandover() })),
+      })),
+    }))
+    setTowers(prev => [...prev, ...newTowers])
+    setShowGen(false)
+    flash(`已產生 ${genTCount} 座、共 ${genTotalRooms} 間機房`)
   }
 
   // ---------- 移交詳細 ----------
@@ -417,6 +465,78 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onExportB
         {/* ===== 機房資料 CRUD ===== */}
         {view === 'manage' && (
           <div className="ho-manage">
+            {/* 批量產生 */}
+            <button className="ho-gen-toggle" onClick={() => setShowGen(v => !v)}>
+              <Wand2 size={18} />
+              <span>批量產生座數／樓層／機房</span>
+              {showGen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
+
+            {showGen && (
+              <div className="ho-gen-panel">
+                <div className="ho-gen-row">
+                  <label className="ho-field">
+                    <span>座數</span>
+                    <input type="number" inputMode="numeric" min={1} value={genTowers} onChange={e => setGenTowers(e.target.value)} />
+                  </label>
+                  <label className="ho-field">
+                    <span>座名前綴</span>
+                    <input value={genPrefix} onChange={e => setGenPrefix(e.target.value)} placeholder="Tower" />
+                  </label>
+                </div>
+                {genTCount > 0 && (
+                  <p className="ho-gen-hint">
+                    產生：{(genPrefix.trim() || 'Tower')} 1{genTCount > 1 ? ` … ${genPrefix.trim() || 'Tower'} ${genTCount}` : ''}
+                  </p>
+                )}
+
+                <div className="ho-gen-row">
+                  <label className="ho-field">
+                    <span>樓層數</span>
+                    <input type="number" inputMode="numeric" min={1} value={genFloors} onChange={e => setGenFloors(e.target.value)} />
+                  </label>
+                  <label className="ho-field">
+                    <span>樓層由</span>
+                    <div className="ho-seg">
+                      <button className={genStartGF ? 'on' : ''} onClick={() => setGenStartGF(true)}>G/F 起</button>
+                      <button className={!genStartGF ? 'on' : ''} onClick={() => setGenStartGF(false)}>1/F 起</button>
+                    </div>
+                  </label>
+                </div>
+                {genFCount > 0 && (
+                  <p className="ho-gen-hint">樓層：{buildFloorNames(genFCount, genStartGF).slice(0, 4).join('、')}{genFCount > 4 ? ' …' : ''}（共 {genFCount} 層）</p>
+                )}
+
+                <span className="ho-group-label">機房（可多選，或自訂）</span>
+                <div className="ho-chip-row">
+                  {Array.from(new Set([...ROOM_NAME_SUGGESTIONS, ...genRooms])).map(s => (
+                    <button key={s} className={`ho-suggest ${genRooms.includes(s) ? 'on' : ''}`} onClick={() => toggleGenRoom(s)}>
+                      {genRooms.includes(s) && <Check size={12} />}
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <div className="ho-add-row small">
+                  <input
+                    value={genCustom}
+                    onChange={e => setGenCustom(e.target.value)}
+                    placeholder="自訂機房名稱"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addGenCustom()
+                    }}
+                  />
+                  <button onClick={addGenCustom}>
+                    <Plus size={16} />
+                  </button>
+                </div>
+
+                <button className="ho-save-btn" onClick={runGenerate} disabled={!genTotalRooms}>
+                  產生{genTotalRooms ? ` ${genTotalRooms} 間機房` : ''}
+                </button>
+                <p className="ho-gen-note">產生後仍可在下方手動新增或刪除任何座數、樓層及機房。</p>
+              </div>
+            )}
+
             <div className="ho-add-row">
               <input
                 value={newTower}
