@@ -176,6 +176,7 @@ function stampImage(file: File, category: string, tags: Record<string, string> =
 export default function Page() {
   const [categories, setCategories] = useState(defaultCategories)
   const [photos, setPhotos] = useState<Photo[]>([])
+  const [photosReady, setPhotosReady] = useState(false)
   const [projects, setProjects] = useState<Project[]>([{ ...DEFAULT_PROJECT, settings: createProjectSettings() }])
   const [currentProjectId, setCurrentProjectId] = useState(DEFAULT_PROJECT.id)
   const [projectPanel, setProjectPanel] = useState(false)
@@ -205,6 +206,7 @@ export default function Page() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const loadedProjectRef = useRef('')
+  const saveQueueRef = useRef(Promise.resolve())
   const switchingProjectRef = useRef(false)
   const folderHandleRef = useRef<any>(null)
   const [folderConnected, setFolderConnected] = useState(false)
@@ -248,8 +250,8 @@ export default function Page() {
     loadStoredPhotos().then((stored) => {
       const migrated = stored.map((photo) => hydratePhoto({ ...photo, projectId: photo.projectId || DEFAULT_PROJECT.id }))
       setPhotos(migrated)
-      saveStoredPhotos(migrated).catch(() => undefined)
-    }).catch(() => setPhotos([]))
+      setPhotosReady(true)
+    }).catch(() => { setPhotos([]); setPhotosReady(true) })
     try {
       const savedProjects = localStorage.getItem(PROJECTS_KEY)
       const savedCurrent = localStorage.getItem(CURRENT_PROJECT_KEY)
@@ -279,15 +281,13 @@ export default function Page() {
     setSettingsReady(true)
   }, [])
   useEffect(() => {
-    if (!settingsReady) return
+    if (!settingsReady || !photosReady) return
     setSaveState('saving')
-    Promise.all([
-      saveStoredPhotos(photos),
-      Promise.resolve().then(() => {
-        localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects))
-        localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId)
-      }),
-    ]).then(() => {
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      await saveStoredPhotos(photos)
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects))
+      localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId)
+    }).then(() => {
       const savedAt = new Date()
       setSaveState('saved')
       setLastSavedAt(savedAt.toISOString())
