@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Wand2,
   Check,
+  ChevronLeft,
 } from 'lucide-react'
 import {
   ROOM_STATUSES,
@@ -431,6 +432,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   return (
     <div className="ho-app">
       <header className="ho-topbar">
+        <button className="topbar-back" onClick={goBack} aria-label="返回上一頁"><ChevronLeft size={24} /></button>
         <div className="brand-mark" aria-hidden="true">▦</div>
         <button className="project-trigger" onClick={goBack} aria-label="返回並選擇 Project">
           <strong>{projectName}</strong><span>⌄</span>
