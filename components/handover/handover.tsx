@@ -430,7 +430,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     s,
     n: towers.reduce((sum, t) => sum + t.floors.reduce((a, f) => a + f.rooms.filter(r => r.handover.status === s).length, 0), 0),
   }))
-  const statusCardOrder = ['未收', '拒絕簽收(有Defect)', '已收(有Defect)', '已完成'] as const
+  const statusCardOrder = ['未收', '拒絕簽收(有Defect)', '已完成', '已收(有Defect)'] as const
   const statusCards = statusCardOrder.reduce<(typeof statusCounts)[number][]>((cards, status) => {
     const card = statusCounts.find(item => item.s === status)
     if (card) cards.push(card)
