@@ -43,7 +43,6 @@ import {
   openDefectCount,
   type Tower,
   type Room,
-  type Defect,
   type RoomStatus,
   type DefectStatus,
   type RoomHandover,
@@ -379,7 +378,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     s,
     n: towers.reduce((sum, t) => sum + t.floors.reduce((a, f) => a + f.rooms.filter(r => r.handover.status === s).length, 0), 0),
   }))
-  const allDefects: Defect[] = towers.flatMap(t => t.floors.flatMap(f => f.rooms.flatMap(r => r.handover.defects)))
 
   return (
     <div className="ho-app">
@@ -902,12 +900,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               ))}
             </div>
 
-            <p className="ho-group-label">Defect 統計</p>
-            <div className="ho-count-grid">
-              <div className="ho-count-item">
-                <span className="ho-count-label">Defect 總數</span>
-                <b>{allDefects.length}</b>
-              </div>
+
             </div>
           </div>
         )}
