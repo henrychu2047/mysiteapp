@@ -445,7 +445,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               >
                 <ClipboardCheck size={30} className="ho-home-icon" />
                 <strong>制房移交狀況</strong>
-                <span>日期、狀態、相片、Defect</span>
+                <span>日期、移交狀態、相片、Defect</span>
               </button>
               <button
                 className="ho-home-card"

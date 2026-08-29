@@ -2,7 +2,7 @@
 // 座 → 樓層 → 機房 三層階層，每間機房內含移交記錄、相片與 Defect。
 // 資料按 projectId 分開儲存在 IndexedDB。
 
-export const ROOM_STATUSES = ['未開始', '準備移交', '檢查中', '有 Defect', '已完成'] as const
+export const ROOM_STATUSES = ['未收', '已收(有Defect)', '拒絕簽收(有Defect)', '已完成'] as const
 export type RoomStatus = (typeof ROOM_STATUSES)[number]
 
 export const DEFECT_STATUSES = ['未完成', '跟進中', '已完成'] as const
@@ -10,10 +10,9 @@ export type DefectStatus = (typeof DEFECT_STATUSES)[number]
 
 // 狀態顏色（配合現有設計 token）
 export const ROOM_STATUS_COLOR: Record<RoomStatus, string> = {
-  未開始: '#687681',
-  準備移交: '#2477a9',
-  檢查中: '#f26b38',
-  '有 Defect': '#c0392b',
+  未收: '#687681',
+  '已收(有Defect)': '#f26b38',
+  '拒絕簽收(有Defect)': '#c0392b',
   已完成: '#2f9e56',
 }
 
@@ -61,6 +60,25 @@ export type Floor = { id: string; name: string; rooms: Room[] }
 export type Tower = { id: string; name: string; floors: Floor[] }
 export type HandoverProjectData = { towers: Tower[]; responsiblePerson: ResponsiblePerson }
 
+function normalizeRoomStatus(status: unknown): RoomStatus {
+  if (ROOM_STATUSES.includes(status as RoomStatus)) return status as RoomStatus
+  if (status === '已開始' || status === '準備移交' || status === '檢查中' || status === '有 Defect') return '已收(有Defect)'
+  return '未收'
+}
+
+function normalizeTowers(towers: Tower[]): Tower[] {
+  return towers.map(tower => ({
+    ...tower,
+    floors: tower.floors.map(floor => ({
+      ...floor,
+      rooms: floor.rooms.map(room => ({
+        ...room,
+        handover: { ...room.handover, status: normalizeRoomStatus(room.handover.status) },
+      })),
+    })),
+  }))
+}
+
 export function createResponsiblePerson(): ResponsiblePerson {
   return { name: '', company: '', contractor: '', department: '', position: '' }
 }
@@ -73,7 +91,7 @@ export function createRoomHandover(): RoomHandover {
     personDepartment: '',
     personPosition: '',
     personContractor: '',
-    status: '未開始',
+    status: '未收',
     note: '',
     photos: [],
     defects: [],
@@ -170,7 +188,7 @@ function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
 }
 
 function normalizeProjectData(row: { towers?: Tower[]; responsiblePerson?: ResponsiblePerson } | undefined): HandoverProjectData {
-  const towers = Array.isArray(row?.towers) ? row.towers : []
+  const towers = Array.isArray(row?.towers) ? normalizeTowers(row.towers) : []
   return {
     towers,
     responsiblePerson: row?.responsiblePerson || responsiblePersonFromLegacyRooms(towers),
