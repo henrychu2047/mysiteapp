@@ -60,6 +60,7 @@ type Props = {
 type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
+const normalizeName = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
 
 export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home' }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
@@ -234,56 +235,46 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const genFCount = Math.max(0, Math.floor(Number(genFloors) || 0))
   const genTotalRooms = genTCount * genFCount * genRooms.length
   const runGenerate = () => {
-    const prefix = genPrefix.trim() || 'Tower'
+    const prefix = genPrefix.trim().replace(/\s+/g, ' ') || 'Tower'
     if (genTCount < 1) return flash('請輸入座數')
     if (genFCount < 1) return flash('請輸入樓層數')
     if (!genRooms.length) return flash('請至少選擇一個機房')
-    const base = towers.length
-      ? `將在現有資料後方新增 ${genTCount} 座 × ${genFCount} 層 × ${genRooms.length} 機房（共 ${genTotalRooms} 間機房）。是否繼續？`
-      : `將產生 ${genTCount} 座 × ${genFCount} 層 × ${genRooms.length} 機房（共 ${genTotalRooms} 間機房）。是否繼續？`
-    if (!confirm(base)) return
-    const floorNames = buildFloorNames(genFCount, genStartGF)
+    const floorNames = buildFloorNames(genFCount, genStartGF).map(name => name.trim().replace(/\s+/g, ' '))
+    const roomNames = Array.from(new Map(genRooms.map(name => [normalizeName(name), name.trim().replace(/\s+/g, ' ')])).values())
+    const generatedNames = Array.from({ length: genTCount }, (_, index) => `${prefix} ${index + 1}`)
+    const existingTowerKeys = new Set(towers.map(t => normalizeName(t.name)))
+    const duplicateTowerCount = generatedNames.filter(name => existingTowerKeys.has(normalizeName(name))).length
+    const duplicateFloorCount = duplicateTowerCount * floorNames.length
+    const duplicateRoomCount = duplicateFloorCount * roomNames.length
+    const summary = `將產生 ${genTCount - duplicateTowerCount} 座新座，合併 ${duplicateTowerCount} 座；新增 ${genTCount * floorNames.length - duplicateFloorCount} 層，合併 ${duplicateFloorCount} 層；新增 ${genTCount * floorNames.length * roomNames.length - duplicateRoomCount} 間，合併 ${duplicateRoomCount} 間。是否繼續？`
+    if (!confirm(summary)) return
     const newTowers: Tower[] = Array.from({ length: genTCount }, (_, ti) => ({
-      id: uid(),
-      name: `${prefix} ${ti + 1}`,
-      floors: floorNames.map(fn => ({
-        id: uid(),
-        name: fn,
-        rooms: genRooms.map(rn => ({ id: uid(), name: rn, handover: createRoomHandover() })),
+      id: uid(), name: generatedNames[ti], floors: floorNames.map(fn => ({
+        id: uid(), name: fn, rooms: roomNames.map(rn => ({ id: uid(), name: rn, handover: createRoomHandover() })),
       })),
     }))
     setTowers(prev => {
       const merged = [...prev]
       const mergeTower = (target: Tower, source: Tower) => {
         for (const sourceFloor of source.floors) {
-          const targetFloor = target.floors.find(f => f.name === sourceFloor.name)
-          if (!targetFloor) {
-            target.floors.push(sourceFloor)
-            continue
-          }
+          const targetFloor = target.floors.find(f => normalizeName(f.name) === normalizeName(sourceFloor.name))
+          if (!targetFloor) { target.floors.push(sourceFloor); continue }
           for (const sourceRoom of sourceFloor.rooms) {
-            if (!targetFloor.rooms.some(r => r.name === sourceRoom.name)) targetFloor.rooms.push(sourceRoom)
+            if (!targetFloor.rooms.some(r => normalizeName(r.name) === normalizeName(sourceRoom.name))) targetFloor.rooms.push(sourceRoom)
           }
         }
       }
       for (const sourceTower of newTowers) {
-        const matchingTowers = merged.filter(t => t.name === sourceTower.name)
-        if (!matchingTowers.length) {
-          merged.push(sourceTower)
-          continue
-        }
+        const matchingTowers = merged.filter(t => normalizeName(t.name) === normalizeName(sourceTower.name))
+        if (!matchingTowers.length) { merged.push(sourceTower); continue }
         const targetTower = matchingTowers[0]
-        for (const duplicateTower of matchingTowers.slice(1)) {
-          mergeTower(targetTower, duplicateTower)
-          const index = merged.indexOf(duplicateTower)
-          if (index >= 0) merged.splice(index, 1)
-        }
+        for (const duplicateTower of matchingTowers.slice(1)) { mergeTower(targetTower, duplicateTower); merged.splice(merged.indexOf(duplicateTower), 1) }
         mergeTower(targetTower, sourceTower)
       }
       return merged
     })
     setShowGen(false)
-    flash(`已合併／產生 ${genTCount} 座、共 ${genTotalRooms} 間機房`)
+    flash(`已完成：合併 ${duplicateTowerCount} 座、${duplicateFloorCount} 層、${duplicateRoomCount} 間；新增 ${genTotalRooms - duplicateRoomCount} 間機房`)
   }
 
   // ---------- 移交詳細 ----------
