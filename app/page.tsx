@@ -437,6 +437,8 @@ export default function Page() {
       } catch (error) {
         console.error('[v0] photo import failed:', error)
         failures.push(file.name)
+        const reason = error instanceof Error ? error.message : '未知錯誤'
+        setCameraError(`${file.name} 處理失敗：${reason}`)
       }
     }
     if (added.length) {
