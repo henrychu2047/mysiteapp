@@ -141,3 +141,142 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .memo-preview-scroll { overflow: visible; padding: 0; }
   .a4-portrait-page { padding: 12mm 16mm !important; page-break-after: always !important; width: 210mm !important; min-height: 297mm !important; box-shadow: none !important; }
 }
+
+/* ============ 制房移交 Handover ============ */
+.ho-app { min-height: 100svh; max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; background: var(--background); }
+.ho-topbar { background: var(--navy); color: #fff; display: flex; align-items: center; gap: 12px; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; }
+.ho-icon-btn { border: 0; background: transparent; color: #fff; width: 40px; height: 40px; display: grid; place-items: center; }
+.ho-project { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.ho-project strong { font-size: 17px; }
+.ho-project span { font-size: 12px; color: #aebbc4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ho-body { flex: 1; padding: 18px 16px calc(96px + env(safe-area-inset-bottom)); }
+.ho-crumb { margin: 0 0 16px; font-size: 13px; color: var(--muted); font-weight: 700; overflow-wrap: anywhere; }
+.ho-heading { margin-bottom: 16px; }
+.ho-heading h2 { font-size: 26px; letter-spacing: -.03em; }
+
+.ho-home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ho-home-card { aspect-ratio: 1 / 1; min-height: 0; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--foreground); display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; text-align: left; gap: 6px; }
+.ho-home-icon { color: var(--orange); }
+.ho-home-card strong { font-size: 20px; }
+.ho-home-card span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+/* 機房資料樹狀 */
+.ho-add-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.ho-add-row.small { margin-bottom: 8px; }
+.ho-add-row input { flex: 1; min-width: 0; min-height: 46px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--foreground); font-size: 16px; }
+.ho-add-row button { min-height: 46px; min-width: 46px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--orange); color: #fff; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.ho-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.ho-suggest { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 18px; background: var(--orange-soft); color: var(--foreground); font-size: 12px; }
+.ho-tree-tower { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 10px; overflow: hidden; }
+.ho-tree-row { display: flex; align-items: center; gap: 4px; padding: 6px 8px; }
+.ho-tree-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--foreground); min-height: 44px; text-align: left; }
+.ho-tree-main strong { font-size: 16px; }
+.ho-tree-main span { font-size: 15px; }
+.ho-tree-main em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.ho-mini { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--background); color: var(--muted); }
+.ho-mini.danger { color: #c0392b; }
+.ho-tree-children { padding: 4px 10px 12px; border-top: 1px solid var(--line); }
+.ho-tree-floor { border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; background: var(--background); }
+.ho-tree-room { display: flex; align-items: center; gap: 6px; padding: 8px 10px; margin: 6px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.ho-tree-room span { flex: 1; min-width: 0; font-size: 14px; }
+.ho-empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--card); }
+.ho-empty.small { padding: 12px; font-size: 13px; border: 0; background: transparent; }
+
+/* 移交流程選擇 */
+.ho-flow { display: flex; flex-direction: column; gap: 12px; }
+.ho-step-title { font-size: 18px; }
+.ho-select-list { display: flex; flex-direction: column; gap: 10px; }
+.ho-select-card, .ho-room-card { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--foreground); text-align: left; }
+.ho-select-card > div, .ho-room-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ho-select-card strong { font-size: 18px; }
+.ho-select-card span { font-size: 12px; color: var(--muted); }
+.ho-select-card svg, .ho-room-card > svg { color: var(--muted); flex-shrink: 0; }
+.ho-room-card { align-items: flex-start; }
+.ho-room-main strong { font-size: 17px; }
+.ho-room-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ho-room-main small { font-size: 11px; color: var(--muted); }
+.ho-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; color: #fff; font-size: 12px; font-weight: 700; }
+.ho-defect-count { font-size: 12px; color: var(--muted); font-weight: 700; }
+.ho-defect-count.has { color: #c0392b; }
+
+/* 移交詳細 */
+.ho-detail { display: flex; flex-direction: column; gap: 14px; }
+.ho-detail-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ho-detail-title h3 { font-size: 22px; }
+.ho-defect-warn { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #fdecea; color: #c0392b; font-size: 13px; font-weight: 700; }
+.ho-field { display: grid; gap: 6px; }
+.ho-field > span { font-size: 13px; font-weight: 700; color: var(--muted); }
+.ho-field input, .ho-field textarea { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--foreground); font-size: 16px; }
+.ho-field textarea { min-height: auto; line-height: 1.4; resize: vertical; }
+.ho-field-group { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.ho-field-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ho-group-label { font-size: 14px; font-weight: 700; color: var(--foreground); margin: 6px 0 2px; }
+.ho-status-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.ho-status-opt { min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: var(--foreground); font-size: 13px; font-weight: 700; }
+.ho-save-btn { min-height: 52px; border: 0; border-radius: 12px; background: var(--orange); color: #fff; font-size: 16px; font-weight: 700; }
+.ho-section { display: grid; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.ho-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ho-section-head strong { font-size: 16px; }
+.ho-add-photo { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--orange); border-radius: 8px; background: transparent; color: var(--orange); font-weight: 700; font-size: 13px; }
+.ho-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ho-thumb { position: relative; display: flex; flex-direction: column; gap: 3px; }
+.ho-thumb > button:first-child { border: 0; padding: 0; background: transparent; }
+.ho-thumb img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+.ho-thumb small { font-size: 9px; color: var(--muted); text-align: center; }
+.ho-thumb.small img { border-radius: 6px; }
+.ho-thumb-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(10,17,24,.72); color: #fff; }
+
+/* Defect 卡片 */
+.ho-defect-list { display: grid; gap: 10px; }
+.ho-defect-card { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.ho-defect-top { display: flex; align-items: center; justify-content: space-between; }
+.ho-defect-ops { display: flex; gap: 6px; }
+.ho-defect-ops button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--background); color: var(--muted); }
+.ho-defect-ops button.danger { color: #c0392b; }
+.ho-defect-desc { font-size: 15px; font-weight: 600; }
+.ho-defect-date { font-size: 11px; color: var(--muted); }
+.ho-defect-note { font-size: 13px; color: var(--foreground); background: var(--background); padding: 8px 10px; border-radius: 8px; }
+.ho-defect-status-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ho-mini-status { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 18px; background: var(--background); color: var(--muted); font-size: 12px; font-weight: 700; }
+.ho-mini-status.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.ho-defect-photos { display: flex; flex-wrap: wrap; gap: 8px; }
+.ho-defect-photos .ho-thumb { width: 72px; }
+.ho-defect-add-photo { width: 72px; height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px dashed var(--orange); border-radius: 8px; background: var(--orange-soft); color: var(--orange); font-size: 10px; font-weight: 700; }
+
+/* 統計 */
+.ho-stats { display: flex; flex-direction: column; gap: 12px; }
+.ho-stat-card { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); display: grid; gap: 10px; }
+.ho-stat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ho-stat-head strong { font-size: 16px; }
+.ho-stat-head span { font-size: 13px; color: var(--muted); font-weight: 700; }
+.ho-bar { height: 10px; border-radius: 6px; background: var(--background); overflow: hidden; }
+.ho-bar i { display: block; height: 100%; background: var(--orange); border-radius: 6px; transition: width .3s; }
+.ho-count-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ho-count-item { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.ho-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.ho-count-label { flex: 1; min-width: 0; font-size: 13px; }
+.ho-count-item b { font-size: 18px; }
+
+/* 備用 */
+.ho-backup { display: flex; flex-direction: column; gap: 14px; }
+.ho-backup-card { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.ho-backup-card.danger { border-color: #e5b6ae; }
+.ho-backup-card strong { font-size: 16px; }
+.ho-backup-card span { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.ho-backup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.ho-backup-actions button { flex: 1; min-width: 120px; min-height: 46px; border: 0; border-radius: 8px; background: var(--orange); color: #fff; font-weight: 700; }
+.ho-clear-btn { margin-top: 4px; min-height: 46px; border: 1px solid #c0392b; border-radius: 8px; background: transparent; color: #c0392b; font-weight: 700; }
+.ho-note-card { padding: 14px; border-radius: var(--radius); background: var(--orange-soft); color: var(--foreground); font-size: 13px; line-height: 1.6; }
+
+/* toast / overlay */
+.ho-toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 400; padding: 10px 18px; border-radius: 22px; background: var(--navy); color: #fff; font-size: 14px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.ho-overlay { position: fixed; inset: 0; z-index: 360; background: rgba(10,17,24,.5); display: flex; align-items: flex-end; justify-content: center; }
+.ho-sheet { width: 100%; max-width: 680px; display: grid; gap: 12px; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); background: var(--card); border-radius: 20px 20px 0 0; }
+.ho-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.ho-sheet-head strong { font-size: 17px; }
+.ho-sheet-head button { border: 0; background: transparent; color: var(--muted); width: 40px; height: 40px; display: grid; place-items: center; }
+.ho-sheet-input { width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--background); color: var(--foreground); font-size: 16px; }
+.ho-zoom { position: fixed; inset: 0; z-index: 380; background: rgba(0,0,0,.9); display: grid; place-items: center; padding: 16px; }
+.ho-zoom img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+.ho-app .main-nav { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; width: 100%; max-width: none; min-width: 0; margin: 0; transform: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding-bottom: env(safe-area-inset-bottom); }
+.ho-app .main-nav > button { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
