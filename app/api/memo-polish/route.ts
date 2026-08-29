@@ -1,5 +1,3 @@
-import { generateText } from 'ai'
-
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
@@ -25,12 +23,28 @@ export async function POST(request: Request) {
     const prompt = `請潤色以下巡查要點：\n\n${roughInput.trim()}`
     let text = ''
 
-    if (process.env.AI_GATEWAY_API_KEY) {
-      ;({ text } = await generateText({
-        model: `google/${GEMINI_MODEL}`,
-        system: SYSTEM_PROMPT,
-        prompt,
-      }))
+    const baseUrl = process.env.AI_BASE_URL?.replace(/\/$/, '')
+    const apiKey = process.env.AI_API_KEY
+    const model = process.env.AI_MODEL
+
+    if (baseUrl && apiKey && model) {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: prompt },
+          ],
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error?.message || 'AI request failed')
+      text = data.choices?.[0]?.message?.content || ''
+    } else if (process.env.AI_GATEWAY_API_KEY) {
+      return Response.json({ error: '請改用 AI_BASE_URL、AI_API_KEY 及 AI_MODEL 設定' }, { status: 503 })
     } else if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}`,
@@ -48,7 +62,7 @@ export async function POST(request: Request) {
       if (!response.ok) throw new Error(data.error?.message || 'Google AI request failed')
       text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     } else {
-      return Response.json({ error: '未設定 AI API Key，請在部署平台加入 AI_GATEWAY_API_KEY 或 GOOGLE_GENERATIVE_AI_API_KEY' }, { status: 503 })
+      return Response.json({ error: '未設定完整 AI 連線資料，請加入 AI_BASE_URL、AI_API_KEY 及 AI_MODEL' }, { status: 503 })
     }
 
     const items = text
