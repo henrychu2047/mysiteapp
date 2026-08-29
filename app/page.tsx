@@ -9,7 +9,7 @@ import { Handover } from '@/components/handover/handover'
 import { loadAllMemos, saveAllMemos } from '@/components/site-memo/memo-data'
 import { loadAllHandover, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
 
-type Photo = { id: string; src: string; cleanSrc: string; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string }
+type Photo = { id: string; src: string; cleanSrc: string; originalBlob?: Blob; thumbnailBlob?: Blob; stampedBlob?: Blob; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string }
 type Category = { name: string; icon: string }
 type ProjectSettings = { categories: Category[]; tags: Record<string, string>; note: string; settingsOptions: Record<string, string[]>; noteHistory: string[] }
 type Project = { id: string; name: string; settings?: ProjectSettings }
@@ -62,12 +62,27 @@ function loadStoredPhotos() {
   }))
 }
 
+function hydratePhoto(photo: Photo): Photo {
+  if (!photo.originalBlob && !photo.thumbnailBlob) return photo
+  const stampedUrl = photo.stampedBlob ? URL.createObjectURL(photo.stampedBlob) : photo.src
+    const originalUrl = photo.originalBlob ? URL.createObjectURL(photo.originalBlob) : photo.cleanSrc
+    const thumbnailUrl = photo.thumbnailBlob ? URL.createObjectURL(photo.thumbnailBlob) : stampedUrl
+    return { ...photo, src: thumbnailUrl, cleanSrc: originalUrl }
+}
+
+function releasePhotoUrls(photos: Photo[]) {
+  photos.forEach(photo => {
+    if (photo.src.startsWith('blob:')) URL.revokeObjectURL(photo.src)
+    if (photo.cleanSrc.startsWith('blob:') && photo.cleanSrc !== photo.src) URL.revokeObjectURL(photo.cleanSrc)
+  })
+}
+
 function saveStoredPhotos(photos: Photo[]) {
   return openPhotoDb().then(db => new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(PHOTO_STORE, 'readwrite')
     const store = transaction.objectStore(PHOTO_STORE)
     store.clear()
-    photos.forEach(photo => store.put(photo))
+    photos.forEach(photo => store.put(photo.originalBlob || photo.stampedBlob ? { ...photo, src: '', cleanSrc: '' } : photo))
     transaction.oncomplete = () => resolve()
     transaction.onerror = () => reject(transaction.error)
   }))
@@ -83,6 +98,14 @@ function loadBrowserLibrary(src: string, globalName: string) {
     script.onerror = () => reject(new Error('匯出套件載入失敗'))
     document.head.appendChild(script)
   })
+}
+
+function dataUrlToBlob(dataUrl: string) {
+  const [header, encoded] = dataUrl.split(',')
+  const binary = atob(encoded)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+  return new Blob([bytes], { type: header.match(/data:([^;]+)/)?.[1] || 'image/jpeg' })
 }
 
 function imageAsJpeg(dataUrl: string) {
@@ -103,7 +126,7 @@ function imageAsJpeg(dataUrl: string) {
 }
 
 function stampImage(file: File, category: string, tags: Record<string, string> = {}, note = '', projectName = '') {
-  return new Promise<{ stamped: string; clean: string }>((resolve, reject) => {
+  return new Promise<{ stamped: string; clean: string; originalBlob: Blob; thumbnailBlob: Blob; stampedBlob: Blob }>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
       const image = new Image()
@@ -117,7 +140,14 @@ function stampImage(file: File, category: string, tags: Record<string, string> =
           return
         }
         ctx.drawImage(image, 0, 0)
-        const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.92)
+        const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.82)
+        const originalBlob = dataUrlToBlob(canvas.toDataURL('image/jpeg', 0.78))
+        const thumbnailCanvas = document.createElement('canvas')
+        const thumbnailWidth = Math.min(960, image.width)
+        thumbnailCanvas.width = thumbnailWidth
+        thumbnailCanvas.height = Math.max(1, Math.round(image.height * thumbnailWidth / image.width))
+        thumbnailCanvas.getContext('2d')?.drawImage(image, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
+        const thumbnailBlob = dataUrlToBlob(thumbnailCanvas.toDataURL('image/webp', 0.72))
         const detailLines = Object.entries(tags).filter(([, value]) => value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`)
         if (note.trim()) detailLines.push(`文字備註: ${note.trim()}`)
         const lines = [`${projectName ? `${projectName} | ` : ''}${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`, ...detailLines]
@@ -131,7 +161,9 @@ function stampImage(file: File, category: string, tags: Record<string, string> =
         ctx.fillStyle = '#fff'
         ctx.textBaseline = 'top'
         lines.forEach((line, index) => ctx.fillText(line, image.width - width + size * 0.7, image.height - height + size * 0.4 + index * lineHeight, width - size))
-        resolve({ stamped: canvas.toDataURL('image/jpeg', 0.88), clean: cleanDataUrl })
+        const stamped = canvas.toDataURL('image/jpeg', 0.78)
+        const stampedBlob = dataUrlToBlob(stamped)
+        resolve({ stamped, clean: cleanDataUrl, originalBlob, thumbnailBlob, stampedBlob })
       }
       image.onerror = () => reject(new Error('無法讀取相片'))
       image.src = reader.result as string
@@ -179,6 +211,7 @@ export default function Page() {
   const backupRef = useRef<HTMLInputElement>(null)
   const [backupBusy, setBackupBusy] = useState(false)
   const [updateAvailable, setUpdateAvailable] = useState(false)
+  const [storageUsage, setStorageUsage] = useState<{ usage: number; quota: number } | null>(null)
 
   const [isOffline, setIsOffline] = useState(false)
   const [storageStatus, setStorageStatus] = useState('本機保存中')
@@ -187,6 +220,12 @@ export default function Page() {
   const [saveToast, setSaveToast] = useState('')
   useEffect(() => {
     navigator.storage?.persist?.().then((persisted) => setStorageStatus(persisted ? '本機持久保存' : '本機保存中')).catch(() => undefined)
+    const refreshStorage = () => navigator.storage?.estimate?.().then(result => {
+      if (typeof result.usage === 'number' && typeof result.quota === 'number') setStorageUsage({ usage: result.usage, quota: result.quota })
+    }).catch(() => undefined)
+    refreshStorage()
+    const timer = window.setInterval(refreshStorage, 30000)
+    return () => window.clearInterval(timer)
   }, [])
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -207,7 +246,7 @@ export default function Page() {
   }, [])
   useEffect(() => {
     loadStoredPhotos().then((stored) => {
-      const migrated = stored.map((photo) => ({ ...photo, projectId: photo.projectId || DEFAULT_PROJECT.id }))
+      const migrated = stored.map((photo) => hydratePhoto({ ...photo, projectId: photo.projectId || DEFAULT_PROJECT.id }))
       setPhotos(migrated)
       saveStoredPhotos(migrated).catch(() => undefined)
     }).catch(() => setPhotos([]))
@@ -358,7 +397,7 @@ export default function Page() {
       ctx.drawImage(video, 0, 0)
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
       const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active, tags, note, currentProject.name)
-      const photo = { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+      const photo = { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
       setPhotos(p => [photo, ...p])
       await saveToProjectFolder(photo)
       setCameraError('')
@@ -369,7 +408,7 @@ export default function Page() {
   }
   const importFiles = async (files: FileList | null) => {
     if (!files || !active) return
-    const added = await Promise.all(Array.from(files).map(async file => { const result = await stampImage(file, active, tags, note, currentProject.name); return { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id } }))
+    const added = await Promise.all(Array.from(files).map(async file => { const result = await stampImage(file, active, tags, note, currentProject.name); return { id: crypto.randomUUID(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id } }))
     setPhotos(p => [...added, ...p]); await Promise.all(added.map(saveToProjectFolder)); setTab('photos')
   }
   const addProject = () => {
@@ -575,7 +614,7 @@ export default function Page() {
       </header>
       {appMode === 'photo' && tab === 'home' && !active && <section className="content"><div className="quick-card-grid"><button className="quick-card" onClick={() => { setTab('photos'); setActive(null) }}><span>▧</span><div><strong>相片集</strong><small>{projectPhotos.length} 張相片</small></div></button><button className="quick-card" onClick={() => { setTab('settings'); setActive(null) }}><span>⚙</span><div><strong>設定</strong><small>類別與選項</small></div></button></div><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工程類別</h2></div><span className="photo-total">{projectPhotos.length} 張相片</span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張記錄</span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">＋</span><strong>新增類別</strong><span>自訂工程分類</span></button></div><div className="hint">長按類別卡片可刪除分類</div></section>}
       {appMode === 'photo' && tab === 'home' && active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>‹ 返回工程類別</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} 張</span></div><div className="capture-actions"><button className="capture-button camera" onClick={startContinuousCamera}><span>▣</span><div><strong>連續拍攝</strong><small>拍完可立即拍下一張</small></div></button><button className="capture-button secondary-camera" onClick={() => cameraRef.current?.click()}><span>□</span><div><strong>立即拍照</strong><small>使用 iPhone 原生相機</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>▧</span><div><strong>選擇相簿</strong><small>可一次匯入多張</small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={e => importFiles(e.target.files)} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={e => importFiles(e.target.files)} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>拍攝資訊</h3></div><span className="memory-dot">● 已記憶</span></div><div className="tag-grid">{['樓層', '機房', '房間名稱', '安全', '收貨相關', '事項'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '選擇'}</b></button>)}</div><label className="note-field"><span>文字備註</span><input value={note} onChange={e => setNote(e.target.value)} onBlur={rememberNote} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) { rememberNote(); e.currentTarget.blur() } }} placeholder="輸入本次拍攝的補充說明..." /></label>{noteHistory.length > 0 && <div className="note-history"><small>最近使用</small><div>{noteHistory.map(item => <button type="button" key={item} onClick={() => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} className={selectedNotes.includes(item) ? 'selected' : ''} aria-pressed={selectedNotes.includes(item)}>{item}</button>)}</div></div>}</div></section>}
-      {appMode === 'photo' && tab === 'settings' && <section className="content settings-page"><button className="back-link" onClick={() => { setTab('home'); setActive(null) }}>‹ 返回工程類別</button><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><div className="project-name-setting"><label htmlFor="project-name">Project 名稱</label><input id="project-name" value={currentProject.name} onChange={e => { const name = e.target.value; setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, name } : project)) }} placeholder="輸入 Project 名稱" /></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p><div className="local-storage-card"><strong>{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : '已保存'}</strong><span>{lastSavedAt ? `最後保存：${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : storageStatus}</span></div>{['樓層', '機房', '事項', '安全', '收貨相關', '房間名稱'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
+      {appMode === 'photo' && tab === 'settings' && <section className="content settings-page"><button className="back-link" onClick={() => { setTab('home'); setActive(null) }}>‹ 返回工程類別</button><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設定</h2></div></div><div className="project-name-setting"><label htmlFor="project-name">Project 名稱</label><input id="project-name" value={currentProject.name} onChange={e => { const name = e.target.value; setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, name } : project)) }} placeholder="輸入 Project 名稱" /></div><p className="settings-intro">自訂六個標籤類別的選項，之後拍攝時會自動提供。</p><div className="local-storage-card"><strong>{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : '已保存'}</strong><span>{lastSavedAt ? `最後保存：${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : storageStatus}</span>{storageUsage && <small>儲存空間：{(storageUsage.usage / 1048576).toFixed(1)} MB / {(storageUsage.quota / 1048576).toFixed(0)} MB{storageUsage.usage / storageUsage.quota > 0.8 ? '（接近上限，建議匯出備份）' : ''}</small>}</div>{['樓層', '機房', '事項', '安全', '收貨相關', '房間名稱'].map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label}</strong><span>{(settingsOptions[label] || []).length} 個選項</span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>×</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`新增${label}選項`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>新增</button></div></div>)}</section>}
       {appMode === 'photo' && tab === 'photos' && <section className="content"><button className="back-link" onClick={() => { setTab('home'); setActive(null) }}>‹ 返回工程類別</button><div className="section-heading photo-heading"><div><p className="eyebrow">PHOTO ARCHIVE</p><h2>相片集</h2></div><div className="photo-actions"><span className="photo-total">已選 {selected.length} 張</span><button className="select-all-button" onClick={() => setSelected(selected.length === projectPhotos.length ? [] : projectPhotos.map(photo => photo.id))} disabled={!projectPhotos.length}>{selected.length === projectPhotos.length && projectPhotos.length ? '取消全選' : '全選'}</button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>一小時內</button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 24 * 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>一日內</button><div className="export-bar"><button onClick={exportExcel}>匯出 Excel</button><button onClick={exportPdf}>匯出 PDF</button></div></div></div><div className="photo-grid">{projectPhotos.map(p => <div className="photo-card" key={p.id}><button className="photo-open" onClick={() => setDetail(p)}><img src={p.src} alt={`${p.category} ${p.createdAt}`} /></button><label className="check"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(s => e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id))} /><span /></label></div>)}{!projectPhotos.length && <div className="empty-state">尚未有相片記錄<br /><small>進入工程類別開始拍攝</small></div>}</div><div id="pdf-report" className="pdf-report" aria-hidden="true"><h1>地盤相片記錄報表</h1>{photos.filter(p => selected.includes(p.id)).map(p => <article key={p.id}><img src={p.src} alt="" /><div><b>{p.category}</b><p>{Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>{p.note}</p><small>{new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>)}</div></section>}
       {updateAvailable && <div className="camera-error-banner" role="status">已有新版本可用，請按「更新 App」套用。</div>}
       {appMode === 'about' && <section className="content info-page"><button className="back-link" onClick={() => setAppMode('photo')}>‹ 返回拍照記錄</button><div className="section-heading"><div><p className="eyebrow">ABOUT</p><h2>資料</h2></div></div><div className="about-block"><h3>關於此 App</h3><p>這是一個為地盤工程而設的流動記錄工具，支援離線使用，所有相片與資料均保存在本機裝置。主要功能包括：拍照記錄（自動加上工程類別、樓層、機房等智能標籤並生成 Excel／PDF 報表）、Site Memo（一鍵生成 A4 Site Meno）及制房移交。</p></div><div className="about-block"><h3>完整資料備份</h3><p>備份整個 App 的 Project、相片、Site Memo 及制房移交資料。</p><div className="backup-actions"><button type="button" onClick={exportLocalBackup} disabled={backupBusy}>{backupBusy ? '正在準備備份…' : '匯出完整備份'}</button><button type="button" onClick={() => backupRef.current?.click()} disabled={backupBusy}>匯入完整備份</button><button type="button" onClick={updateApp} disabled={backupBusy}>{backupBusy ? '正在備份及更新…' : '更新 App'}</button><input ref={backupRef} hidden type="file" accept="application/zip,.zip" onChange={async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file || !confirm('匯入資料會取代目前 App 的全部資料。是否繼續？')) return; await importLocalBackup(file) }} /></div></div><div className="about-block profile-block"><h3>開發及使用者資料</h3><div className="profile-card"><div className="profile-avatar" aria-hidden="true">HC</div><div className="profile-meta"><strong>Henry Chu</strong><span>Project Manager</span><span>Southa Technical Ltd</span><a href="mailto:chuwing134538@gmail.com" className="profile-email">chuwing134538@gmail.com</a></div></div></div></section>}
