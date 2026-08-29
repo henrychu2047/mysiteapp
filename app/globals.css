@@ -255,9 +255,6 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-defect-status-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .ho-mini-status { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 18px; background: var(--background); color: var(--muted); font-size: 12px; font-weight: 700; }
 .ho-mini-status.active { background: var(--navy); border-color: var(--navy); color: #fff; }
-.ho-defect-photos { display: flex; flex-wrap: wrap; gap: 8px; }
-.ho-defect-photos .ho-thumb { width: 72px; }
-.ho-defect-add-photo { width: 72px; height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px dashed var(--orange); border-radius: 8px; background: var(--orange-soft); color: var(--orange); font-size: 10px; font-weight: 700; }
 
 /* 統計 */
 .ho-stats { display: flex; flex-direction: column; gap: 12px; }

@@ -1019,22 +1019,25 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <X size={20} />
               </button>
             </div>
+            <div className="ho-field">
+              <span>Defect 描述（快選）</span>
+              <div className="ho-chip-row">
+                {DEFECT_SUGGESTIONS.map(s => (
+                  <button key={s} className="ho-suggest" onClick={() => setDefectModal({ ...defectModal, description: s })}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
             <label className="ho-field">
-              <span>Defect 描述</span>
+              <span>自訂 Defect 描述</span>
               <textarea
                 rows={2}
                 value={defectModal.description}
                 onChange={e => setDefectModal({ ...defectModal, description: e.target.value })}
-                placeholder="例如：控制箱標示缺失"
+                placeholder="快選中沒有合適項目時，可自行輸入"
               />
             </label>
-            <div className="ho-chip-row">
-              {DEFECT_SUGGESTIONS.map(s => (
-                <button key={s} className="ho-suggest" onClick={() => setDefectModal({ ...defectModal, description: s })}>
-                  {s}
-                </button>
-              ))}
-            </div>
             <div className="ho-field">
               <span>Defect 狀態</span>
               <div className="ho-status-picker">
