@@ -181,7 +181,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-add-row input { flex: 1; min-width: 0; min-height: 46px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--foreground); font-size: 16px; }
 .ho-add-row button { min-height: 46px; min-width: 46px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--orange); color: #fff; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
 .ho-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.ho-suggest { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 18px; background: var(--orange-soft); color: var(--foreground); font-size: 12px; }
+.ho-suggest { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 18px; background: #fff; color: var(--foreground); font-size: 12px; }
 .ho-tree-tower { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 10px; overflow: hidden; }
 .ho-tree-row { display: flex; align-items: center; gap: 4px; padding: 6px 8px; }
 .ho-tree-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--foreground); min-height: 44px; text-align: left; }
