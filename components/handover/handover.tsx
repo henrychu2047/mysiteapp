@@ -60,7 +60,7 @@ type Props = {
   onImportBackup: (file: File | undefined) => void | Promise<void>
 }
 
-type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'backup'
+type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list' | 'backup'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 
@@ -70,6 +70,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [loaded, setLoaded] = useState(false)
   const [view, setView] = useState<View>(initialView)
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<RoomStatus | null>(null)
   const [toast, setToast] = useState('')
 
   // 選擇路徑
@@ -367,6 +368,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   const goBack = () => {
     if (view === 'home') return onBack()
+    if (view === 'status-list') return setView('stats')
     if (view === 'detail') return setView('flow-room')
     if (view === 'flow-room') return setView('flow-floor')
     if (view === 'flow-floor') return setView('flow-tower')
@@ -384,6 +386,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     s,
     n: towers.reduce((sum, t) => sum + t.floors.reduce((a, f) => a + f.rooms.filter(r => r.handover.status === s).length, 0), 0),
   }))
+  const selectedStatus = statusCounts.find(({ s }) => s === selectedStatusFilter)?.s || null
+  const statusRooms = selectedStatus
+    ? towers.flatMap(t => t.floors.flatMap(f => f.rooms.filter(r => r.handover.status === selectedStatus).map(r => ({ tower: t, floor: f, room: r }))))
+    : []
 
   return (
     <div className="ho-app">
@@ -901,13 +907,42 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             <p className="ho-group-label">機房狀態統計</p>
             <div className="ho-count-grid">
               {statusCounts.map(({ s, n }) => (
-                <div className="ho-count-item" key={s}>
+                <button
+                  className="ho-count-item"
+                  key={s}
+                  onClick={() => {
+                    setSelectedStatusFilter(s)
+                    setView('status-list')
+                  }}
+                >
                   <span className="ho-dot" style={{ background: ROOM_STATUS_COLOR[s] }} />
                   <span className="ho-count-label">{s}</span>
                   <b>{n}</b>
-                </div>
+                </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ===== 狀態房間清單 ===== */}
+        {view === 'status-list' && selectedStatus && (
+          <div className="ho-status-list">
+            <div className="ho-section-head">
+              <strong>{selectedStatus}</strong>
+              <span>{statusRooms.length} 間</span>
+            </div>
+            {!statusRooms.length && <div className="ho-empty small">目前沒有符合此狀態的機房。</div>}
+            {statusRooms.map(({ tower: t, floor: f, room: r }) => (
+              <button
+                className="ho-status-room"
+                key={r.id}
+                onClick={() => openDetail(t.id, f.id, r.id)}
+              >
+                <span className="ho-status-room-path">{t.name} ＞ {f.name}</span>
+                <strong>{r.name}</strong>
+                <span className="ho-badge" style={{ background: ROOM_STATUS_COLOR[selectedStatus] }}>{selectedStatus}</span>
+              </button>
+            ))}
           </div>
         )}
 

@@ -265,10 +265,16 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-bar { height: 10px; border-radius: 6px; background: var(--background); overflow: hidden; }
 .ho-bar i { display: block; height: 100%; background: var(--orange); border-radius: 6px; transition: width .3s; }
 .ho-count-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.ho-count-item { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.ho-count-item { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--foreground); text-align: left; cursor: pointer; }
+.ho-count-item:hover { border-color: var(--orange); }
 .ho-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .ho-count-label { flex: 1; min-width: 0; font-size: 13px; }
 .ho-count-item b { font-size: 18px; }
+.ho-status-list { display: flex; flex-direction: column; gap: 10px; }
+.ho-status-room { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--foreground); text-align: left; cursor: pointer; }
+.ho-status-room:hover { border-color: var(--orange); }
+.ho-status-room-path { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.ho-status-room strong { align-self: center; font-size: 15px; }
 
 /* 備用 */
 .ho-backup { display: flex; flex-direction: column; gap: 14px; }
