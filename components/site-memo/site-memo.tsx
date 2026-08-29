@@ -607,17 +607,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function MemoModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="memo-modal">
-      <div className="memo-modal-bar">
-        <button onClick={onClose}>
-          返回
-        </button>
-        <strong>{title}</strong>
-        <button onClick={onClose} aria-label="關閉">
-          <X size={22} />
-        </button>
+    <div className="memo-modal-layer">
+      <div className="memo-modal">
+        <div className="memo-modal-bar">
+          <button onClick={onClose}>返回</button>
+          <strong>{title}</strong>
+          <button onClick={onClose} aria-label="關閉">
+            <X size={22} />
+          </button>
+        </div>
+        <div className="memo-modal-body">{children}</div>
       </div>
-      <div className="memo-modal-body">{children}</div>
     </div>
   )
 }
