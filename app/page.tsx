@@ -467,7 +467,7 @@ export default function Page() {
 
   if (appMode === 'memo') return <SiteMemo projectName={currentProject.name} onBack={() => setAppMode('photo')} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('manage'); setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } }} />
 
-  if (appMode === 'handover') return <Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} onBack={() => { setAppMode('photo'); setTab('home'); setActive(null) }} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } }} onExportBackup={exportLocalBackup} onImportBackup={importLocalBackup} />
+  if (appMode === 'handover') return <Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} onBack={() => { setAppMode('photo'); setTab('home'); setActive(null) }} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } if (mode === 'handover') { setHandoverView('manage') } }} onExportBackup={exportLocalBackup} onImportBackup={importLocalBackup} />
 
   return <>
     {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
