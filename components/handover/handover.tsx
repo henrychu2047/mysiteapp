@@ -101,7 +101,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   // Defect 編輯
   const [defectModal, setDefectModal] = useState<{ id: string | null; description: string } | null>(null)
-  const [defectDraft, setDefectDraft] = useState('')
+  const [defectDraft, setDefectDraft] = useState<string[]>([])
   const [zoom, setZoom] = useState<string | null>(null)
 
   const roomPhotoRef = useRef<HTMLInputElement>(null)
@@ -276,20 +276,18 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   }
   const saveDetail = () => {
     if (!selTower || !selFloor || !selRoom || !draft) return
-    const defectDescription = defectDraft.trim()
+    const defectDescriptions = defectDraft.map(description => description.trim()).filter(Boolean)
     updateRoom(selTower, selFloor, selRoom, r => ({
       ...r,
       handover: {
         ...r.handover,
         date: draft.date,
         status: draft.status,
-        defects: defectDescription
-          ? [...r.handover.defects, { id: uid(), description: defectDescription, status: '未完成', note: '', createdAt: nowIso(), photos: [] }]
-          : r.handover.defects,
+        defects: [...r.handover.defects, ...defectDescriptions.map(description => ({ id: uid(), description, status: '未完成' as const, note: '', createdAt: nowIso(), photos: [] }))],
         updatedAt: nowIso(),
       },
     }))
-    setDefectDraft('')
+    setDefectDraft([])
     flash('已儲存')
   }
   const saveResponsiblePerson = () => {
@@ -794,7 +792,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <span>Defect 描述（快選）</span>
                 <div className="ho-chip-row">
                   {DEFECT_SUGGESTIONS.map(s => (
-                    <button key={s} className="ho-suggest" onClick={() => setDefectDraft(s)}>
+                    <button key={s} className={`ho-suggest ${defectDraft.includes(s) ? 'active' : ''}`} onClick={() => setDefectDraft(prev => prev.includes(s) ? prev.filter(item => item !== s) : [...prev, s])}>
                       {s}
                     </button>
                   ))}
@@ -802,7 +800,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               </div>
               <label className="ho-field">
                 <span>自訂 Defect 描述</span>
-                <textarea rows={2} value={defectDraft} onChange={e => setDefectDraft(e.target.value)} placeholder="快選中沒有合適項目時，可自行輸入" />
+                <textarea rows={2} value={defectDraft.find(item => !DEFECT_SUGGESTIONS.includes(item)) || ''} onChange={e => setDefectDraft(prev => [...prev.filter(item => DEFECT_SUGGESTIONS.includes(item)), e.target.value])} placeholder="快選中沒有合適項目時，可自行輸入" />
               </label>
               {!room.handover.defects.length && <p className="ho-empty small">未有 Defect。</p>}
               <div className="ho-defect-list">
