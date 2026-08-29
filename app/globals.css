@@ -265,7 +265,11 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ho-stat-head span { font-size: 13px; color: var(--muted); font-weight: 700; }
 .ho-bar { height: 10px; border-radius: 6px; background: var(--background); overflow: hidden; }
 .ho-bar i { display: block; height: 100%; background: var(--orange); border-radius: 6px; transition: width .3s; }
-.ho-count-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ho-count-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'unreceived rejected' 'completed accepted'; gap: 8px; }
+.ho-count-item:nth-child(1) { grid-area: unreceived; }
+.ho-count-item:nth-child(2) { grid-area: rejected; }
+.ho-count-item:nth-child(3) { grid-area: completed; }
+.ho-count-item:nth-child(4) { grid-area: accepted; }
 .ho-count-item { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--foreground); text-align: left; cursor: pointer; }
 .ho-count-item:hover { border-color: var(--orange); }
 .ho-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
