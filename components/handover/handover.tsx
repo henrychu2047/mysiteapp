@@ -792,7 +792,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <span>Defect 描述（快選）</span>
                 <div className="ho-chip-row">
                   {DEFECT_SUGGESTIONS.map(s => (
-                    <button key={s} className={`ho-suggest ${defectDraft.includes(s) ? 'active' : ''}`} onClick={() => setDefectDraft(prev => prev.includes(s) ? prev.filter(item => item !== s) : [...prev, s])}>
+                    <button key={s} className={`ho-suggest ${defectDraft.includes(s) ? 'on' : ''}`} onClick={() => setDefectDraft(prev => prev.includes(s) ? prev.filter(item => item !== s) : [...prev, s])}>
                       {s}
                     </button>
                   ))}
