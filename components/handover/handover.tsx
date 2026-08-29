@@ -403,7 +403,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   // ---------- 麵包屑 ----------
   const crumbs = () => {
-    const parts = ['制房移交']
+    const parts = [view === 'manage' ? '機房資料' : '制房移交']
     if ((view === 'flow-floor' || view === 'flow-room' || view === 'detail') && tower) parts.push(tower.name)
     if ((view === 'flow-room' || view === 'detail') && floor) parts.push(floor.name)
     if (view === 'detail' && room) parts.push(room.name)
@@ -463,7 +463,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       {view !== 'home' && view !== 'manage' && (
           <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
         )}
-        {view !== 'home' && <p className="ho-crumb">{crumbs()}</p>}
+        {view !== 'home' && view !== 'manage' && <p className="ho-crumb">{crumbs()}</p>}
 
         {/* ===== 首頁卡片 ===== */}
         {view === 'home' && (
@@ -540,7 +540,11 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         {/* ===== 機房資料 CRUD ===== */}
         {view === 'manage' && (
           <div className="ho-manage">
-            {/* 批量產生 */}
+            <div className="ho-heading ho-manage-heading">
+              <p className="eyebrow">ROOM DATA</p>
+              <h2>機房資料</h2>
+            </div>
+            {/* 批量產生 */
             <button className="ho-gen-toggle" onClick={() => setShowGen(v => !v)}>
               <Wand2 size={18} />
               <span>批量產生座數／樓層／機房</span>
@@ -1116,13 +1120,13 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           </span>
           Site Memo
         </button>
-        <button className="active" onClick={() => setView('home')}>
+        <button className={view !== 'manage' ? 'active' : ''} onClick={() => setView('home')}>
           <span>
             <ClipboardList size={20} />
           </span>
           制房移交
         </button>
-        <button className="active" onClick={() => setView('manage')}>
+        <button className={view === 'manage' ? 'active' : ''} onClick={() => setView('manage')}>
           <span>
             <Building2 size={20} />
           </span>
