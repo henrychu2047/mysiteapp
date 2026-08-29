@@ -20,6 +20,9 @@ import {
   Copy,
   Upload,
   Pencil,
+  ClipboardList,
+  Circle,
+  Info,
 } from 'lucide-react'
 import {
   type Memo,
@@ -42,7 +45,9 @@ import { MemoDocument } from './memo-document'
 
 type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
 
-export function SiteMemo({ onBack }: { onBack: () => void }) {
+type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
+
+export function SiteMemo({ onBack, onNavigate }: { onBack: () => void; onNavigate: (mode: AppMode) => void }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [ready, setReady] = useState(false)
@@ -264,20 +269,46 @@ export function SiteMemo({ onBack }: { onBack: () => void }) {
             )
           })}
         </div>
+
+        <div className="memo-op-grid">
+          <button className="memo-op-card" onClick={() => setOverlay('preview')}>
+            <Eye size={24} className="memo-card-icon" />
+            <strong>即時預覽</strong>
+            <span>A4 直身公函</span>
+          </button>
+          <button className="memo-op-card" onClick={() => setOverlay('export')}>
+            <Download size={24} className="memo-card-icon" />
+            <strong>導出 PDF</strong>
+            <span>列印或複製</span>
+          </button>
+          <button className="memo-op-card" onClick={() => setOverlay('history')}>
+            <History size={24} className="memo-card-icon" />
+            <strong>出函記錄</strong>
+            <span>{history.length} 份快照</span>
+          </button>
+        </div>
       </main>
 
-      <nav className="memo-actions">
-        <button onClick={() => setOverlay('preview')}>
-          <Eye size={20} />
-          即時預覽
+      <nav className="bottom-nav main-nav">
+        <button onClick={() => onNavigate('photo')}>
+          <span><Camera size={20} /></span>
+          拍照記錄
         </button>
-        <button onClick={() => setOverlay('export')}>
-          <Download size={20} />
-          導出 PDF
+        <button className="active" onClick={() => setModal(null)}>
+          <span><PenLine size={20} /></span>
+          Site Memo
         </button>
-        <button onClick={() => setOverlay('history')}>
-          <History size={20} />
-          出函記錄
+        <button onClick={() => onNavigate('handover')}>
+          <span><ClipboardList size={20} /></span>
+          制房移交
+        </button>
+        <button onClick={() => onNavigate('reserve')}>
+          <span><Circle size={20} /></span>
+          備用
+        </button>
+        <button onClick={() => onNavigate('about')}>
+          <span><Info size={20} /></span>
+          資料
         </button>
       </nav>
 

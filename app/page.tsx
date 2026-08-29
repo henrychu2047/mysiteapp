@@ -458,7 +458,7 @@ export default function Page() {
     } catch { alert('ZIP 備份檔案無法讀取') }
   }
 
-  if (appMode === 'memo') return <SiteMemo onBack={() => setAppMode('photo')} />
+  if (appMode === 'memo') return <SiteMemo onBack={() => setAppMode('photo')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } }} />
 
   return <>
     {isOffline && <div className="offline-banner" role="status">��前為離線模式，資料會儲存在本機</div>}
