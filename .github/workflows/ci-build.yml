@@ -22,14 +22,8 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - name: Install pnpm if missing
-        run: |
-          if ! command -v pnpm >/dev/null 2>&1; then
-            echo "pnpm not found, installing pnpm@7"
-            npm install -g pnpm@7 || npm install -g pnpm@7 --force
-          else
-            echo "pnpm already installed, skipping install"
-          fi
+      - name: Install pnpm (force overwrite)
+        run: npm install -g pnpm@7 --force
 
       - name: Verify pnpm
         run: pnpm --version
