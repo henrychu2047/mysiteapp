@@ -3,7 +3,7 @@
 :root { --background: #eef1f3; --foreground: #15212b; --card: #ffffff; --muted: #687681; --line: #d6dde1; --navy: #15212b; --orange: #f26b38; --orange-soft: #fff0e9; --blue: #2477a9; --radius: 14px; }
 @theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-border: var(--line); --color-muted-foreground: var(--muted); --color-primary: var(--orange); --color-primary-foreground: #fff; --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Hiragino Sans GB', 'Noto Sans CJK TC', sans-serif; }
 * { box-sizing: border-box; }
-html { background: var(--background); }
+html { background: var(--background); scrollbar-gutter: stable; }
 .offline-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 200; padding: 8px 16px; background: var(--navy); color: #fff; text-align: center; font-size: 13px; }
 body { margin: 0; background: var(--background); color: var(--foreground); font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Hiragino Sans GB', 'Noto Sans CJK TC', sans-serif; font-size: 16px; overflow-x: hidden; }
 button, input { font: inherit; }
