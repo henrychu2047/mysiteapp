@@ -6,7 +6,7 @@ import JSZip from 'jszip'
 import { Camera, PenLine, ClipboardList, Building2, Info } from 'lucide-react'
 import { SiteMemo } from '@/components/site-memo/site-memo'
 import { Handover } from '@/components/handover/handover'
-import { loadAllHandover, saveAllHandover, type Tower } from '@/components/handover/handover-data'
+import { loadAllHandover, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
 
 type Photo = { id: string; src: string; cleanSrc: string; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string }
 type Category = { name: string; icon: string }
@@ -460,7 +460,7 @@ export default function Page() {
         for (const entry of entries) { const blob = await entry.async('blob'); const src = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob) }); restored.push({ id: entry.name.split('/').pop()!.replace(/\\.jpg$/, ''), src, cleanSrc: src, category: project.settings?.categories?.[0]?.name || '其它', tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id }) }
       }
       const handoverFile = zip.file('handover.json')
-      if (handoverFile) { try { await saveAllHandover(JSON.parse(await handoverFile.async('text')) as Record<string, Tower[]>) } catch { /* 制房移交資料格式不正確時略過 */ } }
+      if (handoverFile) { try { await saveAllHandover(JSON.parse(await handoverFile.async('text')) as Record<string, HandoverProjectData | Tower[]>) } catch { /* 制房移交資料格式不正確時略過 */ } }
       setProjects(data.projects); setCurrentProjectId(data.currentProjectId || data.projects[0]?.id || DEFAULT_PROJECT.id); setPhotos(restored); alert('ZIP 備份已還原')
     } catch { alert('ZIP 備份檔案無法讀取') }
   }

@@ -9,6 +9,7 @@ import {
   Info,
   Building2,
   ClipboardCheck,
+  UserRound,
   BarChart3,
   DatabaseBackup,
   Plus,
@@ -32,6 +33,7 @@ import {
   DEFECT_SUGGESTIONS,
   buildFloorNames,
   createRoomHandover,
+  createResponsiblePerson,
   loadHandover,
   saveHandover,
   clearAllHandover,
@@ -48,6 +50,7 @@ import {
   type RoomStatus,
   type DefectStatus,
   type RoomHandover,
+  type ResponsiblePerson,
 } from './handover-data'
 
 type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
@@ -62,12 +65,14 @@ type Props = {
   onImportBackup: (file: File | undefined) => void | Promise<void>
 }
 
-type View = 'home' | 'manage' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'backup'
+type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'backup'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 
 export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onExportBackup, onImportBackup }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
+  const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
+  const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [loaded, setLoaded] = useState(false)
   const [view, setView] = useState<View>(initialView)
   const [toast, setToast] = useState('')
@@ -108,12 +113,16 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   useEffect(() => {
     setLoaded(false)
     loadHandover(projectId)
-      .then(t => {
-        setTowers(t)
+      .then(data => {
+        setTowers(data.towers)
+        setResponsiblePerson(data.responsiblePerson)
+        setResponsibleDraft(data.responsiblePerson)
         setLoaded(true)
       })
       .catch(() => {
         setTowers([])
+        setResponsiblePerson(createResponsiblePerson())
+        setResponsibleDraft(createResponsiblePerson())
         setLoaded(true)
       })
     setView('home')
@@ -124,8 +133,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   useEffect(() => {
     if (!loaded) return
-    saveHandover(projectId, towers).catch(() => undefined)
-  }, [towers, loaded, projectId])
+    saveHandover(projectId, { towers, responsiblePerson }).catch(() => undefined)
+  }, [towers, responsiblePerson, loaded, projectId])
 
   const flash = (msg: string) => {
     setToast(msg)
@@ -275,17 +284,16 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       handover: {
         ...r.handover,
         date: draft.date,
-        personName: draft.personName,
-        personCompany: draft.personCompany,
-        personDepartment: draft.personDepartment,
-        personPosition: draft.personPosition,
-        personContractor: draft.personContractor,
         status: draft.status,
         note: draft.note,
         updatedAt: nowIso(),
       },
     }))
     flash('已儲存')
+  }
+  const saveResponsiblePerson = () => {
+    setResponsiblePerson(responsibleDraft)
+    flash('負責人資料已儲存')
   }
   const addRoomPhotos = async (files: FileList | null) => {
     if (!files || !files.length || !tower || !floor || !room || !selTower || !selFloor || !selRoom) return
@@ -373,6 +381,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     if (!confirm('此操作無法復原。請再次確認是否清除全部資料。')) return
     await clearAllHandover().catch(() => undefined)
     setTowers([])
+    setResponsiblePerson(createResponsiblePerson())
+    setResponsibleDraft(createResponsiblePerson())
     flash('已清除全部資料')
   }
 
@@ -419,7 +429,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       <main className="ho-body">
         {view !== 'home' && <p className="ho-crumb">{crumbs()}</p>}
 
-        {/* ===== 首頁 4 卡 ===== */}
+        {/* ===== 首頁卡片 ===== */}
         {view === 'home' && (
           <>
             <div className="ho-heading">
@@ -435,7 +445,18 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               >
                 <ClipboardCheck size={30} className="ho-home-icon" />
                 <strong>制房移交狀況</strong>
-                <span>日期、責任人、狀態、相片、Defect</span>
+                <span>日期、狀態、相片、Defect</span>
+              </button>
+              <button
+                className="ho-home-card"
+                onClick={() => {
+                  setResponsibleDraft(responsiblePerson)
+                  setView('responsible-person')
+                }}
+              >
+                <UserRound size={30} className="ho-home-icon" />
+                <strong>負責人</strong>
+                <span>Project 共用負責人資料</span>
               </button>
               <button className="ho-home-card" onClick={() => setView('stats')}>
                 <BarChart3 size={30} className="ho-home-icon" />
@@ -449,6 +470,40 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               </button>
             </div>
           </>
+        )}
+
+        {view === 'responsible-person' && (
+          <div className="ho-detail">
+            <div className="ho-detail-title">
+              <h3>負責人</h3>
+            </div>
+            <p className="ho-form-hint">此負責人資料適用於目前 Project 的所有機房。</p>
+            <div className="ho-field-group">
+              <label className="ho-field">
+                <span>姓名</span>
+                <input value={responsibleDraft.name} onChange={e => setResponsibleDraft({ ...responsibleDraft, name: e.target.value })} placeholder="陳大文" />
+              </label>
+              <label className="ho-field">
+                <span>公司名稱</span>
+                <input value={responsibleDraft.company} onChange={e => setResponsibleDraft({ ...responsibleDraft, company: e.target.value })} placeholder="ABC Engineering" />
+              </label>
+              <label className="ho-field">
+                <span>承辦商名稱</span>
+                <input value={responsibleDraft.contractor} onChange={e => setResponsibleDraft({ ...responsibleDraft, contractor: e.target.value })} placeholder="機電承辦商" />
+              </label>
+              <div className="ho-field-two">
+                <label className="ho-field">
+                  <span>部門</span>
+                  <input value={responsibleDraft.department} onChange={e => setResponsibleDraft({ ...responsibleDraft, department: e.target.value })} />
+                </label>
+                <label className="ho-field">
+                  <span>職位</span>
+                  <input value={responsibleDraft.position} onChange={e => setResponsibleDraft({ ...responsibleDraft, position: e.target.value })} />
+                </label>
+              </div>
+            </div>
+            <button className="ho-save-btn" onClick={saveResponsiblePerson}>儲存負責人資料</button>
+          </div>
         )}
 
         {/* ===== 機房資料 CRUD ===== */}
@@ -749,32 +804,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               <input type="date" value={draft.date} onChange={e => setDraft({ ...draft, date: e.target.value })} />
             </label>
 
-            <div className="ho-field-group">
-              <p className="ho-group-label">責任人</p>
-              <label className="ho-field">
-                <span>姓名</span>
-                <input value={draft.personName} onChange={e => setDraft({ ...draft, personName: e.target.value })} placeholder="陳大文" />
-              </label>
-              <label className="ho-field">
-                <span>公司名稱</span>
-                <input value={draft.personCompany} onChange={e => setDraft({ ...draft, personCompany: e.target.value })} placeholder="ABC Engineering" />
-              </label>
-              <label className="ho-field">
-                <span>承辦商名稱</span>
-                <input value={draft.personContractor} onChange={e => setDraft({ ...draft, personContractor: e.target.value })} placeholder="機電承辦商" />
-              </label>
-              <div className="ho-field-two">
-                <label className="ho-field">
-                  <span>部門</span>
-                  <input value={draft.personDepartment} onChange={e => setDraft({ ...draft, personDepartment: e.target.value })} />
-                </label>
-                <label className="ho-field">
-                  <span>職位</span>
-                  <input value={draft.personPosition} onChange={e => setDraft({ ...draft, personPosition: e.target.value })} />
-                </label>
-              </div>
-            </div>
-
             <div className="ho-field">
               <span>移交狀態</span>
               <div className="ho-status-picker">
@@ -974,8 +1003,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                     if (!file) return
                     if (!confirm('匯入資料會取代目前 App 的全部資料。是否繼續？')) return
                     await onImportBackup(file)
-                    const t = await loadHandover(projectId).catch(() => [])
-                    setTowers(t)
+                    const data = await loadHandover(projectId).catch(() => ({ towers: [], responsiblePerson: createResponsiblePerson() }))
+                    setTowers(data.towers)
+                    setResponsiblePerson(data.responsiblePerson)
+                    setResponsibleDraft(data.responsiblePerson)
                     flash('資料已成功匯入。')
                   }}
                 />
