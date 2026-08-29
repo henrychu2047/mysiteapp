@@ -176,6 +176,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   // Export any memo to PDF via html2pdf.js using the hidden render target.
   useEffect(() => {
     if (!pendingExport || !exportRef.current) return
+    const exportTarget = exportRef.current
     let cancelled = false
     const run = async () => {
       const html2pdf = (await import('html2pdf.js')).default
@@ -188,9 +189,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           image: { type: 'jpeg', quality: 0.96 },
           html2canvas: { scale: 2, useCORS: true },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] },
         })
-        .from(exportRef.current)
+        .from(exportTarget)
         .save()
       if (!cancelled) setPendingExport(null)
     }
