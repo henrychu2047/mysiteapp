@@ -430,6 +430,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     s,
     n: towers.reduce((sum, t) => sum + t.floors.reduce((a, f) => a + f.rooms.filter(r => r.handover.status === s).length, 0), 0),
   }))
+  const statusCards = ['未收', '拒絕簽收(有Defect)', '已收(有Defect)', '已完成']
+    .map(s => statusCounts.find(item => item.s === s))
+    .filter((item): item is (typeof statusCounts)[number] => Boolean(item))
   const selectedStatus = statusCounts.find(({ s }) => s === selectedStatusFilter)?.s || null
   const statusGroups = selectedStatus
     ? towers
@@ -969,7 +972,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
             <p className="ho-group-label">機房狀態統計</p>
             <div className="ho-count-grid">
-              {statusCounts.map(({ s, n }) => (
+              {statusCards.map(({ s, n }) => (
                 <button
                   className="ho-count-item"
                   key={s}
