@@ -58,7 +58,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .profile-card { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
 .profile-avatar { width: 56px; height: 56px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--orange); color: #fff; font-weight: 700; font-size: 20px; }
 .profile-meta { display: flex; flex-direction: column; gap: 0; line-height: 1.25; }
-.profile-meta strong { font-size: 14px; font-weight: 400; }
+.profile-meta strong { font-size: 21px; font-weight: 400; }
 .profile-meta span { color: var(--muted); font-size: 14px; font-weight: 400; }
 .profile-meta .profile-email { font-size: 14px; font-weight: 400; color: var(--muted); text-decoration: none; margin-top: 0; }
 @media (min-width: 700px) { .content { padding: 35px 28px; }.category-card { min-height: 145px; padding: 16px; }.capture-button { min-height: 120px; } }
