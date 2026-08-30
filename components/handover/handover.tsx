@@ -456,7 +456,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const statusRoomCount = statusGroups.reduce((sum, group) => sum + group.floors.reduce((floorSum, floor) => floorSum + floor.rooms.length, 0), 0)
 
   return (
-    <div className="ho-app">
+    <div className="app-shell ho-app">
       <header className="topbar">
         <div className="brand-mark" aria-hidden="true">▦</div>
         <button className="project-trigger" onClick={goBack} aria-label="返回並選擇 Project">

@@ -263,7 +263,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   ]
 
   return (
-    <div className="memo-app">
+    <div className="app-shell memo-app">
       <header className="topbar">
         <div className="brand-mark" aria-hidden="true">▦</div>
         <button className="project-trigger" onClick={onBack} aria-label="返回並選擇 Project">
