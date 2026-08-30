@@ -664,7 +664,7 @@ export default function Page() {
     } catch { alert('ZIP 備份檔案無法讀取') }
   }
 
-  if (appMode === 'notebook') return <Notebook projectId={currentProject.id} onBack={() => setAppMode('home')} />
+  if (appMode === 'notebook') return <Notebook projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />
 
   if (appMode === 'memo') return <SiteMemo projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('settings'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('settings'); setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } }} />
 
