@@ -106,6 +106,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [genFloorSuffix, setGenFloorSuffix] = useState('')
   const [genFloorCompact, setGenFloorCompact] = useState(false)
   const [genTowerNA, setGenTowerNA] = useState(false)
+  const [genRoomSuffix, setGenRoomSuffix] = useState('')
   const [genRooms, setGenRooms] = useState<string[]>([])
   const [genCustom, setGenCustom] = useState('')
 
@@ -324,7 +325,11 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     if (genFCount < 1) return flash('請輸入樓層數')
     if (!genRooms.length) return flash('請至少選擇一個機房')
     const floorNames = buildFloorNames(genFCount, genStartGF, genFloorPrefix.trim(), genFloorSuffix.trim(), genFloorCompact).map(name => name.trim().replace(/\s+/g, ' '))
-    const roomNames = Array.from(new Map(genRooms.map(name => [normalizeName(name), name.trim().replace(/\s+/g, ' ')])).values())
+    const roomSuffix = genRoomSuffix.trim()
+    const roomNames = Array.from(new Map(genRooms.map(name => {
+      const formatted = `${name.trim().replace(/\s+/g, ' ')}${roomSuffix}`
+      return [normalizeName(formatted), formatted]
+    })).values())
     const generatedNames = genTowerNA ? Array.from({ length: genTCount }, () => 'N/A') : Array.from({ length: genTCount }, (_, index) => `${prefix} ${index + 1}`)
     const existingTowerKeys = new Set(towers.map(t => normalizeName(t.name)))
     const duplicateTowerCount = generatedNames.filter(name => existingTowerKeys.has(normalizeName(name))).length
@@ -686,6 +691,11 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                     </button>
                   ))}
                 </div>
+                <label className="ho-field">
+                  <span>機房名稱後綴</span>
+                  <input value={genRoomSuffix} onChange={e => setGenRoomSuffix(e.target.value)} placeholder="例如 -A" />
+                </label>
+                <p className="ho-gen-hint">最終名稱：{genRooms.length ? `${genRooms[0]}${genRoomSuffix.trim()}${genRooms.length > 1 ? `、${genRooms[1]}${genRoomSuffix.trim()}` : ''}` : '—'}</p>
                 <div className="ho-add-row small">
                   <input
                     value={genCustom}
