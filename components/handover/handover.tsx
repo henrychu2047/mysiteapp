@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Wand2,
   Check,
+  Download,
 } from 'lucide-react'
 import {
   ROOM_STATUSES,
@@ -52,13 +53,13 @@ type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 type Props = {
   onBack: () => void
   onNavigate: (mode: AppMode) => void
-  initialView?: 'home' | 'manage'
+  initialView?: 'home' | 'settings' | 'manage'
   projectId: string
   projectName: string
   onOpenPhotoSettings?: () => void
 }
 
-type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
+type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 const normalizeName = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
@@ -404,7 +405,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   // ---------- 麵包屑 ----------
   const crumbs = () => {
-    const parts = [view === 'manage' ? '機房資料' : '制房移交']
+    const parts = [view === 'settings' ? '設定' : view === 'manage' ? '機房資料' : '制房移交']
     if ((view === 'flow-floor' || view === 'flow-room' || view === 'detail') && tower) parts.push(tower.name)
     if ((view === 'flow-room' || view === 'detail') && floor) parts.push(floor.name)
     if (view === 'detail' && room) parts.push(room.name)
@@ -413,7 +414,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   const goBack = () => {
     if (view === 'home') return onBack()
-    if (view === 'status-list') return setView('stats')
+        if (view === 'settings') return setView('home')
+        if (view === 'status-list') return setView('stats')
     if (view === 'detail') return setView('flow-room')
     if (view === 'flow-room') return setView('flow-floor')
     if (view === 'flow-floor') return setView('flow-tower')
@@ -457,15 +459,15 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         <button className="project-trigger" onClick={goBack} aria-label="返回並選擇 Project">
           <strong>{projectName}</strong><span>⌄</span>
         </button>
-        <strong className="ho-page-title">{view === 'manage' ? '機房資料' : '制房移交'}</strong>
+        <strong className="ho-page-title">{view === 'settings' ? '設定' : view === 'manage' ? '機房資料' : '制房移交'}</strong>
       </header>
 
       <main className="ho-body">
-      {view !== 'home' && view !== 'manage' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
-      {view !== 'home' && view !== 'manage' && (
+      {view !== 'home' && view !== 'manage' && view !== 'settings' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
+      {view !== 'home' && view !== 'manage' && view !== 'settings' && (
           <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
         )}
-        {view !== 'home' && view !== 'manage' && <p className="ho-crumb">{crumbs()}</p>}
+        {view !== 'home' && view !== 'manage' && view !== 'settings' && <p className="ho-crumb">{crumbs()}</p>}
 
         {/* ===== 首頁卡片 ===== */}
         {view === 'home' && (
@@ -539,12 +541,30 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           </div>
         )}
 
+        {/* ===== 設定首頁 ===== */}
+        {view === 'settings' && (
+          <div className="ho-manage">
+            <div className="ho-heading ho-manage-heading">
+              <p className="eyebrow">APP SETTINGS</p>
+              <h2>設定</h2>
+            </div>
+            <div className="ho-home-grid">
+              <button className="ho-home-card" onClick={onOpenPhotoSettings}><Pencil size={30} className="ho-home-icon" /><strong>設定</strong><span>標籤類別及選項</span></button>
+              <button className="ho-home-card" onClick={() => setView('manage')}><Building2 size={30} className="ho-home-icon" /><strong>機房資料</strong><span>座數、樓層及機房</span></button>
+              <button className="ho-home-card" onClick={onOpenPhotoSettings}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>管理安全選項</span></button>
+              <button className="ho-home-card" onClick={onOpenPhotoSettings}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>管理收貨選項</span></button>
+              <button className="ho-home-card" onClick={onOpenPhotoSettings}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>管理一般記錄選項</span></button>
+              <button className="ho-home-card" onClick={() => onNavigate('about')}><Download size={30} className="ho-home-icon" /><strong>備份</strong><span>匯出或還原完整資料</span></button>
+            </div>
+          </div>
+        )}
+
         {/* ===== 機房資料 CRUD ===== */}
         {view === 'manage' && (
           <div className="ho-manage">
             <div className="ho-heading ho-manage-heading">
               <p className="eyebrow">ROOM DATA</p>
-              <div className="ho-heading-row"><h2>機房資料</h2><button type="button" className="ho-settings-button" onClick={onOpenPhotoSettings}>設定</button></div>
+                          <h2>機房資料</h2>
             </div>
             {/* 批量產生 */}
             <button className="ho-gen-toggle" onClick={() => setShowGen(v => !v)}>
@@ -1112,7 +1132,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       <nav className="bottom-nav main-nav">
         <button onClick={() => onNavigate('home')}><span>⌂</span>首頁</button>
         <button onClick={() => onNavigate('photo')}><span>▧</span>相簿</button>
-        <button className={view === 'manage' ? 'active' : ''} onClick={() => setView('manage')}><span><Building2 size={20} /></span>機房資料</button>
+        <button className={view === 'settings' ? 'active' : ''} onClick={() => setView('settings')}><span><Building2 size={20} /></span>設定</button>
         <button onClick={() => onNavigate('about')}><span><Info size={20} /></span>資料</button>
       </nav>
     </div>
