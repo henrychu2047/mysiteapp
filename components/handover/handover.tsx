@@ -113,6 +113,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [standaloneRoomSuffixStart, setStandaloneRoomSuffixStart] = useState('')
   const [standaloneRoomSuffixEnd, setStandaloneRoomSuffixEnd] = useState('')
   const [showStandalone, setShowStandalone] = useState(false)
+  const [standaloneMemoryLoaded, setStandaloneMemoryLoaded] = useState(false)
   const [edit, setEdit] = useState<{ type: 'tower' | 'floor' | 'room'; towerId: string; floorId?: string; roomId?: string; name: string } | null>(null)
 
   // 批量產生
@@ -141,6 +142,31 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const roomPhotoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setStandaloneMemoryLoaded(false)
+    try {
+      const saved = localStorage.getItem(`handover-standalone-draft-${projectId}`)
+      if (saved) {
+        const draft = JSON.parse(saved) as Partial<{ towerId: string; floorId: string; room: string; suffixStart: string; suffixEnd: string }>
+        setStandaloneTowerId(draft.towerId || '')
+        setStandaloneFloorId(draft.floorId || '')
+        setStandaloneRoom(draft.room || '')
+        setStandaloneRoomSuffixStart(draft.suffixStart || '')
+        setStandaloneRoomSuffixEnd(draft.suffixEnd || '')
+      } else {
+        setStandaloneTowerId('')
+        setStandaloneFloorId('')
+        setStandaloneRoom('')
+        setStandaloneRoomSuffixStart('')
+        setStandaloneRoomSuffixEnd('')
+      }
+    } catch {
+      setStandaloneTowerId('')
+      setStandaloneFloorId('')
+      setStandaloneRoom('')
+      setStandaloneRoomSuffixStart('')
+      setStandaloneRoomSuffixEnd('')
+    }
+    setStandaloneMemoryLoaded(true)
     setLoaded(false)
     loadHandover(projectId)
       .then(data => {
@@ -160,6 +186,17 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     setSelFloor(null)
     setSelRoom(null)
   }, [projectId, initialView])
+
+  useEffect(() => {
+    if (!standaloneMemoryLoaded) return
+    localStorage.setItem(`handover-standalone-draft-${projectId}`, JSON.stringify({
+      towerId: standaloneTowerId,
+      floorId: standaloneFloorId,
+      room: standaloneRoom,
+      suffixStart: standaloneRoomSuffixStart,
+      suffixEnd: standaloneRoomSuffixEnd,
+    }))
+  }, [projectId, standaloneMemoryLoaded, standaloneTowerId, standaloneFloorId, standaloneRoom, standaloneRoomSuffixStart, standaloneRoomSuffixEnd])
 
   useEffect(() => {
     if (!onStructureChange) return
@@ -759,11 +796,12 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                   <label className="ho-field"><span>名稱後綴開始</span><input value={standaloneRoomSuffixStart} onChange={e => setStandaloneRoomSuffixStart(e.target.value)} placeholder="例如 1 或 N1" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
                   <label className="ho-field"><span>名稱後綴結束</span><input value={standaloneRoomSuffixEnd} onChange={e => setStandaloneRoomSuffixEnd(e.target.value)} placeholder="例如 4 或 N4" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
                 </div>
-                <div className="ho-add-row small"><span className="ho-gen-hint">最終名稱：{standaloneRoom.trim() ? expandRoomSuffixRange(standaloneRoomSuffixStart, standaloneRoomSuffixEnd).slice(0, 4).map(suffix => `${standaloneRoom.trim()}${suffix ? ` ${suffix}` : ''}`).join('、') : '—'}</span><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
                 <span className="ho-group-label">機房名稱快選</span>
                 <div className="ho-chip-row">
                   {ROOM_NAME_SUGGESTIONS.map(name => <button type="button" key={name} className={`ho-suggest ${standaloneRoom === name ? 'on' : ''}`} onClick={() => setStandaloneRoom(name)}>{standaloneRoom === name && <Check size={12} />}{name}</button>)}
                 </div>
+                <p className="ho-gen-hint">最終名稱：{standaloneRoom.trim() ? expandRoomSuffixRange(standaloneRoomSuffixStart, standaloneRoomSuffixEnd).slice(0, 4).map(suffix => `${standaloneRoom.trim()}${suffix ? ` ${suffix}` : ''}`).join('、') : '—'}</p>
+                <button className="ho-save-btn standalone-add-btn" onClick={addStandaloneRoom} disabled={!standaloneTowerId || !standaloneFloorId || !standaloneRoom.trim()}><Plus size={16} />新增機房</button>
                 <p className="ho-gen-note">可指定機房所屬座數及樓層，不必使用批量產生；也可按上方快選直接填入名稱。</p>
               </div>
             )}

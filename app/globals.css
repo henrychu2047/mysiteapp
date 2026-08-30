@@ -259,6 +259,7 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .ho-status-picker { display: flex; flex-wrap: wrap; gap: 8px; }
 .ho-status-opt { min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: var(--foreground); font-size: 13px; font-weight: 700; }
 .ho-save-btn { min-height: 52px; border: 0; border-radius: 12px; background: var(--orange); color: #fff; font-size: 16px; font-weight: 700; }
+.standalone-add-btn { width: 100%; margin-top: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .ho-section { display: grid; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
 .ho-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ho-section-head strong { font-size: 16px; }
