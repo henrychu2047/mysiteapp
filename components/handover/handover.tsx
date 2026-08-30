@@ -92,6 +92,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [standaloneTowerId, setStandaloneTowerId] = useState('')
   const [standaloneFloorId, setStandaloneFloorId] = useState('')
   const [standaloneRoom, setStandaloneRoom] = useState('')
+  const [standaloneRoomSuffix, setStandaloneRoomSuffix] = useState('')
   const [showStandalone, setShowStandalone] = useState(false)
   const [edit, setEdit] = useState<{ type: 'tower' | 'floor' | 'room'; towerId: string; floorId?: string; roomId?: string; name: string } | null>(null)
 
@@ -237,8 +238,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   }
 
   const addStandaloneRoom = () => {
-    const name = standaloneRoom.trim()
-    if (!standaloneTowerId || !standaloneFloorId || !name) return flash('請選擇座數、樓層並輸入機房名稱')
+    const baseName = standaloneRoom.trim()
+    const name = `${baseName}${standaloneRoomSuffix.trim()}`
+    if (!standaloneTowerId || !standaloneFloorId || !baseName) return flash('請選擇座數、樓層並輸入機房名稱')
     const room: Room = { id: uid(), name, handover: createRoomHandover() }
     setTowers(prev => prev.map(t => t.id !== standaloneTowerId ? t : {
       ...t,
@@ -248,6 +250,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       }),
     }))
     setStandaloneRoom('')
+    setStandaloneRoomSuffix('')
     flash('已新增機房')
   }
   const addRoomTo = (towerId: string, floorId: string) => {
@@ -716,7 +719,11 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                   <label className="ho-field"><span>座數</span><select value={standaloneTowerId} onChange={e => selectStandaloneTower(e.target.value)}><option value="">選擇座數</option><option value="__NA__">N/A</option>{towers.map(tower => <option key={tower.id} value={tower.id}>{tower.name}</option>)}</select></label>
                   <label className="ho-field"><span>樓層</span><select value={standaloneFloorId} onChange={e => setStandaloneFloorId(e.target.value)} disabled={!standaloneTowerId}><option value="">選擇樓層</option>{towers.find(tower => tower.id === standaloneTowerId)?.floors.map(floor => <option key={floor.id} value={floor.id}>{floor.name}</option>)}</select></label>
                 </div>
-                <div className="ho-add-row small"><input value={standaloneRoom} onChange={e => setStandaloneRoom(e.target.value)} placeholder="輸入機房名稱，例如 Pump Room" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
+                <div className="ho-gen-row">
+                  <label className="ho-field"><span>機房名稱</span><input value={standaloneRoom} onChange={e => setStandaloneRoom(e.target.value)} placeholder="例如 Pump Room" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
+                  <label className="ho-field"><span>名稱後綴</span><input value={standaloneRoomSuffix} onChange={e => setStandaloneRoomSuffix(e.target.value)} placeholder="例如 -A" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
+                </div>
+                <div className="ho-add-row small"><span className="ho-gen-hint">最終名稱：{standaloneRoom.trim() ? `${standaloneRoom.trim()}${standaloneRoomSuffix.trim()}` : '—'}</span><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
                 <span className="ho-group-label">機房名稱快選</span>
                 <div className="ho-chip-row">
                   {ROOM_NAME_SUGGESTIONS.map(name => <button type="button" key={name} className={`ho-suggest ${standaloneRoom === name ? 'on' : ''}`} onClick={() => setStandaloneRoom(name)}>{standaloneRoom === name && <Check size={12} />}{name}</button>)}
