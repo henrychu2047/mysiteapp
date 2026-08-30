@@ -457,7 +457,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   return (
     <div className="ho-app">
-      <header className="ho-topbar">
+      <header className="topbar">
         <div className="brand-mark" aria-hidden="true">▦</div>
         <button className="project-trigger" onClick={goBack} aria-label="返回並選擇 Project">
           <strong>{projectName}</strong><span>⌄</span>
