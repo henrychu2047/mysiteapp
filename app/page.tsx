@@ -24,11 +24,12 @@ const defaultCategories: Category[] = [
   { name: '消防', icon: '△' },
   { name: '制櫃', icon: '▤' },
   { name: '發電機', icon: '◈' },
-  { name: '建築物料', icon: '▥' },
+  { name: '建築', icon: '▥' },
+  { name: '物料', icon: '▦' },
   { name: '機房移交', icon: '☑' },
 ]
 const ensureDefaultCategories = (categories: Category[] | undefined) => {
-  const existing = categories || []
+  const existing = (categories || []).filter(category => category.name !== '建築物料')
   return [...existing, ...defaultCategories.filter(category => !existing.some(item => item.name === category.name))]
 }
 const tagOptions: Record<string, string[]> = {
@@ -590,10 +591,7 @@ export default function Page() {
     }
   }
   const updateApp = async () => {
-    if (backupBusy) return
     try {
-      const backedUp = await exportLocalBackup()
-      if (!backedUp) return
       const registration = await navigator.serviceWorker?.getRegistration('/sw.js')
       if (!registration) { window.location.reload(); return }
       registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
