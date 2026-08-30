@@ -58,6 +58,7 @@ type Props = {
   projectName: string
   onOpenPhotoSettings?: () => void
   onPhotoSettingsBack?: () => void
+  onUpdateApp?: () => void
 }
 
 type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
@@ -65,7 +66,7 @@ type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower'
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 const normalizeName = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onUpdateApp }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -557,6 +558,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               <button className="ho-home-card" onClick={onOpenPhotoSettings}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>管理收貨選項</span></button>
               <button className="ho-home-card" onClick={onOpenPhotoSettings}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>管理一般記錄選項</span></button>
               <button className="ho-home-card" onClick={() => onNavigate('backup')}><Download size={30} className="ho-home-icon" /><strong>備份</strong><span>匯出或還原完整資料</span></button>
+              <button className="ho-home-card" onClick={onUpdateApp}><Wand2 size={30} className="ho-home-icon" /><strong>更新 App</strong><span>檢查並套用最新版本</span></button>
             </div>
           </div>
         )}
