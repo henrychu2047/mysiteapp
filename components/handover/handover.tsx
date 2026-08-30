@@ -57,6 +57,7 @@ type Props = {
   projectId: string
   projectName: string
   onOpenPhotoSettings?: () => void
+  onPhotoSettingsBack?: () => void
 }
 
 type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
@@ -64,7 +65,7 @@ type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower'
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 const normalizeName = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -415,6 +416,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const goBack = () => {
     if (view === 'home') return onBack()
         if (view === 'settings') return setView('home')
+        if (view === 'manage') return setView('settings')
         if (view === 'status-list') return setView('stats')
     if (view === 'detail') return setView('flow-room')
     if (view === 'flow-room') return setView('flow-floor')

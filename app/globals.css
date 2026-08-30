@@ -54,6 +54,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .info-empty strong { font-size: 18px; color: var(--foreground); }
 .about-block { margin-bottom: 24px; }
 .about-block h3 { font-size: 17px; margin-bottom: 8px; }
+.about-block h3.about-title { font-size: 26px; }
 .about-block p { color: var(--muted); line-height: 1.6; font-size: 15px; }
 .profile-card { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
 .profile-avatar { width: 56px; height: 56px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--orange); color: #fff; font-weight: 700; font-size: 20px; }
