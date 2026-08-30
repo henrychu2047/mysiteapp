@@ -46,7 +46,7 @@ import { MemoDocument } from './memo-document'
 
 type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
 
-type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
+type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
 
 export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)

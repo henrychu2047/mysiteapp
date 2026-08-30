@@ -48,7 +48,7 @@ import {
   type ResponsiblePerson,
 } from './handover-data'
 
-type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
+type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
 
 type Props = {
   onBack: () => void
@@ -554,7 +554,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               <button className="ho-home-card" onClick={onOpenPhotoSettings}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>管理安全選項</span></button>
               <button className="ho-home-card" onClick={onOpenPhotoSettings}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>管理收貨選項</span></button>
               <button className="ho-home-card" onClick={onOpenPhotoSettings}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>管理一般記錄選項</span></button>
-              <button className="ho-home-card" onClick={() => onNavigate('about')}><Download size={30} className="ho-home-icon" /><strong>備份</strong><span>匯出或還原完整資料</span></button>
+              <button className="ho-home-card" onClick={() => onNavigate('backup')}><Download size={30} className="ho-home-icon" /><strong>備份</strong><span>匯出或還原完整資料</span></button>
             </div>
           </div>
         )}
