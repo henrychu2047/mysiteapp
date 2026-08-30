@@ -56,7 +56,7 @@ type Props = {
   initialView?: 'home' | 'settings' | 'manage'
   projectId: string
   projectName: string
-  onOpenPhotoSettings?: () => void
+  onOpenPhotoSettings?: (label?: string) => void
   onPhotoSettingsBack?: () => void
   onUpdateApp?: () => void
 }
@@ -553,9 +553,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             <div className="ho-home-grid">
               <button className="ho-home-card" onClick={onOpenPhotoSettings}><Pencil size={30} className="ho-home-icon" /><strong>設定</strong><span>標籤類別及選項</span></button>
               <button className="ho-home-card" onClick={() => setView('manage')}><Building2 size={30} className="ho-home-icon" /><strong>機房資料</strong><span>座數、樓層及機房</span></button>
-              <button className="ho-home-card" onClick={onOpenPhotoSettings}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>管理安全選項</span></button>
-              <button className="ho-home-card" onClick={onOpenPhotoSettings}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>管理收貨選項</span></button>
-              <button className="ho-home-card" onClick={onOpenPhotoSettings}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>管理一般記錄選項</span></button>
+              <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('安全')}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>管理安全選項</span></button>
+                            <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('收貨相關')}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>管理收貨選項</span></button>
+                            <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('事項')}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>管理事項選項</span></button>
               <button className="ho-home-card" onClick={() => onNavigate('backup')}><Download size={30} className="ho-home-icon" /><strong>備份</strong><span>匯出或還原完整資料</span></button>
               <button className="ho-home-card" onClick={onUpdateApp}><Wand2 size={30} className="ho-home-icon" /><strong>更新 App</strong><span>檢查並套用最新版本</span></button>
             </div>
