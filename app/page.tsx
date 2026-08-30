@@ -22,14 +22,22 @@ const defaultCategories: Category[] = [
   { name: '電器', icon: '⌁' },
   { name: '冷氣', icon: '◇' },
   { name: '消防', icon: '△' },
-  { name: '制櫃', icon: '▤' },
-  { name: '發電機', icon: '◈' },
+  { name: '安全', icon: '◈' },
+  { name: '制櫃/發電機', icon: '▤' },
   { name: '建築', icon: '▥' },
   { name: '物料', icon: '▦' },
   { name: '機房移交', icon: '☑' },
 ]
+const normalizeCategoryName = (name: string) => {
+  if (name === '發電機') return '安全'
+  if (name === '制櫃') return '制櫃/發電機'
+  return name
+}
 const ensureDefaultCategories = (categories: Category[] | undefined) => {
-  const existing = (categories || []).filter(category => category.name !== '建築物料')
+  const existing = (categories || [])
+    .filter(category => category.name !== '建築物料')
+    .map(category => ({ ...category, name: normalizeCategoryName(category.name) }))
+    .filter((category, index, all) => all.findIndex(item => item.name === category.name) === index)
   return [...existing, ...defaultCategories.filter(category => !existing.some(item => item.name === category.name))]
 }
 const tagOptions: Record<string, string[]> = {
@@ -263,7 +271,7 @@ export default function Page() {
   }, [])
   useEffect(() => {
     loadStoredPhotos().then((stored) => {
-      const migrated = stored.map((photo) => hydratePhoto({ ...photo, projectId: photo.projectId || DEFAULT_PROJECT.id }))
+      const migrated = stored.map((photo) => hydratePhoto({ ...photo, category: normalizeCategoryName(photo.category), projectId: photo.projectId || DEFAULT_PROJECT.id }))
       setPhotos(migrated)
       setPhotosReady(true)
     }).catch(() => { setPhotos([]); setPhotosReady(true) })
@@ -615,7 +623,7 @@ export default function Page() {
         if (!value || typeof value !== 'object') throw new Error(`Project ${index + 1} 格式不正確`)
         const project = value as Partial<Project>
         if (typeof project.id !== 'string' || !project.id.trim() || typeof project.name !== 'string' || !project.name.trim()) throw new Error(`Project ${index + 1} 缺少有效名稱或 ID`)
-        return { ...project, id: project.id.trim(), name: project.name.trim(), settings: { ...createProjectSettings(), ...(project.settings || {}), categories: project.settings?.categories || defaultCategories, tags: project.settings?.tags || {}, note: project.settings?.note || '', settingsOptions: project.settings?.settingsOptions || tagOptions, noteHistory: project.settings?.noteHistory || [] } } as Project
+        return { ...project, id: project.id.trim(), name: project.name.trim(), settings: { ...createProjectSettings(), ...(project.settings || {}), categories: ensureDefaultCategories(project.settings?.categories), tags: project.settings?.tags || {}, note: project.settings?.note || '', settingsOptions: project.settings?.settingsOptions || tagOptions, noteHistory: project.settings?.noteHistory || [] } } as Project
       })
       const selectedProjectId = typeof raw.currentProjectId === 'string' && projectsToRestore.some(project => project.id === raw.currentProjectId) ? raw.currentProjectId : projectsToRestore[0].id
       const photoCount = Object.values(zip.files).filter(entry => !entry.dir && /\/photos\/[^/]+\.jpg$/i.test(entry.name)).length
@@ -627,7 +635,7 @@ export default function Page() {
       for (const project of projectsToRestore) {
         const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}/photos/`
         const entries = Object.values(zip.files).filter(entry => !entry.dir && entry.name.startsWith(prefix)) as JSZip.JSZipObject[]
-        for (const entry of entries) { const blob = await entry.async('blob'); const src = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob) }); restored.push({ id: entry.name.split('/').pop()!.replace(/\\.jpg$/, ''), src, cleanSrc: src, category: project.settings?.categories?.[0]?.name || '其它', tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id }) }
+        for (const entry of entries) { const blob = await entry.async('blob'); const src = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob) }); restored.push({ id: entry.name.split('/').pop()!.replace(/\\.jpg$/, ''), src, cleanSrc: src, category: normalizeCategoryName(project.settings?.categories?.[0]?.name || '其它'), tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id }) }
       }
       if (handoverFile) {
         const handoverData = JSON.parse(await handoverFile.async('text'))
