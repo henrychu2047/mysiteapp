@@ -66,6 +66,24 @@ type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 const normalizeName = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
+const expandRoomSuffixRange = (start: string, end: string) => {
+  const first = start.trim()
+  const last = end.trim()
+  if (!first && !last) return ['']
+  if (!first || !last) return [first || last]
+  const startMatch = first.match(/^(.*?)(-?\d+)$/)
+  const endMatch = last.match(/^(.*?)(-?\d+)$/)
+  if (!startMatch || !endMatch || startMatch[1] !== endMatch[1]) return [first]
+  const from = Number(startMatch[2])
+  const to = Number(endMatch[2])
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from > to) return [first]
+  const width = Math.max(startMatch[2].replace('-', '').length, endMatch[2].replace('-', '').length)
+  return Array.from({ length: to - from + 1 }, (_, index) => {
+    const number = from + index
+    const sign = number < 0 ? '-' : ''
+    return `${startMatch[1]}${sign}${String(Math.abs(number)).padStart(width, '0')}`
+  })
+}
 
 export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onUpdateApp }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
@@ -92,7 +110,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [standaloneTowerId, setStandaloneTowerId] = useState('')
   const [standaloneFloorId, setStandaloneFloorId] = useState('')
   const [standaloneRoom, setStandaloneRoom] = useState('')
-  const [standaloneRoomSuffix, setStandaloneRoomSuffix] = useState('')
+  const [standaloneRoomSuffixStart, setStandaloneRoomSuffixStart] = useState('')
+  const [standaloneRoomSuffixEnd, setStandaloneRoomSuffixEnd] = useState('')
   const [showStandalone, setShowStandalone] = useState(false)
   const [edit, setEdit] = useState<{ type: 'tower' | 'floor' | 'room'; towerId: string; floorId?: string; roomId?: string; name: string } | null>(null)
 
@@ -106,7 +125,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [genFloorSuffix, setGenFloorSuffix] = useState('')
   const [genFloorCompact, setGenFloorCompact] = useState(false)
   const [genTowerNA, setGenTowerNA] = useState(false)
-  const [genRoomSuffix, setGenRoomSuffix] = useState('')
+  const [genRoomSuffixStart, setGenRoomSuffixStart] = useState('')
+  const [genRoomSuffixEnd, setGenRoomSuffixEnd] = useState('')
   const [genRooms, setGenRooms] = useState<string[]>([])
   const [genCustom, setGenCustom] = useState('')
 
@@ -240,19 +260,22 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   const addStandaloneRoom = () => {
     const baseName = standaloneRoom.trim()
-    const name = `${baseName}${standaloneRoomSuffix.trim()}`
+    const suffixes = expandRoomSuffixRange(standaloneRoomSuffixStart, standaloneRoomSuffixEnd)
     if (!standaloneTowerId || !standaloneFloorId || !baseName) return flash('請選擇座數、樓層並輸入機房名稱')
-    const room: Room = { id: uid(), name, handover: createRoomHandover() }
     setTowers(prev => prev.map(t => t.id !== standaloneTowerId ? t : {
       ...t,
       floors: t.floors.map(f => f.id !== standaloneFloorId ? f : {
         ...f,
-        rooms: f.rooms.some(existing => normalizeName(existing.name) === normalizeName(name)) ? f.rooms : [...f.rooms, room],
+        rooms: [...f.rooms, ...suffixes
+          .map(suffix => `${baseName}${suffix}`)
+          .filter(name => !f.rooms.some(existing => normalizeName(existing.name) === normalizeName(name)))
+          .map(name => ({ id: uid(), name, handover: createRoomHandover() }))],
       }),
     }))
     setStandaloneRoom('')
-    setStandaloneRoomSuffix('')
-    flash('已新增機房')
+    setStandaloneRoomSuffixStart('')
+    setStandaloneRoomSuffixEnd('')
+    flash(`已新增 ${suffixes.length} 間機房`)
   }
   const addRoomTo = (towerId: string, floorId: string) => {
     const name = (newRoom[floorId] || '').trim()
@@ -318,18 +341,19 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   }
   const genTCount = Math.max(0, Math.floor(Number(genTowers) || 0))
   const genFCount = Math.max(0, Math.floor(Number(genFloors) || 0))
-  const genTotalRooms = genTCount * genFCount * genRooms.length
+  const genRoomSuffixCount = expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd).length
+  const genTotalRooms = genTCount * genFCount * genRooms.length * genRoomSuffixCount
   const runGenerate = () => {
     const prefix = genPrefix.trim().replace(/\s+/g, ' ') || 'Tower'
     if (genTCount < 1) return flash('請輸入座數')
     if (genFCount < 1) return flash('請輸入樓層數')
     if (!genRooms.length) return flash('請至少選擇一個機房')
     const floorNames = buildFloorNames(genFCount, genStartGF, genFloorPrefix.trim(), genFloorSuffix.trim(), genFloorCompact).map(name => name.trim().replace(/\s+/g, ' '))
-    const roomSuffix = genRoomSuffix.trim()
-    const roomNames = Array.from(new Map(genRooms.map(name => {
-      const formatted = `${name.trim().replace(/\s+/g, ' ')}${roomSuffix}`
-      return [normalizeName(formatted), formatted]
-    })).values())
+    const suffixes = expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd)
+    const roomNames = Array.from(new Map(genRooms.flatMap(name => suffixes.map(suffix => {
+      const formatted = `${name.trim().replace(/\s+/g, ' ')}${suffix}`
+      return [normalizeName(formatted), formatted] as const
+    }))).values())
     const generatedNames = genTowerNA ? Array.from({ length: genTCount }, () => 'N/A') : Array.from({ length: genTCount }, (_, index) => `${prefix} ${index + 1}`)
     const existingTowerKeys = new Set(towers.map(t => normalizeName(t.name)))
     const duplicateTowerCount = generatedNames.filter(name => existingTowerKeys.has(normalizeName(name))).length
@@ -693,9 +717,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 </div>
                 <label className="ho-field">
                   <span>機房名稱後綴</span>
-                  <input value={genRoomSuffix} onChange={e => setGenRoomSuffix(e.target.value)} placeholder="例如 -A" />
+                  <input value={genRoomSuffixStart} onChange={e => setGenRoomSuffixStart(e.target.value)} placeholder="開始，例如 1 或 N1" />
                 </label>
-                <p className="ho-gen-hint">最終名稱：{genRooms.length ? `${genRooms[0]}${genRoomSuffix.trim()}${genRooms.length > 1 ? `、${genRooms[1]}${genRoomSuffix.trim()}` : ''}` : '—'}</p>
+                <label className="ho-field"><span>機房名稱後綴結束</span><input value={genRoomSuffixEnd} onChange={e => setGenRoomSuffixEnd(e.target.value)} placeholder="結束，例如 4 或 N4" /></label>
+                <p className="ho-gen-hint">最終名稱：{genRooms.length ? `${genRooms[0]}${expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd).slice(0, 4).join(`、${genRooms[0]}`)}${expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd).length > 4 ? ' …' : ''}` : '—'}</p>
                 <div className="ho-add-row small">
                   <input
                     value={genCustom}
@@ -731,9 +756,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 </div>
                 <div className="ho-gen-row">
                   <label className="ho-field"><span>機房名稱</span><input value={standaloneRoom} onChange={e => setStandaloneRoom(e.target.value)} placeholder="例如 Pump Room" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
-                  <label className="ho-field"><span>名稱後綴</span><input value={standaloneRoomSuffix} onChange={e => setStandaloneRoomSuffix(e.target.value)} placeholder="例如 -A" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
+                  <label className="ho-field"><span>名稱後綴開始</span><input value={standaloneRoomSuffixStart} onChange={e => setStandaloneRoomSuffixStart(e.target.value)} placeholder="例如 1 或 N1" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
+                  <label className="ho-field"><span>名稱後綴結束</span><input value={standaloneRoomSuffixEnd} onChange={e => setStandaloneRoomSuffixEnd(e.target.value)} placeholder="例如 4 或 N4" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
                 </div>
-                <div className="ho-add-row small"><span className="ho-gen-hint">最終名稱：{standaloneRoom.trim() ? `${standaloneRoom.trim()}${standaloneRoomSuffix.trim()}` : '—'}</span><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
+                <div className="ho-add-row small"><span className="ho-gen-hint">最終名稱：{standaloneRoom.trim() ? expandRoomSuffixRange(standaloneRoomSuffixStart, standaloneRoomSuffixEnd).slice(0, 4).map(suffix => `${standaloneRoom.trim()}${suffix}`).join('、') : '—'}</span><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
                 <span className="ho-group-label">機房名稱快選</span>
                 <div className="ho-chip-row">
                   {ROOM_NAME_SUGGESTIONS.map(name => <button type="button" key={name} className={`ho-suggest ${standaloneRoom === name ? 'on' : ''}`} onClick={() => setStandaloneRoom(name)}>{standaloneRoom === name && <Check size={12} />}{name}</button>)}
