@@ -608,10 +608,15 @@ export default function Page() {
   const updateApp = async () => {
     try {
       const registration = await navigator.serviceWorker?.getRegistration('/sw.js')
-      if (!registration) { window.location.reload(); return }
+      if (!registration) { alert('程式已更新'); window.location.reload(); return }
       registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
-      if (registration.waiting) navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true })
-      else { await registration.update(); window.location.reload() }
+      if (registration.waiting) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => { alert('程式已更新'); window.location.reload() }, { once: true })
+      } else {
+        await registration.update()
+        alert('程式已更新')
+        window.location.reload()
+      }
     } catch (error) {
       alert(`更新失敗：${error instanceof Error ? error.message : '請稍後再試'}`)
     }

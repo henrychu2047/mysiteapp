@@ -566,8 +566,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         {view === 'manage' && (
           <div className="ho-manage">
             <div className="ho-heading ho-manage-heading">
+              <button className="back-link" onClick={() => setView('settings')}>‹ 返回設定</button>
               <p className="eyebrow">ROOM DATA</p>
-                          <h2>機房資料</h2>
+              <h2>機房資料</h2>
             </div>
             {/* 批量產生 */}
             <button className="ho-gen-toggle" onClick={() => setShowGen(v => !v)}>
