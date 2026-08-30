@@ -100,6 +100,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [genPrefix, setGenPrefix] = useState('Tower')
   const [genFloors, setGenFloors] = useState('20')
   const [genStartGF, setGenStartGF] = useState(true)
+  const [genFloorPrefix, setGenFloorPrefix] = useState('')
+  const [genFloorSuffix, setGenFloorSuffix] = useState('')
+  const [genFloorCompact, setGenFloorCompact] = useState(false)
   const [genRooms, setGenRooms] = useState<string[]>([])
   const [genCustom, setGenCustom] = useState('')
 
@@ -294,7 +297,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     if (genTCount < 1) return flash('請輸入座數')
     if (genFCount < 1) return flash('請輸入樓層數')
     if (!genRooms.length) return flash('請至少選擇一個機房')
-    const floorNames = buildFloorNames(genFCount, genStartGF).map(name => name.trim().replace(/\s+/g, ' '))
+    const floorNames = buildFloorNames(genFCount, genStartGF, genFloorPrefix.trim(), genFloorSuffix.trim(), genFloorCompact).map(name => name.trim().replace(/\s+/g, ' '))
     const roomNames = Array.from(new Map(genRooms.map(name => [normalizeName(name), name.trim().replace(/\s+/g, ' ')])).values())
     const generatedNames = Array.from({ length: genTCount }, (_, index) => `${prefix} ${index + 1}`)
     const existingTowerKeys = new Set(towers.map(t => normalizeName(t.name)))
@@ -638,8 +641,13 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                     </div>
                   </label>
                 </div>
+                <div className="ho-gen-row">
+                  <label className="ho-field"><span>樓層前綴</span><input value={genFloorPrefix} onChange={e => setGenFloorPrefix(e.target.value)} placeholder="例如 L" /></label>
+                  <label className="ho-field"><span>樓層後綴</span><input value={genFloorSuffix} onChange={e => setGenFloorSuffix(e.target.value)} placeholder="例如 /F" /></label>
+                </div>
+                <label className="ho-check-row"><input type="checkbox" checked={genFloorCompact} onChange={e => setGenFloorCompact(e.target.checked)} /><span>使用兩位數編號（L00、L01、L02…）</span></label>
                 {genFCount > 0 && (
-                  <p className="ho-gen-hint">樓層：{buildFloorNames(genFCount, genStartGF).slice(0, 4).join('、')}{genFCount > 4 ? ' …' : ''}（共 {genFCount} 層）</p>
+                  <p className="ho-gen-hint">樓層：{buildFloorNames(genFCount, genStartGF, genFloorPrefix.trim(), genFloorSuffix.trim(), genFloorCompact).slice(0, 4).join('、')}{genFCount > 4 ? ' …' : ''}（共 {genFCount} 層）</p>
                 )}
 
                 <span className="ho-group-label">機房（可多選，或自訂）</span>

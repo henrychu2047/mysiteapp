@@ -122,14 +122,17 @@ export const DEFECT_SUGGESTIONS = [
 
 // ---------- 批量產生輔助 ----------
 // 依樓層數產生樓層名稱。startWithGF=true 時由 G/F 起（G/F, 1/F, 2/F …）；否則由 1/F 起。
-export function buildFloorNames(count: number, startWithGF: boolean): string[] {
+export function buildFloorNames(count: number, startWithGF: boolean, prefix = '', suffix = '', compact = false): string[] {
   const names: string[] = []
   const n = Math.max(0, Math.floor(count))
-  if (startWithGF && n > 0) {
-    names.push('G/F')
-    for (let i = 1; i < n; i++) names.push(`${i}/F`)
+  const format = (value: string, number: number) => `${prefix}${compact ? String(number).padStart(2, '0') : value}${suffix}`
+  if (compact) {
+    for (let i = 0; i < n; i++) names.push(format(String(i), i))
+  } else if (startWithGF && n > 0) {
+    names.push(format('G/F', 0))
+    for (let i = 1; i < n; i++) names.push(format(`${i}/F`, i))
   } else {
-    for (let i = 1; i <= n; i++) names.push(`${i}/F`)
+    for (let i = 1; i <= n; i++) names.push(format(`${i}/F`, i))
   }
   return names
 }
