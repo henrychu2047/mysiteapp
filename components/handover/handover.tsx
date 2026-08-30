@@ -58,6 +58,7 @@ type Props = {
   projectName: string
   onOpenPhotoSettings?: (label?: string) => void
   onPhotoSettingsBack?: () => void
+  onStructureChange?: (options: Record<string, string[]>) => void
   onUpdateApp?: () => void
 }
 
@@ -66,7 +67,7 @@ type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower'
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 const normalizeName = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onUpdateApp }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onUpdateApp }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -129,6 +130,18 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     setSelFloor(null)
     setSelRoom(null)
   }, [projectId, initialView])
+
+  useEffect(() => {
+    if (!onStructureChange) return
+    const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)))
+    const rooms = towers.flatMap(tower => tower.floors.flatMap(floor => floor.rooms.map(room => room.name)))
+    onStructureChange({
+      座數: unique(towers.map(tower => tower.name)),
+      樓層: unique(towers.flatMap(tower => tower.floors.map(floor => floor.name))),
+      機房: unique(rooms),
+      房間名稱: unique(rooms),
+    })
+  }, [towers, onStructureChange])
 
   useEffect(() => {
     if (!loaded) return
