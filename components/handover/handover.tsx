@@ -55,6 +55,7 @@ type Props = {
   initialView?: 'home' | 'manage'
   projectId: string
   projectName: string
+  onOpenPhotoSettings?: () => void
 }
 
 type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
@@ -62,7 +63,7 @@ type View = 'home' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floo
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 const normalizeName = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home' }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -543,7 +544,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
           <div className="ho-manage">
             <div className="ho-heading ho-manage-heading">
               <p className="eyebrow">ROOM DATA</p>
-              <h2>機房資料</h2>
+              <div className="ho-heading-row"><h2>機房資料</h2><button type="button" className="ho-settings-button" onClick={onOpenPhotoSettings}>設定</button></div>
             </div>
             {/* 批量產生 */}
             <button className="ho-gen-toggle" onClick={() => setShowGen(v => !v)}>
