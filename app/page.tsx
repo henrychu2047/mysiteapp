@@ -376,7 +376,7 @@ export default function Page() {
     }
     const floors = buildFloorNames(floorCount, true, setupFloorPrefix.trim(), setupFloorSuffix.trim(), setupCompactFloors)
     const roomSuffixes = expandSuffixes(setupRoomSuffixStart, setupRoomSuffixEnd)
-    const finalRoomNames = roomNames.flatMap(room => roomSuffixes.map(suffix => `${room}${suffix}`))
+    const finalRoomNames = roomNames.flatMap(room => roomSuffixes.map(suffix => `${room}${suffix ? ` ${suffix}` : ''}`))
     const towers: Tower[] = Array.from({ length: towerCount }, (_, towerIndex) => ({
       id: createId(), name: `${setupTowerPrefix.trim()}${towerIndex + 1}`, floors: floors.map(floorName => ({ id: createId(), name: floorName, rooms: finalRoomNames.map(roomName => ({ id: createId(), name: roomName, handover: createRoomHandover() })) })),
     }))

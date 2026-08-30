@@ -267,7 +267,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       floors: t.floors.map(f => f.id !== standaloneFloorId ? f : {
         ...f,
         rooms: [...f.rooms, ...suffixes
-          .map(suffix => `${baseName}${suffix}`)
+          .map(suffix => `${baseName}${suffix ? ` ${suffix}` : ''}`)
           .filter(name => !f.rooms.some(existing => normalizeName(existing.name) === normalizeName(name)))
           .map(name => ({ id: uid(), name, handover: createRoomHandover() }))],
       }),
@@ -351,7 +351,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     const floorNames = buildFloorNames(genFCount, genStartGF, genFloorPrefix.trim(), genFloorSuffix.trim(), genFloorCompact).map(name => name.trim().replace(/\s+/g, ' '))
     const suffixes = expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd)
     const roomNames = Array.from(new Map(genRooms.flatMap(name => suffixes.map(suffix => {
-      const formatted = `${name.trim().replace(/\s+/g, ' ')}${suffix}`
+      const formatted = `${name.trim().replace(/\s+/g, ' ')}${suffix ? ` ${suffix}` : ''}`
       return [normalizeName(formatted), formatted] as const
     }))).values())
     const generatedNames = genTowerNA ? Array.from({ length: genTCount }, () => 'N/A') : Array.from({ length: genTCount }, (_, index) => `${prefix} ${index + 1}`)
@@ -720,7 +720,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                   <input value={genRoomSuffixStart} onChange={e => setGenRoomSuffixStart(e.target.value)} placeholder="開始，例如 1 或 N1" />
                 </label>
                 <label className="ho-field"><span>機房名稱後綴結束</span><input value={genRoomSuffixEnd} onChange={e => setGenRoomSuffixEnd(e.target.value)} placeholder="結束，例如 4 或 N4" /></label>
-                <p className="ho-gen-hint">最終名稱：{genRooms.length ? `${genRooms[0]}${expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd).slice(0, 4).join(`、${genRooms[0]}`)}${expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd).length > 4 ? ' …' : ''}` : '—'}</p>
+                <p className="ho-gen-hint">最終名稱：{genRooms.length ? `${genRooms[0]}${expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd).slice(0, 4).map(suffix => `${suffix ? ` ${suffix}` : ''}`).join(`、${genRooms[0]}`)}${expandRoomSuffixRange(genRoomSuffixStart, genRoomSuffixEnd).length > 4 ? ' …' : ''}` : '—'}</p>
                 <div className="ho-add-row small">
                   <input
                     value={genCustom}
@@ -759,7 +759,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                   <label className="ho-field"><span>名稱後綴開始</span><input value={standaloneRoomSuffixStart} onChange={e => setStandaloneRoomSuffixStart(e.target.value)} placeholder="例如 1 或 N1" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
                   <label className="ho-field"><span>名稱後綴結束</span><input value={standaloneRoomSuffixEnd} onChange={e => setStandaloneRoomSuffixEnd(e.target.value)} placeholder="例如 4 或 N4" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /></label>
                 </div>
-                <div className="ho-add-row small"><span className="ho-gen-hint">最終名稱：{standaloneRoom.trim() ? expandRoomSuffixRange(standaloneRoomSuffixStart, standaloneRoomSuffixEnd).slice(0, 4).map(suffix => `${standaloneRoom.trim()}${suffix}`).join('、') : '—'}</span><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
+                <div className="ho-add-row small"><span className="ho-gen-hint">最終名稱：{standaloneRoom.trim() ? expandRoomSuffixRange(standaloneRoomSuffixStart, standaloneRoomSuffixEnd).slice(0, 4).map(suffix => `${standaloneRoom.trim()}${suffix ? ` ${suffix}` : ''}`).join('、') : '—'}</span><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
                 <span className="ho-group-label">機房名稱快選</span>
                 <div className="ho-chip-row">
                   {ROOM_NAME_SUGGESTIONS.map(name => <button type="button" key={name} className={`ho-suggest ${standaloneRoom === name ? 'on' : ''}`} onClick={() => setStandaloneRoom(name)}>{standaloneRoom === name && <Check size={12} />}{name}</button>)}
