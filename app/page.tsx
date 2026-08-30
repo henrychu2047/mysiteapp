@@ -15,41 +15,41 @@ type Category = { name: string; icon: string }
 type ProjectSettings = { categories: Category[]; tags: Record<string, string>; note: string; settingsOptions: Record<string, string[]>; noteHistory: string[] }
 type Project = { id: string; name: string; settings?: ProjectSettings }
 
-const DEFAULT_PROJECT: Project = { id: 'default-project', name: '?��? Project' }
+const DEFAULT_PROJECT: Project = { id: 'default-project', name: '?? Project' }
 const PROJECTS_KEY = 'site-photo-projects'
 const CURRENT_PROJECT_KEY = 'site-photo-current-project'
 
 const defaultCategories: Category[] = [
-  { name: '?�器', icon: '?? },
-  { name: '?�氣', icon: '?? },
-  { name: '消防', icon: '?? },
-  { name: '安全', icon: '?? },
-  { name: '?��?/?�電�?, icon: '?? },
-  { name: '建�?', icon: '?? },
-  { name: '?��?', icon: '?? },
-  { name: '機房移交', icon: '?? },
+  { name: '?餃', icon: '?? },
+  { name: '?瑟除', icon: '?? },
+  { name: '瘨', icon: '?? },
+  { name: '摰', icon: '?? },
+  { name: '?嗆?/?潮璈?, icon: '?? },
+  { name: '撱箇?', icon: '?? },
+  { name: '?拇?', icon: '?? },
+  { name: '璈蝘颱漱', icon: '?? },
 ]
 const normalizeCategoryName = (name: string) => {
-  if (name === '?�電�?) return '安全'
-  if (name === '?��?') return '?��?/?�電�?
+  if (name === '?潮璈?) return '摰'
+  if (name === '?嗆?') return '?嗆?/?潮璈?
   return name
 }
 const ensureDefaultCategories = (categories: Category[] | undefined) => {
   const existing = (categories || [])
-    .filter(category => category.name !== '建�??��?')
+    .filter(category => category.name !== '撱箇??拇?')
     .map(category => ({ ...category, name: normalizeCategoryName(category.name) }))
     .filter((category, index, all) => all.findIndex(item => item.name === category.name) === index)
   return [...existing, ...defaultCategories.filter(category => !existing.some(item => item.name === category.name))]
 }
 const tagOptions: Record<string, string[]> = {
-  樓層: ['B02', 'B01', 'L00', 'L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L08', 'L09', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16', 'L17', 'L18', 'L19', 'MR/F', 'UR1/F', 'UR2/F'],
-  機房: ['?�制??, '總制??, '?�電機房', 'AHU??, 'ELV??, 'TR??],
-  ?��??�稱: ['N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8', 'N9', 'N10', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10', 'S1', 'S2', 'S4', 'S5', 'S6', 'S7', 'S8', 'ELV1', 'ELV2', 'ELV3', 'ELV4', 'TR1', 'TR2', 'TR3', 'TR4', '1', '2', '3', '4'],
-  事�?: ['Defect', '?��???, '?��?�?, '?��??��?', '?�穿�?, '?��???, '?��??�器', '?�起?�架', '?��???, '?��???, '?��???, '?��??�', '?�度??, '被破�?, '?�其它�??�阻�?, '?�建築阻�?, '建�?漏水', '?��?行頭?��?CSD??],
-  安全: ['?��?�?, '不正規�?空工�?, '?��??�帶', '?�帶安全�?, '?��??�繩', '?��??�鐵??, '?��?'],
-  ?�貨?��?: ['已收待�?', '已入貨�?, '已交?�頭', '來貨?��?�?, '來貨?��?'],
-  座數: ['Tower 1', 'Tower 2', 'Tower 3'],
-  ?�用: ['?�用'],
+  璅惜: ['B02', 'B01', 'L00', 'L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L08', 'L09', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16', 'L17', 'L18', 'L19', 'MR/F', 'UR1/F', 'UR2/F'],
+  璈: ['?餃??, '蝮賢??, '?潮璈', 'AHU??, 'ELV??, 'TR??],
+  ?輸??迂: ['N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8', 'N9', 'N10', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10', 'S1', 'S2', 'S4', 'S5', 'S6', 'S7', 'S8', 'ELV1', 'ELV2', 'ELV3', 'ELV4', 'TR1', 'TR2', 'TR3', 'TR4', '1', '2', '3', '4'],
+  鈭?: ['Defect', '?芸???, '?芸?蝟?, '?芾???', '?芰忽蝺?, '?芾???, '?芾??', '?芾絲?菜', '?芸???, '?芷???, '?芸???, '?芾??', '?脣漲??, '鋡怎憯?, '?摰??剝蝷?, '?遣蝭蝷?, '撱箇?瞍偌', '?嗅?銵?∟?CSD??],
+  摰: ['?∪?甈?, '銝迤閬?蝛箏極雿?, '?∪??典葆', '?∪葆摰撣?, '?∪??函鼎', '?啣??⊿??, '?貊?'],
+  ?嗉疏?賊?: ['撌脫敺?', '撌脣鞎典?, '撌脖漱?日', '靘疏??憿?, '靘疏?渡?'],
+  摨扳: [],
+  ?: ['?'],
 }
 const mergeTagOptions = (saved?: Record<string, string[]>) => Object.fromEntries(Object.entries(tagOptions).map(([key, defaults]) => [key, [...new Set([...(saved?.[key] || []), ...defaults])]]))
 
@@ -114,7 +114,7 @@ function loadBrowserLibrary(src: string, globalName: string) {
     script.src = src
     script.async = true
     script.onload = () => resolve((window as any)[globalName] || null)
-    script.onerror = () => reject(new Error('?�出套件載入失�?'))
+    script.onerror = () => reject(new Error('?臬憟辣頛憭望?'))
     document.head.appendChild(script)
   })
 }
@@ -140,11 +140,11 @@ function imageAsJpeg(dataUrl: string) {
       canvas.width = image.naturalWidth || image.width
       canvas.height = image.naturalHeight || image.height
       const ctx = canvas.getContext('2d')
-      if (!ctx) return reject(new Error('?��?建�??��?轉�???))
+      if (!ctx) return reject(new Error('?⊥?撱箇???頧???))
       ctx.drawImage(image, 0, 0)
       resolve(canvas.toDataURL('image/jpeg', 0.92))
     }
-    image.onerror = () => reject(new Error('?��?轉�??��?'))
+    image.onerror = () => reject(new Error('?⊥?頧???'))
     image.src = dataUrl
   })
 }
@@ -163,7 +163,7 @@ function stampImage(file: File, category: string, tags: Record<string, string> =
         canvas.height = Math.max(1, Math.round(sourceHeight * scale))
         const ctx = canvas.getContext('2d')
         if (!ctx) {
-          reject(new Error('?��?建�??��??��???))
+          reject(new Error('?⊥?撱箇???????))
           return
         }
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
@@ -176,7 +176,7 @@ function stampImage(file: File, category: string, tags: Record<string, string> =
         thumbnailCanvas.getContext('2d')?.drawImage(image, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
         const thumbnailBlob = dataUrlToBlob(thumbnailCanvas.toDataURL('image/webp', 0.72))
         const detailLines = Object.entries(tags).filter(([, value]) => value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`)
-        if (note.trim()) detailLines.push(`?��??�註: ${note.trim()}`)
+        if (note.trim()) detailLines.push(`???酉: ${note.trim()}`)
         const lines = [`${projectName ? `${projectName} | ` : ''}${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`, ...detailLines]
         const size = Math.max(18, Math.round(image.width / 48))
         const lineHeight = size * 1.35
@@ -192,10 +192,10 @@ function stampImage(file: File, category: string, tags: Record<string, string> =
         const stampedBlob = dataUrlToBlob(stamped)
         resolve({ stamped, clean: cleanDataUrl, originalBlob, thumbnailBlob, stampedBlob })
       }
-      image.onerror = () => reject(new Error('?��?讀?�相??))
+      image.onerror = () => reject(new Error('?⊥?霈???))
       image.src = reader.result as string
     }
-    reader.onerror = () => reject(reader.error || new Error('?��?讀?��?�?))
+    reader.onerror = () => reject(reader.error || new Error('?⊥?霈??獢?))
     reader.readAsDataURL(file)
   })
 }
@@ -244,12 +244,12 @@ export default function Page() {
   const [storageUsage, setStorageUsage] = useState<{ usage: number; quota: number } | null>(null)
 
   const [isOffline, setIsOffline] = useState(false)
-  const [storageStatus, setStorageStatus] = useState('?��?保�?�?)
+  const [storageStatus, setStorageStatus] = useState('?祆?靽?銝?)
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [saveToast, setSaveToast] = useState('')
   useEffect(() => {
-    navigator.storage?.persist?.().then((persisted) => setStorageStatus(persisted ? '?��??��?保�?' : '?��?保�?�?)).catch(() => undefined)
+    navigator.storage?.persist?.().then((persisted) => setStorageStatus(persisted ? '?祆???靽?' : '?祆?靽?銝?)).catch(() => undefined)
     const refreshStorage = () => navigator.storage?.estimate?.().then(result => {
       if (typeof result.usage === 'number' && typeof result.quota === 'number') setStorageUsage({ usage: result.usage, quota: result.quota })
     }).catch(() => undefined)
@@ -297,15 +297,15 @@ export default function Page() {
       if (legacyMemory || legacyOptions || legacyNoteHistory) {
         const memory = legacyMemory ? JSON.parse(legacyMemory) : {}
         const saved = legacyOptions ? JSON.parse(legacyOptions) : {}
-        if (saved['?��?'] && !saved['?�貨?��?']) { saved['?�貨?��?'] = saved['?��?']; delete saved['?��?'] }
-        if (saved['?�註'] && !saved['?��??�稱']) { saved['?��??�稱'] = saved['?�註']; delete saved['?�註'] }
+        if (saved['?嗅?'] && !saved['?嗉疏?賊?']) { saved['?嗉疏?賊?'] = saved['?嗅?']; delete saved['?嗅?'] }
+        if (saved['?酉'] && !saved['?輸??迂']) { saved['?輸??迂'] = saved['?酉']; delete saved['?酉'] }
         const migratedSettings = { ...fallbackSettings, tags: memory.tags || {}, note: memory.note || '', settingsOptions: mergeTagOptions({ ...tagOptions, ...saved }), noteHistory: legacyNoteHistory ? JSON.parse(legacyNoteHistory).slice(0, 10) : [] }
         const migratedProjects = (savedProjectList.length ? savedProjectList : [{ ...DEFAULT_PROJECT }]).map(project => ({ ...project, settings: project.settings || { ...migratedSettings, categories: ensureDefaultCategories(migratedSettings.categories).map(category => ({ ...category })), tags: { ...migratedSettings.tags }, settingsOptions: Object.fromEntries(Object.entries(migratedSettings.settingsOptions).map(([key, values]) => [key, [...(values as string[])]])), noteHistory: [...migratedSettings.noteHistory] } }))
         setProjects(migratedProjects)
         localStorage.setItem(PROJECTS_KEY, JSON.stringify(migratedProjects))
         localStorage.removeItem('site-photo-memory'); localStorage.removeItem('site-photo-options'); localStorage.removeItem('site-photo-note-history')
       }
-    } catch { /* ?��?空�?不可?��?仍可繼�??��? */ }
+    } catch { /* ?脣?蝛粹?銝?冽?隞蝜潛??? */ }
     setSettingsReady(true)
   }, [])
   useEffect(() => {
@@ -320,9 +320,9 @@ export default function Page() {
       setSaveState('saved')
       setLastSavedAt(savedAt.toISOString())
     }).catch(error => {
-      console.error('資�?保�?失�?:', error)
+      console.error('鞈?靽?憭望?:', error)
       setSaveState('error')
-      setSaveToast('資�?保�?失�?，�?檢查裝置?��?空�?')
+      setSaveToast('鞈?靽?憭望?嚗?瑼Ｘ鋆蔭?脣?蝛粹?')
       window.setTimeout(() => setSaveToast(''), 4000)
     })
   }, [settingsReady, photos, projects, currentProjectId])
@@ -351,7 +351,7 @@ export default function Page() {
     const warnBeforeLeave = (event: BeforeUnloadEvent) => {
       if (saveState !== 'saved') {
         event.preventDefault()
-        event.returnValue = '資�?尚未保�?，確定�??��??��?'
+        event.returnValue = '鞈?撠靽?嚗Ⅱ摰??ａ???'
       }
     }
     window.addEventListener('beforeunload', warnBeforeLeave)
@@ -368,8 +368,8 @@ export default function Page() {
       const root = await picker({ mode: 'readwrite' })
       folderHandleRef.current = root
       setFolderConnected(true)
-      setCaptureMessage('已�?��?��? Project Camera 資�?�?)
-    } catch { setCaptureMessage('?�選?��??�夾') }
+      setCaptureMessage('撌脤??祆? Project Camera 鞈?憭?)
+    } catch { setCaptureMessage('?芷???冗') }
   }
   const saveToProjectFolder = async (photo: Photo) => {
     const root = folderHandleRef.current
@@ -386,16 +386,16 @@ export default function Page() {
   }
   const startContinuousCamera = async () => {
     if (!window.isSecureContext) {
-      setCameraError('????��??��?HTTPS；目?�網?�不�??��?請改?��??��??��?設�? HTTPS')
+      setCameraError('??????閬?HTTPS嚗?雯?銝??剁?隢?函??單??扳?閮剖? HTTPS')
       return
     }
-    if (!navigator.mediaDevices?.getUserMedia) { setCameraError('此瀏覽?��??�援????��?，�?使用立即?�照'); return }
+    if (!navigator.mediaDevices?.getUserMedia) { setCameraError('甇斤汗?其??舀????豢?嚗?雿輻蝡?'); return }
     try {
       setCameraError('')
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
       streamRef.current = stream
       setContinuousCamera(true)
-    } catch (error) { console.error('[v0] camera start failed:', error); setCameraError('?��??��??�頭，�??�許?��?權�??�改?��??��???) }
+    } catch (error) { console.error('[v0] camera start failed:', error); setCameraError('?⊥????⊿嚗??迂?豢?甈???函??單???) }
   }
   useEffect(() => {
     if (!continuousCamera || !videoRef.current || !streamRef.current) return
@@ -419,10 +419,10 @@ export default function Page() {
   const captureContinuousPhoto = async () => {
     if (captureBusy || !videoRef.current || !active) return
     setCaptureBusy(true)
-    setCaptureMessage('�?��?��??��???)
+    setCaptureMessage('甇????貊???)
     const video = videoRef.current
     if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-      setCameraError('?�頭尚未準�?好�?請�??��??�快?�')
+      setCameraError('?⊿撠皞?憟踝?隢????翰?')
       setCaptureMessage('')
       setCaptureBusy(false)
       return
@@ -430,17 +430,17 @@ export default function Page() {
     try {
       const canvas = document.createElement('canvas')
       canvas.width = video.videoWidth; canvas.height = video.videoHeight
-      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('?��?建�??��?')
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('?⊥?撱箇??怠?')
       ctx.drawImage(video, 0, 0)
-      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('?��??��??��?')), 'image/jpeg', 0.92))
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('?⊥??瑕??貊?')), 'image/jpeg', 0.92))
       const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active, tags, note, currentProject.name)
       const photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
       setPhotos(p => [photo, ...p])
       await saveToProjectFolder(photo)
       setCameraError('')
-      setCaptureMessage('已�??�並?��?，可繼�??��?')
+      setCaptureMessage('撌脫??蒂?脣?嚗蝜潛???')
       window.setTimeout(() => setCaptureMessage(''), 1800)
-    } catch (error) { console.error('[v0] capture failed:', error); setCameraError('?��?失�?，�?稍候�?�?); setCaptureMessage('') }
+    } catch (error) { console.error('[v0] capture failed:', error); setCameraError('??憭望?嚗?蝔?閰?); setCaptureMessage('') }
     finally { setCaptureBusy(false) }
   }
   const importFiles = async (files: FileList | null) => {
@@ -457,21 +457,21 @@ export default function Page() {
       } catch (error) {
         console.error('[v0] photo import failed:', error)
         failures.push(file.name)
-        const reason = error instanceof Error ? error.message : '?�知?�誤'
-        setCameraError(`${file.name} ?��?失�?�?{reason}`)
+        const reason = error instanceof Error ? error.message : '?芰?航炊'
+        setCameraError(`${file.name} ??憭望?嚗?{reason}`)
       }
     }
     if (added.length) {
-      setCaptureMessage(failures.length ? `已�???${added.length} 張�?${failures.length} 張失?�` : `已�???${added.length} 張相?�`)
+      setCaptureMessage(failures.length ? `撌脣???${added.length} 撘蛛?${failures.length} 撘萄仃? : `撌脣???${added.length} 撘萇?)
       setTab('photos')
     } else if (failures.length) {
-      setCameraError('?��??��?失�?，�?確�?檔�??��??��?置儲存空??)
+      setCameraError('?貊???憭望?嚗?蝣箄?瑼??澆???蝵桀摮征??)
     }
   }
   const addProject = () => {
     const name = newProjectName.trim()
     if (!name) return
-    if (projects.some(project => project.name === name)) { alert('Project ?�稱已�???); return }
+    if (projects.some(project => project.name === name)) { alert('Project ?迂撌脣???); return }
     const project = { id: createId(), name, settings: createProjectSettings() }
     switchingProjectRef.current = true
     setProjects(current => [...current, project])
@@ -487,25 +487,25 @@ export default function Page() {
     setActive(null)
     setSelected([])
   }
-  const addCategory = (name: string) => { if (name.trim()) setCategories(c => [...c, { name: name.trim(), icon: '�? }]); setNewCategory(false) }
-  const removeCategory = (name: string) => { if (confirm(`確�??�除??{name}?��??�相?��?`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
+  const addCategory = (name: string) => { if (name.trim()) setCategories(c => [...c, { name: name.trim(), icon: '嚗? }]); setNewCategory(false) }
+  const removeCategory = (name: string) => { if (confirm(`蝣箏??芷??{name}???嗥??`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
   const deleteSelectedPhotos = () => {
     if (!selected.length) return
-    if (!confirm(`確�??�除已選??${selected.length} 張相?��?此�?作無法復?�。`)) return
+    if (!confirm(`蝣箏??芷撌脤??${selected.length} 撘萇??甇斗?雿瘜儔?)) return
     setPhotos(current => current.filter(photo => !selected.includes(photo.id)))
     setSelected([])
     setDetail(null)
   }
   const exportExcel = async () => {
     const chosen = photos.filter(x => selected.includes(x.id)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    if (!chosen.length) { alert('請�??�選要匯?��??��?'); return }
+    if (!chosen.length) { alert('隢??暸閬?箇??貊?'); return }
     try {
       const book = new ExcelJS.Workbook()
-      const sheet = book.addWorksheet('?��?記�?')
-      sheet.columns = [{ header: '?��?', key: 'date', width: 16 }, { header: '?��?', key: 'time', width: 14 }, { header: '類別', key: 'category', width: 18 }, { header: '細�?說�?', key: 'detail', width: 34 }, { header: '?�註', key: 'note', width: 28 }, { header: '?��?', key: 'photo', width: 28 }]
+      const sheet = book.addWorksheet('?貊?閮?')
+      sheet.columns = [{ header: '?交?', key: 'date', width: 16 }, { header: '??', key: 'time', width: 14 }, { header: '憿', key: 'category', width: 18 }, { header: '蝝圈?隤芣?', key: 'detail', width: 34 }, { header: '?酉', key: 'note', width: 28 }, { header: '?抒?', key: 'photo', width: 28 }]
       for (const p of chosen) {
         const capturedAt = new Date(p.createdAt)
-        const row = sheet.addRow({ date: capturedAt.toLocaleDateString('zh-HK'), time: capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false }), category: p.category, detail: Object.entries(p.tags).filter(([key, value]) => key !== '?�註' && value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join('\n'), note: p.note || (p.tags['?�註'] === 'N/A' ? '' : p.tags['?�註']) || '' })
+        const row = sheet.addRow({ date: capturedAt.toLocaleDateString('zh-HK'), time: capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false }), category: p.category, detail: Object.entries(p.tags).filter(([key, value]) => key !== '?酉' && value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join('\n'), note: p.note || (p.tags['?酉'] === 'N/A' ? '' : p.tags['?酉']) || '' })
         const cleanDataUrl = await imageAsJpeg(p.cleanSrc)
         const imageId = book.addImage({ base64: cleanDataUrl, extension: 'jpeg' })
         sheet.addImage(imageId, { tl: { col: 5, row: row.number - 1 }, ext: { width: 165, height: 165 } })
@@ -515,25 +515,25 @@ export default function Page() {
       const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
       const link = document.createElement('a')
       link.href = url
-      link.download = '?�盤?��?記�?.xlsx'
+      link.download = '?啁?貊?閮?.xlsx'
       document.body.appendChild(link)
       link.click()
       setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 3000)
       if (/iPad|iPhone|iPod/.test(navigator.userAgent) && navigator.share && typeof File !== 'undefined') {
-        const file = new File([buffer], '?�盤?��?記�?.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-        if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: '?�盤?��?記�?.xlsx' })
+        const file = new File([buffer], '?啁?貊?閮?.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: '?啁?貊?閮?.xlsx' })
       }
     } catch (error) {
       console.error('[v0] ExcelJS export failed:', error)
-      alert(`Excel ?�出失�?�?{error instanceof Error ? error.message : '?�知?�誤'}`)
+      alert(`Excel ?臬憭望?嚗?{error instanceof Error ? error.message : '?芰?航炊'}`)
     }
   }
   const exportPdf = async () => {
     const chosen = photos.filter(x => selected.includes(x.id)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    if (!chosen.length) { alert('請�??�選要匯?��??��?'); return }
+    if (!chosen.length) { alert('隢??暸閬?箇??貊?'); return }
   const report = document.createElement('div')
   report.className = 'export-preview-overlay'
-  report.innerHTML = `<div class="export-backdrop"></div><div class="export-report-preview"><h1>?�盤?��?記�??�表（A3 橫�??��?�?/h1><div class="export-report-head"><b>?��?</b><b>?��?</b><b>類別</b><b>細�?說�?</b><b>?�註</b><b>?��?</b></div>${chosen.map(p => { const capturedAt = new Date(p.createdAt); const detail = Object.entries(p.tags).filter(([key, value]) => key !== '?�註' && value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join('<br>'); return `<article><div>${capturedAt.toLocaleDateString('zh-HK')}</div><div>${capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div>${p.category}</div><div>${detail || '??}</div><div>${p.note || p.tags['?�註'] || '??}</div><img src="${p.src}" alt="${p.category}?��?"></article>` }).join('')}</div><div class="export-sheet"><div class="sheet-handle"></div><button class="export-back" id="close-report" aria-label="返�?上�???>??/button><h2>?�盤?��?記�??�表?�覽（A3 橫�?�?/h2><div class="export-sheet-actions"><button id="print-report">?�出?��?</button><button class="export-close" id="close-report-2">?��?</button></div></div>`
+  report.innerHTML = `<div class="export-backdrop"></div><div class="export-report-preview"><h1>?啁?貊?閮??梯”嚗3 璈怠???嚗?/h1><div class="export-report-head"><b>?交?</b><b>??</b><b>憿</b><b>蝝圈?隤芣?</b><b>?酉</b><b>?抒?</b></div>${chosen.map(p => { const capturedAt = new Date(p.createdAt); const detail = Object.entries(p.tags).filter(([key, value]) => key !== '?酉' && value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join('<br>'); return `<article><div>${capturedAt.toLocaleDateString('zh-HK')}</div><div>${capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div>${p.category}</div><div>${detail || '??}</div><div>${p.note || p.tags['?酉'] || '??}</div><img src="${p.src}" alt="${p.category}?貊?"></article>` }).join('')}</div><div class="export-sheet"><div class="sheet-handle"></div><button class="export-back" id="close-report" aria-label="餈?銝???>??/button><h2>?啁?貊?閮??梯”?汗嚗3 璈怠?嚗?/h2><div class="export-sheet-actions"><button id="print-report">?臬?勗?</button><button class="export-close" id="close-report-2">??</button></div></div>`
   document.body.appendChild(report)
   report.querySelector('#close-report')?.addEventListener('click', () => report.remove())
   report.querySelector('#close-report-2')?.addEventListener('click', () => report.remove())
@@ -542,27 +542,27 @@ export default function Page() {
   }
   const exportPdfLegacy = async () => {
     const chosen = photos.filter(x => selected.includes(x.id)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  if (!chosen.length) return alert('請�??�選要匯?��??��?')
+  if (!chosen.length) return alert('隢??暸閬?箇??貊?')
   let html2canvas: any
   let JsPDF: any
   try {
     const [canvasModule, pdfModule] = await Promise.all([import('html2canvas'), import('jspdf')])
     html2canvas = (canvasModule as any).default || canvasModule
     JsPDF = (pdfModule as any).jsPDF
-    if (typeof html2canvas !== 'function' || typeof JsPDF !== 'function') throw new Error('PDF 模�??��?不正�?)
+    if (typeof html2canvas !== 'function' || typeof JsPDF !== 'function') throw new Error('PDF 璅∠??澆?銝迤蝣?)
   } catch (error) {
     console.error('[v0] PDF module load failed:', error)
-    alert('PDF 模�?載入失�?，�??�新?��??�面後�?�?)
+    alert('PDF 璅∠?頛憭望?嚗???渡??敺?閰?)
     return
   }
   const report = document.createElement('div')
     report.style.cssText = `position:absolute;left:0;top:0;width:1120px;min-height:${Math.max(520, chosen.length * 180 + 100)}px;display:block;visibility:visible;opacity:1;overflow:visible;background:#fff;color:#15212b;padding:24px;z-index:999999;pointer-events:none;`
-    report.innerHTML = `<div style="height:64px"></div><div style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;background:#e5e9ee;font-weight:700;padding:12px">${['?��?','?��?','類別','細�?說�?','?�註','?��?'].map(label => `<div style="padding:10px;border-right:1px solid #ccd4db">${label}</div>`).join('')}</div>` + chosen.map(p => { const capturedAt = new Date(p.createdAt); const detail = Object.entries(p.tags).filter(([key, value]) => key !== '?�註' && value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join('<br>'); const memoValue = p.tags['?�註'] === 'N/A' ? '' : p.tags['?�註']; return `<article style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;align-items:center;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:150px"><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleDateString('zh-HK')}</div><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div style="padding:10px;overflow-wrap:anywhere">${p.category}</div><div style="padding:10px;overflow-wrap:anywhere">${detail || '??}</div><div style="padding:10px;overflow-wrap:anywhere">${p.note || memoValue || '??}</div><img src="${p.src}" width="165" height="125" style="display:block;width:165px;height:125px;object-fit:cover"/></article>` }).join('')
+    report.innerHTML = `<div style="height:64px"></div><div style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;background:#e5e9ee;font-weight:700;padding:12px">${['?交?','??','憿','蝝圈?隤芣?','?酉','?抒?'].map(label => `<div style="padding:10px;border-right:1px solid #ccd4db">${label}</div>`).join('')}</div>` + chosen.map(p => { const capturedAt = new Date(p.createdAt); const detail = Object.entries(p.tags).filter(([key, value]) => key !== '?酉' && value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join('<br>'); const memoValue = p.tags['?酉'] === 'N/A' ? '' : p.tags['?酉']; return `<article style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;align-items:center;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:150px"><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleDateString('zh-HK')}</div><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div style="padding:10px;overflow-wrap:anywhere">${p.category}</div><div style="padding:10px;overflow-wrap:anywhere">${detail || '??}</div><div style="padding:10px;overflow-wrap:anywhere">${p.note || memoValue || '??}</div><img src="${p.src}" width="165" height="125" style="display:block;width:165px;height:125px;object-fit:cover"/></article>` }).join('')
     document.body.appendChild(report)
     await Promise.all(Array.from(report.querySelectorAll('img')).map(img => img.complete ? Promise.resolve() : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve() })))
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-    try { const headingElement = document.createElement('div'); headingElement.style.cssText = 'position:absolute;left:0;top:0;width:1120px;height:64px;background:#fff;color:#15212b;padding:20px 24px;font-size:22px;font-weight:700;box-sizing:border-box;z-index:1000000;'; headingElement.textContent = '?�盤?��?記�??�表（A3 橫�??��?�?; document.body.appendChild(headingElement); const headingCanvas = await html2canvas(headingElement, { scale: 1.5, backgroundColor: '#ffffff', windowWidth: 1120 }); headingElement.remove(); const canvas = await html2canvas(report, { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 1120 }); const pdfDocument = new JsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' }); const pageWidth = pdfDocument.internal.pageSize.getWidth(); const pageHeight = pdfDocument.internal.pageSize.getHeight(); const margin = 8; const headingHeight = 12; const printableWidth = pageWidth - margin * 2; const printableHeight = pageHeight - margin * 2 - headingHeight; const pixelsPerMm = canvas.width / printableWidth; const pagePixels = Math.floor(printableHeight * pixelsPerMm); let sourceY = 0; let pageIndex = 0; while (sourceY < canvas.height) { if (pageIndex > 0) pdfDocument.addPage(); const sliceHeight = Math.min(pagePixels, canvas.height - sourceY); const pageCanvas = document.createElement('canvas'); pageCanvas.width = canvas.width; pageCanvas.height = sliceHeight; const pageContext = pageCanvas.getContext('2d'); if (!pageContext) throw new Error('PDF page canvas unavailable'); pageContext.fillStyle = '#fff'; pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height); pageContext.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight); const renderedHeight = sliceHeight / pixelsPerMm; pdfDocument.addImage(headingCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, printableWidth, headingHeight); pdfDocument.addImage(pageCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin + headingHeight, printableWidth, renderedHeight); sourceY += sliceHeight; pageIndex += 1; } const pdfBlob = pdfDocument.output('blob'); const pdfUrl = URL.createObjectURL(pdfBlob); const downloadLink = document.createElement('a'); downloadLink.href = pdfUrl; downloadLink.download = '?�盤?��??�表.pdf'; downloadLink.rel = 'noopener'; document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove(); if (/iPad|iPhone|iPod/.test(navigator.userAgent) && navigator.share && typeof File !== 'undefined') { const pdfFile = new File([pdfBlob], '?�盤?��??�表.pdf', { type: 'application/pdf' }); if (navigator.canShare?.({ files: [pdfFile] })) { await navigator.share({ files: [pdfFile], title: '?�盤?��??�表.pdf' }); } } window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 30000); }
-    catch (error) { console.error('[v0] PDF export failed:', error); alert(`PDF ?�出失�?�?{error instanceof Error ? error.message : '請�?後�?�?}`) }
+    try { const headingElement = document.createElement('div'); headingElement.style.cssText = 'position:absolute;left:0;top:0;width:1120px;height:64px;background:#fff;color:#15212b;padding:20px 24px;font-size:22px;font-weight:700;box-sizing:border-box;z-index:1000000;'; headingElement.textContent = '?啁?貊?閮??梯”嚗3 璈怠???嚗?; document.body.appendChild(headingElement); const headingCanvas = await html2canvas(headingElement, { scale: 1.5, backgroundColor: '#ffffff', windowWidth: 1120 }); headingElement.remove(); const canvas = await html2canvas(report, { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 1120 }); const pdfDocument = new JsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' }); const pageWidth = pdfDocument.internal.pageSize.getWidth(); const pageHeight = pdfDocument.internal.pageSize.getHeight(); const margin = 8; const headingHeight = 12; const printableWidth = pageWidth - margin * 2; const printableHeight = pageHeight - margin * 2 - headingHeight; const pixelsPerMm = canvas.width / printableWidth; const pagePixels = Math.floor(printableHeight * pixelsPerMm); let sourceY = 0; let pageIndex = 0; while (sourceY < canvas.height) { if (pageIndex > 0) pdfDocument.addPage(); const sliceHeight = Math.min(pagePixels, canvas.height - sourceY); const pageCanvas = document.createElement('canvas'); pageCanvas.width = canvas.width; pageCanvas.height = sliceHeight; const pageContext = pageCanvas.getContext('2d'); if (!pageContext) throw new Error('PDF page canvas unavailable'); pageContext.fillStyle = '#fff'; pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height); pageContext.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight); const renderedHeight = sliceHeight / pixelsPerMm; pdfDocument.addImage(headingCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, printableWidth, headingHeight); pdfDocument.addImage(pageCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin + headingHeight, printableWidth, renderedHeight); sourceY += sliceHeight; pageIndex += 1; } const pdfBlob = pdfDocument.output('blob'); const pdfUrl = URL.createObjectURL(pdfBlob); const downloadLink = document.createElement('a'); downloadLink.href = pdfUrl; downloadLink.download = '?啁?貊??梯”.pdf'; downloadLink.rel = 'noopener'; document.body.appendChild(downloadLink); downloadLink.click(); downloadLink.remove(); if (/iPad|iPhone|iPod/.test(navigator.userAgent) && navigator.share && typeof File !== 'undefined') { const pdfFile = new File([pdfBlob], '?啁?貊??梯”.pdf', { type: 'application/pdf' }); if (navigator.canShare?.({ files: [pdfFile] })) { await navigator.share({ files: [pdfFile], title: '?啁?貊??梯”.pdf' }); } } window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 30000); }
+    catch (error) { console.error('[v0] PDF export failed:', error); alert(`PDF ?臬憭望?嚗?{error instanceof Error ? error.message : '隢?敺?閰?}`) }
     finally { window.setTimeout(() => report.remove(), 1000) }
   }
 
@@ -579,14 +579,14 @@ export default function Page() {
         zip.file(`${prefix}/settings.json`, JSON.stringify(project.settings || {}, null, 2))
         for (const photo of photos.filter(item => item.projectId === project.id)) {
           const response = await fetch(photo.src)
-          if (!response.ok) throw new Error(`?��?讀?�失??(${response.status})`)
+          if (!response.ok) throw new Error(`?貊?霈?仃??(${response.status})`)
           zip.file(`${prefix}/photos/${photo.id}.jpg`, await response.blob())
         }
       }
       const blob = await zip.generateAsync({ type: 'blob' })
       const file = new File([blob], `project-camera-backup-${new Date().toISOString().slice(0, 10)}.zip`, { type: 'application/zip' })
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'Project Camera ZIP ?�份' }); return true } catch (error) {
+        try { await navigator.share({ files: [file], title: 'Project Camera ZIP ?遢' }); return true } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') return false
           console.warn('Share backup failed, falling back to download', error)
         }
@@ -600,11 +600,11 @@ export default function Page() {
       link.click()
       link.remove()
       window.setTimeout(() => URL.revokeObjectURL(url), 3000)
-      alert('完整?�份已�?始�?�?)
+      alert('摰?遢撌脤?憪?頛?)
       return true
     } catch (error) {
       console.error('Complete backup export failed:', error)
-      alert(`完整?�份?�出失�?�?{error instanceof Error ? error.message : '請�?後�?�?}`)
+      alert(`摰?遢?臬憭望?嚗?{error instanceof Error ? error.message : '隢?敺?閰?}`)
       return false
     } finally {
       setBackupBusy(false)
@@ -613,17 +613,17 @@ export default function Page() {
   const updateApp = async () => {
     try {
       const registration = await navigator.serviceWorker?.getRegistration('/sw.js')
-      if (!registration) { alert('程�?已更??); window.location.reload(); return }
+      if (!registration) { alert('蝔?撌脫??); window.location.reload(); return }
       registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
       if (registration.waiting) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => { alert('程�?已更??); window.location.reload() }, { once: true })
+        navigator.serviceWorker.addEventListener('controllerchange', () => { alert('蝔?撌脫??); window.location.reload() }, { once: true })
       } else {
         await registration.update()
-        alert('程�?已更??)
+        alert('蝔?撌脫??)
         window.location.reload()
       }
     } catch (error) {
-      alert(`?�新失�?�?{error instanceof Error ? error.message : '請�?後�?�?}`)
+      alert(`?湔憭望?嚗?{error instanceof Error ? error.message : '隢?敺?閰?}`)
     }
   }
 
@@ -631,41 +631,41 @@ export default function Page() {
     if (!file) return
     try {
       const zip = await JSZip.loadAsync(file)
-      const manifest = zip.file('projects.json'); if (!manifest) throw new Error('?��???projects.json')
+      const manifest = zip.file('projects.json'); if (!manifest) throw new Error('?曆???projects.json')
       const raw = JSON.parse(await manifest.async('text')) as { version?: unknown; projects?: unknown; currentProjectId?: unknown }
       const version = typeof raw.version === 'number' ? raw.version : 1
-      if (version > 2) throw new Error(`不支?��??�份?�本�?{version}`)
-      if (!Array.isArray(raw.projects) || !raw.projects.length) throw new Error('?�份沒�??��? Project')
+      if (version > 2) throw new Error(`銝?渡??遢?嚗?{version}`)
+      if (!Array.isArray(raw.projects) || !raw.projects.length) throw new Error('?遢瘝??? Project')
       const projectsToRestore = raw.projects.map((value, index) => {
-        if (!value || typeof value !== 'object') throw new Error(`Project ${index + 1} ?��?不正確`)
+        if (!value || typeof value !== 'object') throw new Error(`Project ${index + 1} ?澆?銝迤蝣槁)
         const project = value as Partial<Project>
-        if (typeof project.id !== 'string' || !project.id.trim() || typeof project.name !== 'string' || !project.name.trim()) throw new Error(`Project ${index + 1} 缺�??��??�稱??ID`)
+        if (typeof project.id !== 'string' || !project.id.trim() || typeof project.name !== 'string' || !project.name.trim()) throw new Error(`Project ${index + 1} 蝻箏????迂??ID`)
         return { ...project, id: project.id.trim(), name: project.name.trim(), settings: { ...createProjectSettings(), ...(project.settings || {}), categories: ensureDefaultCategories(project.settings?.categories), tags: project.settings?.tags || {}, note: project.settings?.note || '', settingsOptions: mergeTagOptions(project.settings?.settingsOptions), noteHistory: project.settings?.noteHistory || [] } } as Project
       })
       const selectedProjectId = typeof raw.currentProjectId === 'string' && projectsToRestore.some(project => project.id === raw.currentProjectId) ? raw.currentProjectId : projectsToRestore[0].id
       const photoCount = Object.values(zip.files).filter(entry => !entry.dir && /\/photos\/[^/]+\.jpg$/i.test(entry.name)).length
       const memoFile = zip.file('site-memo.json')
       const handoverFile = zip.file('handover.json')
-      if (!confirm(`確�??�入此�?份�?\nProject�?{projectsToRestore.length} ?�\n?��?�?{photoCount} 張\nSite Memo�?{memoFile ? '?? : '??}\n?�房移交�?{handoverFile ? '?? : '??}\n\n?�入?��??��?載目?��??��??�復?��?份。`)) return
+      if (!confirm(`蝣箄??臬甇文?隞踝?\nProject嚗?{projectsToRestore.length} ?n?貊?嚗?{photoCount} 撘琵nSite Memo嚗?{memoFile ? '?? : '??}\n?嗆蝘颱漱嚗?{handoverFile ? '?? : '??}\n\n?臬????頛?????箏儔??隞賬)) return
       await exportLocalBackup()
       const restored: Photo[] = []
       for (const project of projectsToRestore) {
         const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}/photos/`
         const entries = Object.values(zip.files).filter(entry => !entry.dir && entry.name.startsWith(prefix)) as JSZip.JSZipObject[]
-        for (const entry of entries) { const blob = await entry.async('blob'); const src = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob) }); restored.push({ id: entry.name.split('/').pop()!.replace(/\\.jpg$/, ''), src, cleanSrc: src, category: normalizeCategoryName(project.settings?.categories?.[0]?.name || '?��?'), tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id }) }
+        for (const entry of entries) { const blob = await entry.async('blob'); const src = await new Promise<string>(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob) }); restored.push({ id: entry.name.split('/').pop()!.replace(/\\.jpg$/, ''), src, cleanSrc: src, category: normalizeCategoryName(project.settings?.categories?.[0]?.name || '?嗅?'), tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id }) }
       }
       if (handoverFile) {
         const handoverData = JSON.parse(await handoverFile.async('text'))
-        if (!handoverData || typeof handoverData !== 'object') throw new Error('?�房移交資�??��?不正�?)
+        if (!handoverData || typeof handoverData !== 'object') throw new Error('?嗆蝘颱漱鞈??澆?銝迤蝣?)
         await saveAllHandover(handoverData as Record<string, HandoverProjectData | Tower[]>)
       }
       if (memoFile) {
         const memoData = JSON.parse(await memoFile.async('text'))
-        if (!memoData || typeof memoData !== 'object' || Array.isArray(memoData)) throw new Error('Site Memo 資�??��?不正�?)
+        if (!memoData || typeof memoData !== 'object' || Array.isArray(memoData)) throw new Error('Site Memo 鞈??澆?銝迤蝣?)
         await saveAllMemos(memoData)
       }
-      setProjects(projectsToRestore); setCurrentProjectId(selectedProjectId); setPhotos(restored); alert('ZIP ?�份已�???)
-    } catch { alert('ZIP ?�份檔�??��?讀??) }
+      setProjects(projectsToRestore); setCurrentProjectId(selectedProjectId); setPhotos(restored); alert('ZIP ?遢撌脤???)
+    } catch { alert('ZIP ?遢瑼??⊥?霈??) }
   }
 
   if (appMode === 'notebook') return <Notebook projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />
@@ -677,28 +677,28 @@ export default function Page() {
   const navMode = appMode as string
 
   return <>
-    {isOffline && <div className="offline-banner" role="status">?��??�離線模式�?資�??�儲存在?��?</div>}
+    {isOffline && <div className="offline-banner" role="status">?桀??粹蝺芋撘?鞈??摮?祆?</div>}
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand-mark" aria-hidden="true">??/div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="?��? Project"><strong>{currentProject.name}</strong><span>??/span></button>
+        <div className="brand-mark" aria-hidden="true">??/div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="?豢? Project"><strong>{currentProject.name}</strong><span>??/span></button>
       </header>
-      {appMode === 'home' && <section className="content home-page"><div className="section-heading"><div><p className="eyebrow">WORKSITE TOOLS</p></div></div><div className="app-card-grid"><button className="app-card app-card-photo" onClick={() => { setAppMode('photo'); setTab('home'); setActive(null) }}><Camera /><strong>?�照記�?</strong><small>{projectPhotos.length} 張相??/small></button><button className="app-card" onClick={() => setAppMode('memo')}><PenLine /><strong>Site Memo</strong><small>?�場?��??�報??/small></button><button className="app-card" onClick={() => { setHandoverView('home'); setAppMode('handover') }}><ClipboardList /><strong>機房移交</strong><small>移交檢查記�?</small></button><button className="app-card" onClick={() => setAppMode('reserve')}><ShieldCheck /><strong>Permit to Work</strong><small>?�發�?/small></button><button className="app-card" onClick={() => setAppMode('notebook')}><BookOpen /><strong>記�?�?/strong><small>快速�??�現?��???/small></button><button className="app-card" onClick={() => setAppMode('reserve')}><Database /><strong>資�?�?/strong><small>?�發�?/small></button></div></section>}
-      {appMode === 'reserve' && <section className="content info-page"><div className="section-heading"><div><p className="eyebrow">COMING SOON</p><h2>?�能?�發�?/h2></div></div><div className="info-empty"><span>??/span><strong>此�??�正?��???/strong><p>Permit to Work?��?事簿?��??�庫?�能將於稍�??�入??/p><button className="primary-button" onClick={() => setAppMode('home')}>返�?首�?</button></div></section>}
-      {appMode === 'photo' && tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>工�?類別</h2></div><span className="photo-total">{projectPhotos.length} 張相??/span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 張�???/span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">�?/span><strong>?��?類別</strong><span>?��?工�??��?</span></button></div><div className="hint">?��?類別?��??�刪?��?�?/div></section>}
-      {appMode === 'photo' && tab === 'home' && active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>??返�?</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} �?/span></div><div className="capture-actions"><button className="capture-button camera" onClick={startContinuousCamera}><span>??/span><div><strong>????��?</strong><small>?��??��??��?下�?�?/small></div></button><button className="capture-button secondary-camera" onClick={() => cameraRef.current?.click()}><span>??/span><div><strong>立即?�照</strong><small>使用 iPhone ?��??��?</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>??/span><div><strong>?��??�簿</strong><small>?��?次匯?��?�?/small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={async e => { await importFiles(e.target.files); e.currentTarget.value = '' }} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={async e => { await importFiles(e.target.files); e.currentTarget.value = '' }} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>?��?資�?</h3></div><span className="memory-dot">??已�???/span></div><div className="tag-grid">{['座數', '樓層', '機房', '?��??�稱', '安全', '?�貨?��?', '事�?', '?�用'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '?��?'}</b></button>)}</div><label className="note-field"><span>?��??�註</span><input value={note} onChange={e => setNote(e.target.value)} onBlur={rememberNote} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) { rememberNote(); e.currentTarget.blur() } }} placeholder="輸入?�次?��??��??�說??.." /></label>{noteHistory.length > 0 && <div className="note-history"><small>?�近使??/small><div>{noteHistory.map(item => <button type="button" key={item} onClick={() => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} className={selectedNotes.includes(item) ? 'selected' : ''} aria-pressed={selectedNotes.includes(item)}>{item}</button>)}</div></div>}</div></section>}
-      {appMode === 'photo' && tab === 'settings' && <section className="content settings-page"><button className="back-link" onClick={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover'); setActive(null) }}>??返�?設�?</button><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>設�?{settingsLabel ? ` · ${settingsLabel === '事�?' ? '一?? : settingsLabel === '安全' ? '安全事�?' : settingsLabel}` : ''}</h2></div></div><div className="project-name-setting"><label htmlFor="project-name">Project ?�稱</label><input id="project-name" value={currentProject.name} onChange={e => { const name = e.target.value; setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, name } : project)) }} placeholder="輸入 Project ?�稱" /></div><p className="settings-intro">?��??�個�?籤�??��??��?，�?後�??��??�自?��?供�?/p><div className="local-storage-card"><strong>{saveState === 'saving' ? '�?��保�??? : saveState === 'error' ? '保�?失�?' : '已�?�?}</strong><span>{lastSavedAt ? `?�後�?存�?${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : storageStatus}</span>{storageUsage && <small>?��?空�?：{(storageUsage.usage / 1048576).toFixed(1)} MB / {(storageUsage.quota / 1048576).toFixed(0)} MB{storageUsage.usage / storageUsage.quota > 0.8 ? '（接近�??��?建議?�出?�份�? : ''}</small>}</div>{(settingsLabel ? [settingsLabel] : ['樓層', '機房', '?��??�稱']).map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label === '事�?' ? '一?? : label === '安全' ? '安全事�?' : label}</strong><span>{(settingsOptions[label] || []).length} ?�選??/span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>?</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`?��?${label}?��?`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>?��?</button></div></div>)}</section>}
-      {appMode === 'photo' && tab === 'photos' && <section className="content"><div className="section-heading photo-heading"><div><p className="eyebrow">PHOTO ARCHIVE</p><h2>?��???/h2></div><div className="photo-actions"><span className="photo-total">已選 {selected.length} �?/span><button className="select-all-button" onClick={() => setSelected(selected.length === projectPhotos.length ? [] : projectPhotos.map(photo => photo.id))} disabled={!projectPhotos.length}>{selected.length === projectPhotos.length && projectPhotos.length ? '?��??�選' : '?�選'}</button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>一小�???/button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 24 * 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>一?�內</button><button className="quick-select-button danger-button" onClick={deleteSelectedPhotos} disabled={!selected.length}>?�除</button><div className="export-bar"><button onClick={exportExcel}>?�出 Excel</button><button onClick={exportPdf}>?�出 PDF</button></div></div></div><div className="photo-grid">{projectPhotos.map(p => <div className="photo-card" key={p.id}><button className="photo-open" onClick={() => setDetail(p)}><img src={p.src} alt={`${p.category} ${p.createdAt}`} /></button><label className="check"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(s => e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id))} /><span /></label></div>)}{!projectPhotos.length && <div className="empty-state">尚未?�相?��???br /><small>?�入工�?類別?��??��?</small></div>}</div><div id="pdf-report" className="pdf-report" aria-hidden="true"><h1>?�盤?��?記�??�表</h1>{photos.filter(p => selected.includes(p.id)).map(p => <article key={p.id}><img src={p.src} alt="" /><div><b>{p.category}</b><p>{Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>{p.note}</p><small>{new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>)}</div></section>}
-      {updateAvailable && <div className="camera-error-banner" role="status">已�??��??�可?��?請�??�更??App?��??��?/div>}
-      {appMode === 'backup' && <section className="content info-page"><button className="back-link" onClick={() => { setHandoverView('settings'); setAppMode('handover') }}>??返�?設�?</button><div className="section-heading"><div><p className="eyebrow">BACKUP</p><h2>?�份</h2></div></div><div className="about-block"><h3>完整資�??�份</h3><p>?�份?��?App ??Project?�相?�、Site Memo ?��??�移交�??��?/p><div className="backup-actions"><button type="button" onClick={exportLocalBackup} disabled={backupBusy}>{backupBusy ? '�?��準�??�份?? : '?�出完整?�份'}</button><button type="button" onClick={() => backupRef.current?.click()} disabled={backupBusy}>?�入完整?�份</button><input ref={backupRef} hidden type="file" accept="application/zip,.zip" onChange={async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file || !confirm('?�入資�??��?�?��??App ?�全?��??�。是?�繼續�?')) return; await importLocalBackup(file) }} /></div></div></section>}
-      {appMode === 'about' && <section className="content info-page"><div className="section-heading"><div><p className="eyebrow">ABOUT</p></div></div><div className="about-block"><h3 className="about-title">?�於�?App</h3><p>?�是一?�為?�盤工�??�設?��??��??�工?��??�援?��?使用，�??�相?��?資�??��?存在?��?裝置?�主要�??��??��??�照記�?（自?��?上工程�??�、�?層、�??��??�能標籤並�???Excel／PDF ?�表）、Site Memo（�??��???A4 Site Meno）�??�房移交??/p></div><div className="about-block profile-block"><h3>?�發?�使?�者�???/h3><div className="profile-card"><div className="profile-avatar" aria-hidden="true">HC</div><div className="profile-meta"><strong>Henry Chu</strong><span>Project Manager</span><span>Southa Technical Ltd</span><a href="mailto:chuwing134538@gmail.com" className="profile-email">chuwing134538@gmail.com</a></div></div></div></section>}
-      <nav className="bottom-nav main-nav"><button className={navMode === 'home' ? 'active' : ''} onClick={() => { setAppMode('home'); setTab('home'); setActive(null) }}><span><Home size={20} /></span>首�?</button><button className={navMode === 'photo' && tab === 'photos' ? 'active' : ''} onClick={() => { setAppMode('photo'); setTab('photos'); setActive(null) }}><span><Images size={20} /></span>?�簿</button><button className={navMode === 'handover' ? 'active' : ''} onClick={() => { setHandoverView('settings'); setAppMode('handover') }}><span><Building2 size={20} /></span>設�?</button><button className={navMode === 'about' ? 'active' : ''} onClick={() => setAppMode('about')}><span><Info size={20} /></span>資�?</button></nav>
+      {appMode === 'home' && <section className="content home-page"><div className="section-heading"><div><p className="eyebrow">WORKSITE TOOLS</p></div></div><div className="app-card-grid"><button className="app-card app-card-photo" onClick={() => { setAppMode('photo'); setTab('home'); setActive(null) }}><Camera /><strong>?閮?</strong><small>{projectPhotos.length} 撘萇??/small></button><button className="app-card" onClick={() => setAppMode('memo')}><PenLine /><strong>Site Memo</strong><small>?曉?????/small></button><button className="app-card" onClick={() => { setHandoverView('home'); setAppMode('handover') }}><ClipboardList /><strong>璈蝘颱漱</strong><small>蝘颱漱瑼Ｘ閮?</small></button><button className="app-card" onClick={() => setAppMode('reserve')}><ShieldCheck /><strong>Permit to Work</strong><small>?銝?/small></button><button className="app-card" onClick={() => setAppMode('notebook')}><BookOpen /><strong>閮?蝪?/strong><small>敹恍???港???/small></button><button className="app-card" onClick={() => setAppMode('reserve')}><Database /><strong>鞈?摨?/strong><small>?銝?/small></button></div></section>}
+      {appMode === 'reserve' && <section className="content info-page"><div className="section-heading"><div><p className="eyebrow">COMING SOON</p><h2>??銝?/h2></div></div><div className="info-empty"><span>??/span><strong>甇文??賣迤?券???/strong><p>Permit to Work??鈭倏???澈?撠蝔????/p><button className="primary-button" onClick={() => setAppMode('home')}>餈?擐?</button></div></section>}
+      {appMode === 'photo' && tab === 'home' && !active && <section className="content"><div className="section-heading"><div><p className="eyebrow">PROJECT ARCHIVE</p><h2>撌亦?憿</h2></div><span className="photo-total">{projectPhotos.length} 撘萇??/span></div><div className="category-grid">{categories.map(c => <button key={c.name} className="category-card" onClick={() => setActive(c.name)} onContextMenu={e => { e.preventDefault(); removeCategory(c.name) }}><span className="category-icon">{c.icon}</span><strong>{c.name}</strong><span>{projectPhotos.filter(p => p.category === c.name).length} 撘菔???/span></button>)}<button className="category-card add-card" onClick={() => setNewCategory(true)}><span className="category-icon">嚗?/span><strong>?啣?憿</strong><span>?芾?撌亦???</span></button></div><div className="hint">?瑟?憿?∠??臬?文?憿?/div></section>}
+      {appMode === 'photo' && tab === 'home' && active && <section className="content"><button className="back-link" onClick={() => setActive(null)}>??餈?</button><div className="section-heading"><div><p className="eyebrow">CURRENT CATEGORY</p><h2>{active}</h2></div><span className="photo-total">{currentPhotos.length} 撘?/span></div><div className="capture-actions"><button className="capture-button camera" onClick={startContinuousCamera}><span>??/span><div><strong>?????</strong><small>???舐??單?銝?撘?/small></div></button><button className="capture-button secondary-camera" onClick={() => cameraRef.current?.click()}><span>??/span><div><strong>蝡?</strong><small>雿輻 iPhone ???豢?</small></div></button><button className="capture-button album" onClick={() => albumRef.current?.click()}><span>??/span><div><strong>?豢??貊倏</strong><small>?臭?甈∪?亙?撘?/small></div></button><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={async e => { await importFiles(e.target.files); e.currentTarget.value = '' }} /><input ref={albumRef} hidden type="file" accept="image/*" multiple onChange={async e => { await importFiles(e.target.files); e.currentTarget.value = '' }} /></div><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>??鞈?</h3></div><span className="memory-dot">??撌脰???/span></div><div className="tag-grid">{['摨扳', '璅惜', '璈', '?輸??迂', '摰', '?嗉疏?賊?', '鈭?', '?'].map(label => <button className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} onClick={() => setPicker(label)}><span>{label}</span><b>{tags[label] || '?豢?'}</b></button>)}</div><label className="note-field"><span>???酉</span><input value={note} onChange={e => setNote(e.target.value)} onBlur={rememberNote} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) { rememberNote(); e.currentTarget.blur() } }} placeholder="頛詨?祆活?????牧??.." /></label>{noteHistory.length > 0 && <div className="note-history"><small>?餈蝙??/small><div>{noteHistory.map(item => <button type="button" key={item} onClick={() => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} className={selectedNotes.includes(item) ? 'selected' : ''} aria-pressed={selectedNotes.includes(item)}>{item}</button>)}</div></div>}</div></section>}
+      {appMode === 'photo' && tab === 'settings' && <section className="content settings-page"><button className="back-link" onClick={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover'); setActive(null) }}>??餈?閮剖?</button><div className="section-heading"><div><p className="eyebrow">APP SETTINGS</p><h2>閮剖?{settingsLabel ? ` 繚 ${settingsLabel === '鈭?' ? '銝?? : settingsLabel === '摰' ? '摰鈭?' : settingsLabel}` : ''}</h2></div></div><div className="project-name-setting"><label htmlFor="project-name">Project ?迂</label><input id="project-name" value={currentProject.name} onChange={e => { const name = e.target.value; setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, name } : project)) }} placeholder="頛詨 Project ?迂" /></div><p className="settings-intro">?芾??剖?蝐日??亦??賊?嚗?敺??????靘?/p><div className="local-storage-card"><strong>{saveState === 'saving' ? '甇?靽??? : saveState === 'error' ? '靽?憭望?' : '撌脖?摮?}</strong><span>{lastSavedAt ? `?敺?摮?${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : storageStatus}</span>{storageUsage && <small>?脣?蝛粹?嚗(storageUsage.usage / 1048576).toFixed(1)} MB / {(storageUsage.quota / 1048576).toFixed(0)} MB{storageUsage.usage / storageUsage.quota > 0.8 ? '嚗餈???撱箄降?臬?遢嚗? : ''}</small>}</div>{(settingsLabel ? [settingsLabel] : ['璅惜', '璈', '?輸??迂']).map(label => <div className="settings-group" key={label}><div className="settings-group-title"><strong>{label === '鈭?' ? '銝?? : label === '摰' ? '摰鈭?' : label}</strong><span>{(settingsOptions[label] || []).length} ???/span></div><div className="settings-options">{(settingsOptions[label] || []).map(option => <button key={option} onClick={() => setSettingsOptions(current => ({ ...current, [label]: current[label].filter(item => item !== option) }))}>{option}<span>?</span></button>)}</div><div className="settings-add"><input value={newOption[label] || ''} onChange={e => setNewOption(current => ({ ...current, [label]: e.target.value }))} placeholder={`?啣?${label}?賊?`} /><button onClick={() => { const value = (newOption[label] || '').trim(); if (!value) return; setSettingsOptions(current => ({ ...current, [label]: [...(current[label] || []), value] })); setNewOption(current => ({ ...current, [label]: '' })) }}>?啣?</button></div></div>)}</section>}
+      {appMode === 'photo' && tab === 'photos' && <section className="content"><div className="section-heading photo-heading"><div><p className="eyebrow">PHOTO ARCHIVE</p><h2>?貊???/h2></div><div className="photo-actions"><span className="photo-total">撌脤 {selected.length} 撘?/span><button className="select-all-button" onClick={() => setSelected(selected.length === projectPhotos.length ? [] : projectPhotos.map(photo => photo.id))} disabled={!projectPhotos.length}>{selected.length === projectPhotos.length && projectPhotos.length ? '???券' : '?券'}</button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>銝撠???/button><button className="quick-select-button" onClick={() => { const cutoff = Date.now() - 24 * 60 * 60 * 1000; setSelected(projectPhotos.filter(photo => new Date(photo.createdAt).getTime() >= cutoff).map(photo => photo.id)) }} disabled={!projectPhotos.length}>銝?亙</button><button className="quick-select-button danger-button" onClick={deleteSelectedPhotos} disabled={!selected.length}>?芷</button><div className="export-bar"><button onClick={exportExcel}>?臬 Excel</button><button onClick={exportPdf}>?臬 PDF</button></div></div></div><div className="photo-grid">{projectPhotos.map(p => <div className="photo-card" key={p.id}><button className="photo-open" onClick={() => setDetail(p)}><img src={p.src} alt={`${p.category} ${p.createdAt}`} /></button><label className="check"><input type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(s => e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id))} /><span /></label></div>)}{!projectPhotos.length && <div className="empty-state">撠?????br /><small>?脣撌亦?憿????</small></div>}</div><div id="pdf-report" className="pdf-report" aria-hidden="true"><h1>?啁?貊?閮??梯”</h1>{photos.filter(p => selected.includes(p.id)).map(p => <article key={p.id}><img src={p.src} alt="" /><div><b>{p.category}</b><p>{Object.entries(p.tags).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(' / ')}</p><p>{p.note}</p><small>{new Date(p.createdAt).toLocaleString('zh-HK')}</small></div></article>)}</div></section>}
+      {updateAvailable && <div className="camera-error-banner" role="status">撌脫??啁??砍?剁?隢????App???具?/div>}
+      {appMode === 'backup' && <section className="content info-page"><button className="back-link" onClick={() => { setHandoverView('settings'); setAppMode('handover') }}>??餈?閮剖?</button><div className="section-heading"><div><p className="eyebrow">BACKUP</p><h2>?遢</h2></div></div><div className="about-block"><h3>摰鞈??遢</h3><p>?遢?游?App ??Project??ite Memo ???輻宏鈭方???/p><div className="backup-actions"><button type="button" onClick={exportLocalBackup} disabled={backupBusy}>{backupBusy ? '甇?皞??遢?? : '?臬摰?遢'}</button><button type="button" onClick={() => backupRef.current?.click()} disabled={backupBusy}>?臬摰?遢</button><input ref={backupRef} hidden type="file" accept="application/zip,.zip" onChange={async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file || !confirm('?臬鞈???隞???App ??刻???衣匱蝥?')) return; await importLocalBackup(file) }} /></div></div></section>}
+      {appMode === 'about' && <section className="content info-page"><div className="section-heading"><div><p className="eyebrow">ABOUT</p></div></div><div className="about-block"><h3 className="about-title">?甇?App</h3><p>?銝??啁撌亦??身?????極?瘀??舀?Ｙ?雿輻嚗????鞈???摮?祆?鋆蔭?蜓閬??賢??穿??閮?嚗??銝極蝔??乓?撅扎??輻??箄璅惜銝衣???Excel嚗DF ?梯”嚗ite Memo嚗??萇???A4 Site Meno嚗??嗆蝘颱漱??/p></div><div className="about-block profile-block"><h3>??蝙?刻???/h3><div className="profile-card"><div className="profile-avatar" aria-hidden="true">HC</div><div className="profile-meta"><strong>Henry Chu</strong><span>Project Manager</span><span>Southa Technical Ltd</span><a href="mailto:chuwing134538@gmail.com" className="profile-email">chuwing134538@gmail.com</a></div></div></div></section>}
+      <nav className="bottom-nav main-nav"><button className={navMode === 'home' ? 'active' : ''} onClick={() => { setAppMode('home'); setTab('home'); setActive(null) }}><span><Home size={20} /></span>擐?</button><button className={navMode === 'photo' && tab === 'photos' ? 'active' : ''} onClick={() => { setAppMode('photo'); setTab('photos'); setActive(null) }}><span><Images size={20} /></span>?貊倏</button><button className={navMode === 'handover' ? 'active' : ''} onClick={() => { setHandoverView('settings'); setAppMode('handover') }}><span><Building2 size={20} /></span>閮剖?</button><button className={navMode === 'about' ? 'active' : ''} onClick={() => setAppMode('about')}><span><Info size={20} /></span>鞈?</button></nav>
     </main>
-    {continuousCamera && <div className="overlay dark-overlay camera-overlay"><div className="camera-sheet"><div className="camera-topline"><span className="camera-spacer" aria-hidden="true" /><button className={`camera-flash ${flashEnabled ? 'selected' : ''}`} onClick={toggleFlash} aria-label="?��??��???>?<span>{flashEnabled ? 'ON' : 'A'}</span></button><div className="camera-status"><i /> LIVE · {currentPhotos.length} �?/div></div>{captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}<div className="camera-frame"><video ref={videoRef} autoPlay playsInline muted /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /><div className="zoom-controls" aria-label="縮放?��?"><button onClick={() => changeZoom(.5)} className={zoomLevel === .5 ? 'selected' : ''}>0.5</button><button onClick={() => changeZoom(1)} className={zoomLevel === 1 ? 'selected' : ''}>1?</button><button onClick={() => changeZoom(2)} className={zoomLevel === 2 ? 'selected' : ''}>2</button><button onClick={() => changeZoom(5)} className={zoomLevel === 5 ? 'selected' : ''}>5</button></div></div>{cameraError && <p className="camera-error">{cameraError}</p>}<div className="camera-toolbar"><button className="camera-control" onClick={stopContinuousCamera} aria-label="?��??��?">?</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={captureContinuousPhoto} disabled={captureBusy} aria-label="?��??��?">{captureBusy ? '?? : ''}</button><button className="camera-control" aria-label="?��??�頭">??/button></div></div></div>}
+    {continuousCamera && <div className="overlay dark-overlay camera-overlay"><div className="camera-sheet"><div className="camera-topline"><span className="camera-spacer" aria-hidden="true" /><button className={`camera-flash ${flashEnabled ? 'selected' : ''}`} onClick={toggleFlash} aria-label="??????>?<span>{flashEnabled ? 'ON' : 'A'}</span></button><div className="camera-status"><i /> LIVE 繚 {currentPhotos.length} 撘?/div></div>{captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}<div className="camera-frame"><video ref={videoRef} autoPlay playsInline muted /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /><div className="zoom-controls" aria-label="蝮格??"><button onClick={() => changeZoom(.5)} className={zoomLevel === .5 ? 'selected' : ''}>0.5</button><button onClick={() => changeZoom(1)} className={zoomLevel === 1 ? 'selected' : ''}>1?</button><button onClick={() => changeZoom(2)} className={zoomLevel === 2 ? 'selected' : ''}>2</button><button onClick={() => changeZoom(5)} className={zoomLevel === 5 ? 'selected' : ''}>5</button></div></div>{cameraError && <p className="camera-error">{cameraError}</p>}<div className="camera-toolbar"><button className="camera-control" onClick={stopContinuousCamera} aria-label="????">?</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={captureContinuousPhoto} disabled={captureBusy} aria-label="???貊?">{captureBusy ? '?? : ''}</button><button className="camera-control" aria-label="???⊿">??/button></div></div></div>}
     {saveToast && <div className="camera-error-banner" role="alert">{saveToast}</div>}
     {cameraError && !continuousCamera && <div className="camera-error-banner">{cameraError}</div>}
-    {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>?</button></div><button className="option option-na" key="__NA__" onClick={() => { setTags(t => ({ ...t, [picker]: 'N/A' })); setPicker(null) }}>N/A（�??�用�?span>{tags[picker] === 'N/A' ? '?? : '??}</span></button>{(settingsOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '?? : '??}</span></button>)}<div className="custom-option"><input id="custom" placeholder="?��??��??�目" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>?��?</button></div></div></div>}
-    {detail && <div className="overlay dark-overlay" onClick={() => setDetail(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="detail-back" onClick={() => setDetail(null)} aria-label="返�??��???>??返�?</button><button className="close light" onClick={() => setDetail(null)} aria-label="?��??��?詳�?">?</button><img src={detail.src} alt="?��?詳�?" /><div className="detail-copy"><b>{detail.category}</b><p className="detail-tags">{Object.entries(detail.tags).filter(([,v]) => v && v !== 'N/A').map(([k,v]) => <span key={k}>{k}: {v}</span>)}{!Object.values(detail.tags).some(v => v && v !== 'N/A') && <span>?�設定�?�?/span>}</p><p>{detail.note || '沒�??�註'}</p><small>{new Date(detail.createdAt).toLocaleString('zh-HK')}</small></div></div></div>}
-    {projectPanel && <div className="overlay" onClick={() => setProjectPanel(false)}><div className="sheet project-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">PROJECTS</p><h3>?��? Project</h3></div><button className="close" onClick={() => setProjectPanel(false)} aria-label="?��?">?</button></div>{projects.map(project => <button className={`option ${project.id === currentProject.id ? 'chosen' : ''}`} key={project.id} onClick={() => { const projectSettings = project.settings || createProjectSettings(); switchingProjectRef.current = true; setCurrentProjectId(project.id); setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setNoteHistory(projectSettings.noteHistory || []); setSettingsOptions(mergeTagOptions(projectSettings.settingsOptions)); setSelectedNotes([]); setProjectPanel(false); setActive(null); setSelected([]) }}><span>{project.name}<small>{photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === project.id).length} 張相??/small></span><b>{project.id === currentProject.id ? '?? : '??}</b></button>)}<div className="project-add"><input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="輸入??Project ?�稱" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addProject() }} /><button onClick={addProject}>?��?</button></div></div></div>}
-    {newCategory && <div className="overlay" onClick={() => setNewCategory(false)}><div className="sheet small-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">NEW CATEGORY</p><h3>?��?工�?類別</h3></div><button className="close" onClick={() => setNewCategory(false)}>?</button></div><input className="category-input" autoFocus placeholder="例�?：�??�工�? onKeyDown={e => { if (e.key === 'Enter') addCategory(e.currentTarget.value) }} /><button className="primary-button" onClick={() => addCategory((document.querySelector('.category-input') as HTMLInputElement).value)}>建�?類別</button></div></div>}
+    {picker && <div className="overlay" onClick={() => setPicker(null)}><div className="sheet" onClick={e => e.stopPropagation()}><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">SELECT OPTION</p><h3>{picker}</h3></div><button className="close" onClick={() => setPicker(null)}>?</button></div><button className="option option-na" key="__NA__" onClick={() => { setTags(t => ({ ...t, [picker]: 'N/A' })); setPicker(null) }}>N/A嚗??拍嚗?span>{tags[picker] === 'N/A' ? '?? : '??}</span></button>{(settingsOptions[picker] || []).map(option => <button className="option" key={option} onClick={() => { setTags(t => ({ ...t, [picker]: option })); setPicker(null) }}>{option}<span>{tags[picker] === option ? '?? : '??}</span></button>)}<div className="custom-option"><input id="custom" placeholder="?啣??芾??" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && e.currentTarget.value.trim()) { setTags(t => ({ ...t, [picker]: e.currentTarget.value.trim() })); setPicker(null) } }} /><button onClick={() => { const input = document.getElementById('custom') as HTMLInputElement; if (input.value.trim()) { setTags(t => ({ ...t, [picker]: input.value.trim() })); setPicker(null) } }}>?啣?</button></div></div></div>}
+    {detail && <div className="overlay dark-overlay" onClick={() => setDetail(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="detail-back" onClick={() => setDetail(null)} aria-label="餈??貊???>??餈?</button><button className="close light" onClick={() => setDetail(null)} aria-label="???貊?閰單?">?</button><img src={detail.src} alt="?貊?閰單?" /><div className="detail-copy"><b>{detail.category}</b><p className="detail-tags">{Object.entries(detail.tags).filter(([,v]) => v && v !== 'N/A').map(([k,v]) => <span key={k}>{k}: {v}</span>)}{!Object.values(detail.tags).some(v => v && v !== 'N/A') && <span>?芾身摰?蝐?/span>}</p><p>{detail.note || '瘝??酉'}</p><small>{new Date(detail.createdAt).toLocaleString('zh-HK')}</small></div></div></div>}
+    {projectPanel && <div className="overlay" onClick={() => setProjectPanel(false)}><div className="sheet project-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">PROJECTS</p><h3>?豢? Project</h3></div><button className="close" onClick={() => setProjectPanel(false)} aria-label="??">?</button></div>{projects.map(project => <button className={`option ${project.id === currentProject.id ? 'chosen' : ''}`} key={project.id} onClick={() => { const projectSettings = project.settings || createProjectSettings(); switchingProjectRef.current = true; setCurrentProjectId(project.id); setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setNoteHistory(projectSettings.noteHistory || []); setSettingsOptions(mergeTagOptions(projectSettings.settingsOptions)); setSelectedNotes([]); setProjectPanel(false); setActive(null); setSelected([]) }}><span>{project.name}<small>{photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === project.id).length} 撘萇??/small></span><b>{project.id === currentProject.id ? '?? : '??}</b></button>)}<div className="project-add"><input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="頛詨??Project ?迂" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addProject() }} /><button onClick={addProject}>?啣?</button></div></div></div>}
+    {newCategory && <div className="overlay" onClick={() => setNewCategory(false)}><div className="sheet small-sheet" onClick={e => e.stopPropagation()}><div className="section-heading compact"><div><p className="eyebrow">NEW CATEGORY</p><h3>?啣?撌亦?憿</h3></div><button className="close" onClick={() => setNewCategory(false)}>?</button></div><input className="category-input" autoFocus placeholder="靘?嚗??極蝔? onKeyDown={e => { if (e.key === 'Enter') addCategory(e.currentTarget.value) }} /><button className="primary-button" onClick={() => addCategory((document.querySelector('.category-input') as HTMLInputElement).value)}>撱箇?憿</button></div></div>}
   </>
 }
