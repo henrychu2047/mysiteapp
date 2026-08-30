@@ -641,7 +641,7 @@ export default function Page() {
 
   if (appMode === 'memo') return <SiteMemo projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('manage'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('manage'); setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } }} />
 
-  if (appMode === 'handover') return <Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } if (mode === 'handover') { setHandoverView('manage') } }}
+  if (appMode === 'handover') return <Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('home'); setActive(null) } if (mode === 'handover') { setHandoverView('manage') } }} />
 
   const navMode = appMode as string
 
