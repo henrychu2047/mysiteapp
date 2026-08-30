@@ -8,7 +8,7 @@ import { SiteMemo } from '@/components/site-memo/site-memo'
 import { Handover } from '@/components/handover/handover'
 import { Notebook } from '@/components/notebook/notebook'
 import { loadAllMemos, saveAllMemos } from '@/components/site-memo/memo-data'
-import { loadAllHandover, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
+import { buildFloorNames, createRoomHandover, loadAllHandover, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
 
 type Photo = { id: string; src: string; cleanSrc: string; originalBlob?: Blob; thumbnailBlob?: Blob; stampedBlob?: Blob; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string }
 type Category = { name: string; icon: string }
@@ -208,6 +208,17 @@ export default function Page() {
   const [currentProjectId, setCurrentProjectId] = useState(DEFAULT_PROJECT.id)
   const [projectPanel, setProjectPanel] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
+  const [firstLaunch, setFirstLaunch] = useState(false)
+  const [setupProjectName, setSetupProjectName] = useState('')
+  const [setupTowers, setSetupTowers] = useState('1')
+  const [setupTowerPrefix, setSetupTowerPrefix] = useState('')
+  const [setupFloors, setSetupFloors] = useState('1')
+  const [setupFloorPrefix, setSetupFloorPrefix] = useState('')
+  const [setupFloorSuffix, setSetupFloorSuffix] = useState('')
+  const [setupCompactFloors, setSetupCompactFloors] = useState(false)
+  const [setupRooms, setSetupRooms] = useState('')
+  const [setupRoomSuffixStart, setSetupRoomSuffixStart] = useState('')
+  const [setupRoomSuffixEnd, setSetupRoomSuffixEnd] = useState('')
   const [active, setActive] = useState<string | null>(null)
   const [appMode, setAppMode] = useState<'home' | 'photo' | 'memo' | 'notebook' | 'handover' | 'reserve' | 'about' | 'backup'>('home')
   const [tab, setTab] = useState<'home' | 'photos' | 'settings'>('home')
@@ -216,6 +227,7 @@ export default function Page() {
   const [settingsLabel, setSettingsLabel] = useState<string | null>(null)
   const [newOption, setNewOption] = useState<Record<string, string>>({})
   const [settingsReady, setSettingsReady] = useState(false)
+  const [projectsLoaded, setProjectsLoaded] = useState(false)
   const [tags, setTags] = useState<Record<string, string>>({})
   const [note, setNote] = useState('')
   const [noteHistory, setNoteHistory] = useState<string[]>([])
@@ -306,11 +318,13 @@ export default function Page() {
         localStorage.setItem(PROJECTS_KEY, JSON.stringify(migratedProjects))
         localStorage.removeItem('site-photo-memory'); localStorage.removeItem('site-photo-options'); localStorage.removeItem('site-photo-note-history')
       }
+      if (!localStorage.getItem(PROJECTS_KEY)) setFirstLaunch(true)
     } catch { /* 儲存空間不可用時仍可繼續拍攝 */ }
+    setProjectsLoaded(true)
     setSettingsReady(true)
   }, [])
   useEffect(() => {
-    if (!settingsReady || !photosReady) return
+    if (!settingsReady || !photosReady || !projectsLoaded) return
     setSaveState('saving')
     saveQueueRef.current = saveQueueRef.current.then(async () => {
       await saveStoredPhotos(photos)
@@ -343,6 +357,37 @@ export default function Page() {
     if (!settingsReady || switchingProjectRef.current) return
     setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, settings: { categories, tags, note, settingsOptions, noteHistory } } : project))
   }, [settingsReady, currentProjectId, categories, tags, note, settingsOptions, noteHistory])
+  const completeFirstLaunch = async () => {
+    const name = setupProjectName.trim()
+    const towerCount = Math.max(1, Math.floor(Number(setupTowers) || 0))
+    const floorCount = Math.max(1, Math.floor(Number(setupFloors) || 0))
+    if (!name) return
+    const roomNames = setupRooms.split(/[,，\n]/).map(room => room.trim()).filter(Boolean)
+    const suffixPattern = /^(.*?)(\d+)$/
+    const expandSuffixes = (start: string, end: string) => {
+      const first = start.trim()
+      const last = end.trim() || first
+      if (!first) return ['']
+      const a = first.match(suffixPattern); const b = last.match(suffixPattern)
+      if (!a || !b || a[1] !== b[1]) return [first]
+      const from = Number(a[2]); const to = Number(b[2]); if (from > to || to - from > 100) return [first]
+      const width = Math.max(a[2].length, b[2].length)
+      return Array.from({ length: to - from + 1 }, (_, index) => `${a[1]}${String(from + index).padStart(width, '0')}`)
+    }
+    const floors = buildFloorNames(floorCount, true, setupFloorPrefix.trim(), setupFloorSuffix.trim(), setupCompactFloors)
+    const roomSuffixes = expandSuffixes(setupRoomSuffixStart, setupRoomSuffixEnd)
+    const finalRoomNames = roomNames.flatMap(room => roomSuffixes.map(suffix => `${room}${suffix}`))
+    const towers: Tower[] = Array.from({ length: towerCount }, (_, towerIndex) => ({
+      id: createId(), name: `${setupTowerPrefix.trim()}${towerIndex + 1}`, floors: floors.map(floorName => ({ id: createId(), name: floorName, rooms: finalRoomNames.map(roomName => ({ id: createId(), name: roomName, handover: createRoomHandover() })) })),
+    }))
+    const project: Project = { id: createId(), name, settings: createProjectSettings() }
+    setProjects([project])
+    setCurrentProjectId(project.id)
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify([project]))
+    localStorage.setItem(CURRENT_PROJECT_KEY, project.id)
+    await saveAllHandover({ [project.id]: { towers, responsiblePerson: { name: '', company: '', contractor: '', department: '', position: '' } } })
+    setFirstLaunch(false)
+  }
   const rememberNote = () => {
     const value = note.trim()
     if (!value) return
@@ -697,6 +742,7 @@ export default function Page() {
   const navMode = appMode as string
 
   return <>
+    {firstLaunch && <div className="overlay" role="dialog" aria-modal="true"><div className="sheet first-launch-sheet"><div className="sheet-header"><div><p className="eyebrow">FIRST PROJECT SETUP</p><h2>建立第一個 Project</h2></div></div><p className="settings-intro">首次使用請輸入 Project 名稱，以及目前批量產生的座數／樓層／機房資料。</p><label className="ho-field"><span>Project 名稱</span><input autoFocus value={setupProjectName} onChange={e => setSetupProjectName(e.target.value)} placeholder="例如：Tower A 工程" /></label><div className="setup-grid"><label className="ho-field"><span>座數</span><input type="number" min="1" value={setupTowers} onChange={e => setSetupTowers(e.target.value)} /></label><label className="ho-field"><span>座數前綴</span><input value={setupTowerPrefix} onChange={e => setSetupTowerPrefix(e.target.value)} placeholder="例如：座" /></label><label className="ho-field"><span>樓層數</span><input type="number" min="1" value={setupFloors} onChange={e => setSetupFloors(e.target.value)} /></label><label className="ho-field"><span>樓層前綴</span><input value={setupFloorPrefix} onChange={e => setSetupFloorPrefix(e.target.value)} placeholder="例如：L" /></label><label className="ho-field"><span>樓層後綴</span><input value={setupFloorSuffix} onChange={e => setSetupFloorSuffix(e.target.value)} placeholder="例如：/F" /></label></div><label className="check-row"><input type="checkbox" checked={setupCompactFloors} onChange={e => setSetupCompactFloors(e.target.checked)} /><span>樓層使用兩位數編號（L00、L01…）</span></label><label className="ho-field"><span>機房名稱（可用逗號或換行分隔）</span><textarea rows={3} value={setupRooms} onChange={e => setSetupRooms(e.target.value)} placeholder="例如：電掣房, 電池房" /></label><div className="setup-grid"><label className="ho-field"><span>機房後綴開始</span><input value={setupRoomSuffixStart} onChange={e => setSetupRoomSuffixStart(e.target.value)} placeholder="例如：1 或 N1" /></label><label className="ho-field"><span>機房後綴完結</span><input value={setupRoomSuffixEnd} onChange={e => setSetupRoomSuffixEnd(e.target.value)} placeholder="例如：4 或 N4" /></label></div><button className="primary-button" disabled={!setupProjectName.trim()} onClick={() => void completeFirstLaunch()}>建立 Project 並開始使用</button></div></div>}
     {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
     <main className="app-shell">
       <header className="topbar">
