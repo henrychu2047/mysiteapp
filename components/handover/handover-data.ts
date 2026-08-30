@@ -102,11 +102,12 @@ export function createRoomHandover(): RoomHandover {
 // 快速選項（可直接點按填入）
 export const ROOM_NAME_SUGGESTIONS = [
   'Pump Room',
-  'Fire Services Room',
-  'Electrical Room',
+  'FS Pump Room',
+  'Fire Control Room',
+  'Elect Room',
   'AHU Room',
   'Water Tank Room',
-  'Transformer Room',
+  'TX Room',
   'Generator Room',
   'Lift Machine Room',
 ]

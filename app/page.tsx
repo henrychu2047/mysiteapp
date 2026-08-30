@@ -218,7 +218,7 @@ export default function Page() {
   const [setupFloorPrefix, setSetupFloorPrefix] = useState('')
   const [setupFloorSuffix, setSetupFloorSuffix] = useState('')
   const [setupCompactFloors, setSetupCompactFloors] = useState(false)
-  const [setupRooms, setSetupRooms] = useState('Electrical Room')
+  const [setupRooms, setSetupRooms] = useState('Elect Room')
   const [setupRoomSuffixStart, setSetupRoomSuffixStart] = useState('')
   const [setupRoomSuffixEnd, setSetupRoomSuffixEnd] = useState('')
   const [active, setActive] = useState<string | null>(null)
