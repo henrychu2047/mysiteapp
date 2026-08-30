@@ -92,6 +92,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [standaloneTowerId, setStandaloneTowerId] = useState('')
   const [standaloneFloorId, setStandaloneFloorId] = useState('')
   const [standaloneRoom, setStandaloneRoom] = useState('')
+  const [showStandalone, setShowStandalone] = useState(false)
   const [edit, setEdit] = useState<{ type: 'tower' | 'floor' | 'room'; towerId: string; floorId?: string; roomId?: string; name: string } | null>(null)
 
   // 批量產生
@@ -703,19 +704,26 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               </div>
             )}
 
-            <div className="ho-standalone-panel">
-              <span className="ho-group-label">獨立新增機房</span>
-              <div className="ho-gen-row">
-                <label className="ho-field"><span>座數</span><select value={standaloneTowerId} onChange={e => selectStandaloneTower(e.target.value)}><option value="">選擇座數</option><option value="__NA__">N/A</option>{towers.map(tower => <option key={tower.id} value={tower.id}>{tower.name}</option>)}</select></label>
-                <label className="ho-field"><span>樓層</span><select value={standaloneFloorId} onChange={e => setStandaloneFloorId(e.target.value)} disabled={!standaloneTowerId}><option value="">選擇樓層</option>{towers.find(tower => tower.id === standaloneTowerId)?.floors.map(floor => <option key={floor.id} value={floor.id}>{floor.name}</option>)}</select></label>
+            <button className="ho-gen-toggle" onClick={() => setShowStandalone(v => !v)}>
+              <Plus size={18} />
+              <span>獨立新增機房</span>
+              {showStandalone ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
+
+            {showStandalone && (
+              <div className="ho-gen-panel">
+                <div className="ho-gen-row">
+                  <label className="ho-field"><span>座數</span><select value={standaloneTowerId} onChange={e => selectStandaloneTower(e.target.value)}><option value="">選擇座數</option><option value="__NA__">N/A</option>{towers.map(tower => <option key={tower.id} value={tower.id}>{tower.name}</option>)}</select></label>
+                  <label className="ho-field"><span>樓層</span><select value={standaloneFloorId} onChange={e => setStandaloneFloorId(e.target.value)} disabled={!standaloneTowerId}><option value="">選擇樓層</option>{towers.find(tower => tower.id === standaloneTowerId)?.floors.map(floor => <option key={floor.id} value={floor.id}>{floor.name}</option>)}</select></label>
+                </div>
+                <div className="ho-add-row small"><input value={standaloneRoom} onChange={e => setStandaloneRoom(e.target.value)} placeholder="輸入機房名稱，例如 Pump Room" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
+                <span className="ho-group-label">機房名稱快選</span>
+                <div className="ho-chip-row">
+                  {ROOM_NAME_SUGGESTIONS.map(name => <button type="button" key={name} className={`ho-suggest ${standaloneRoom === name ? 'on' : ''}`} onClick={() => setStandaloneRoom(name)}>{standaloneRoom === name && <Check size={12} />}{name}</button>)}
+                </div>
+                <p className="ho-gen-note">可指定機房所屬座數及樓層，不必使用批量產生；也可按上方快選直接填入名稱。</p>
               </div>
-              <div className="ho-add-row small"><input value={standaloneRoom} onChange={e => setStandaloneRoom(e.target.value)} placeholder="輸入機房名稱，例如 Pump Room" onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) addStandaloneRoom() }} /><button onClick={addStandaloneRoom}><Plus size={16} />新增</button></div>
-              <span className="ho-group-label">機房名稱快選</span>
-              <div className="ho-chip-row">
-                {ROOM_NAME_SUGGESTIONS.map(name => <button type="button" key={name} className={`ho-suggest ${standaloneRoom === name ? 'on' : ''}`} onClick={() => setStandaloneRoom(name)}>{standaloneRoom === name && <Check size={12} />}{name}</button>)}
-              </div>
-              <p className="ho-gen-note">可指定機房所屬座數及樓層，不必使用批量產生；也可按上方快選直接填入名稱。</p>
-            </div>
+            )}
 
             <div className="ho-add-row">
               <input
