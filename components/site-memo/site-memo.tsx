@@ -20,6 +20,9 @@ import {
   Upload,
   Pencil,
   ClipboardList,
+  Home,
+  Images,
+  Building2,
   Info,
 } from 'lucide-react'
 import {
@@ -43,7 +46,7 @@ import { MemoDocument } from './memo-document'
 
 type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
 
-type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
+type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 
 export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
@@ -309,26 +312,10 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       {saveToast && <div className="memo-save-toast" role="alert">{saveToast}</div>}
 
       <nav className="bottom-nav main-nav">
-        <button onClick={() => onNavigate('photo')}>
-          <span><Camera size={20} /></span>
-          拍照記錄
-        </button>
-        <button className="active" onClick={() => setModal(null)}>
-          <span><PenLine size={20} /></span>
-          Site Memo
-        </button>
-        <button onClick={onOpenMachineData}>
-          <span><ClipboardList size={20} /></span>
-          制房移交
-        </button>
-        <button onClick={() => (onOpenMachineDataManage ? onOpenMachineDataManage() : onNavigate('handover'))}>
-          <span><ClipboardList size={20} /></span>
-          機房資料
-        </button>
-        <button onClick={() => onNavigate('about')}>
-          <span><Info size={20} /></span>
-          資料
-        </button>
+        <button onClick={() => onNavigate('home')}><span><Home size={20} /></span>首頁</button>
+        <button onClick={() => onNavigate('photo')}><span><Images size={20} /></span>相簿</button>
+        <button onClick={() => (onOpenMachineDataManage ? onOpenMachineDataManage() : onNavigate('handover'))}><span><Building2 size={20} /></span>機房資料</button>
+        <button onClick={() => onNavigate('about')}><span><Info size={20} /></span>資料</button>
       </nav>
 
       {modal === 1 && (

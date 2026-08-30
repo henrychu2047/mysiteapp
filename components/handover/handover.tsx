@@ -47,7 +47,7 @@ import {
   type ResponsiblePerson,
 } from './handover-data'
 
-type AppMode = 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
+type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about'
 
 type Props = {
   onBack: () => void
@@ -1109,36 +1109,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       )}
 
       <nav className="bottom-nav main-nav">
-        <button onClick={() => onNavigate('photo')}>
-          <span>
-            <Camera size={20} />
-          </span>
-          拍照記錄
-        </button>
-        <button onClick={() => onNavigate('memo')}>
-          <span>
-            <PenLine size={20} />
-          </span>
-          Site Memo
-        </button>
-        <button className={view !== 'manage' ? 'active' : ''} onClick={() => setView('home')}>
-          <span>
-            <ClipboardList size={20} />
-          </span>
-          制房移交
-        </button>
-        <button className={view === 'manage' ? 'active' : ''} onClick={() => setView('manage')}>
-          <span>
-            <Building2 size={20} />
-          </span>
-          機房資料
-        </button>
-        <button onClick={() => onNavigate('about')}>
-          <span>
-            <Info size={20} />
-          </span>
-          資料
-        </button>
+        <button onClick={() => onNavigate('home')}><span>⌂</span>首頁</button>
+        <button onClick={() => onNavigate('photo')}><span>▧</span>相簿</button>
+        <button className={view === 'manage' ? 'active' : ''} onClick={() => setView('manage')}><span><Building2 size={20} /></span>機房資料</button>
+        <button onClick={() => onNavigate('about')}><span><Info size={20} /></span>資料</button>
       </nav>
     </div>
   )
