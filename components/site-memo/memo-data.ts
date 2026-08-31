@@ -1,4 +1,5 @@
 export type MemoPhoto = { id: string; name: string; tag: string; time: string; customNote: string; previewUrl: string }
+export type MemoLetterhead = { id: string; name: string; dataUrl: string }
 export type MemoPdfPage = { pageNumber: number; imageUrl: string }
 export type MemoPdfAttachment = { id: string; title: string; fileName: string; dwgNo: string; size: string; dataUrl: string; pages: MemoPdfPage[]; totalPages: number; note: string }
 export type MemoRecipient = { company: string; addressLines: string[]; attn: string; email: string }
@@ -22,6 +23,7 @@ export type Memo = {
   legalClause: string
   photos: MemoPhoto[]
   pdfAttachments: MemoPdfAttachment[]
+  letterheadId: string
   spareModule: MemoSpare
   status: string
   signature: string | null
@@ -82,6 +84,7 @@ export function createDefaultMemo(): Memo {
       '請貴司盡快完成上述工作,以免延誤相關機電安裝進度及其後的測試及調試工作,更會影響整交付時間。\n\n若因貴司或貴司之分判疏忽而導致任何索償、損失、工程延誤或其他後果,以及設備損壞所引致之維修或更換費用,本公司保留追究權利。',
     photos: [],
     pdfAttachments: [],
+    letterheadId: '',
     spareModule: {
       title: '備用槽 (遲啲再加功能)',
       delayDays: 14,
@@ -128,12 +131,14 @@ function writeMemoKey(key: string, value: unknown) {
   )
 }
 
-const projectKey = (projectId: string, type: 'current' | 'history') => `${type}:${projectId || DEFAULT_PROJECT_ID}`
+const projectKey = (projectId: string, type: 'current' | 'history' | 'letterheads') => `${type}:${projectId || DEFAULT_PROJECT_ID}`
 
 export const loadMemo = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<Memo>(projectKey(projectId, 'current')).then(stored => stored || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<Memo>('current') : null))
 export const saveMemo = (projectId: string, memo: Memo) => writeMemoKey(projectKey(projectId, 'current'), memo)
 export const loadHistory = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<HistoryRecord[]>(projectKey(projectId, 'history')).then(records => records || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<HistoryRecord[]>('history') : null)).then(records => records || [])
 export const saveHistory = (projectId: string, records: HistoryRecord[]) => writeMemoKey(projectKey(projectId, 'history'), records)
+export const loadLetterheads = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<MemoLetterhead[]>(projectKey(projectId, 'letterheads')).then(records => records || [])
+export const saveLetterheads = (projectId: string, records: MemoLetterhead[]) => writeMemoKey(projectKey(projectId, 'letterheads'), records)
 
 export async function loadAllMemos(): Promise<Record<string, { memo: Memo | null; history: HistoryRecord[] }>> {
   const db = await openMemoDb()

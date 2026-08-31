@@ -30,12 +30,15 @@ import {
   type HistoryRecord,
   type MemoPhoto,
   type MemoPdfAttachment,
+  type MemoLetterhead,
   PHOTO_QUICK_TAGS,
   createDefaultMemo,
   loadMemo,
   saveMemo,
   loadHistory,
   saveHistory,
+  loadLetterheads,
+  saveLetterheads,
   clone,
   readFileAsDataUrl,
   formatBytes,
@@ -44,13 +47,16 @@ import {
 } from './memo-data'
 import { MemoDocument } from './memo-document'
 
-type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | null
+type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
 
 type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
 
-export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
+  const [letterheads, setLetterheads] = useState<MemoLetterhead[]>([])
+  const [letterheadName, setLetterheadName] = useState('')
   const [history, setHistory] = useState<HistoryRecord[]>([])
+  const [letterheadBusy, setLetterheadBusy] = useState(false)
   const [ready, setReady] = useState(false)
   const [modal, setModal] = useState<ModalId>(null)
   const [overlay, setOverlay] = useState<'preview' | 'export' | 'history' | null>(null)
@@ -69,10 +75,12 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setReady(false)
     setMemo(createDefaultMemo())
     setHistory([])
-    Promise.all([loadMemo(projectId), loadHistory(projectId)]).then(([storedMemo, storedHistory]) => {
+    setLetterheads([])
+    Promise.all([loadMemo(projectId), loadHistory(projectId), loadLetterheads(projectId)]).then(([storedMemo, storedHistory, storedLetterheads]) => {
       if (cancelled) return
-      if (storedMemo) setMemo(storedMemo)
+      if (storedMemo) setMemo({ ...createDefaultMemo(), ...storedMemo, letterheadId: storedMemo.letterheadId || '' })
       setHistory(storedHistory)
+      setLetterheads(storedLetterheads)
       setReady(true)
     })
     return () => {
@@ -83,7 +91,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   useEffect(() => {
     if (!ready) return
     setSaveState('saving')
-    Promise.all([saveMemo(projectId, memo), saveHistory(projectId, history)]).then(() => {
+    Promise.all([saveMemo(projectId, memo), saveHistory(projectId, history), saveLetterheads(projectId, letterheads)]).then(() => {
       setSaveState('saved')
       setLastSavedAt(new Date().toISOString())
     }).catch(error => {
@@ -92,7 +100,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       setSaveToast('Site Memo 保存失敗，請檢查裝置儲存空間')
       window.setTimeout(() => setSaveToast(''), 4000)
     })
-  }, [memo, history, projectId, ready])
+  }, [memo, history, letterheads, projectId, ready])
 
   useEffect(() => {
     const warnBeforeLeave = (event: BeforeUnloadEvent) => {
@@ -112,6 +120,23 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setMemo(current => ({ ...current, sender: { ...current.sender, ...partial } }))
   const updateSpare = (partial: Partial<Memo['spareModule']>) =>
     setMemo(current => ({ ...current, spareModule: { ...current.spareModule, ...partial } }))
+
+  async function addLetterhead(files: FileList | null) {
+    if (!files?.[0] || !isRegistered) return
+    setLetterheadBusy(true)
+    try {
+      const file = files[0]
+      const dataUrl = await readFileAsDataUrl(file)
+      const letterhead: MemoLetterhead = { id: `L-${Date.now()}`, name: letterheadName.trim() || file.name, dataUrl }
+      setLetterheads(current => [...current, letterhead])
+      setMemo(current => ({ ...current, letterheadId: letterhead.id }))
+      setLetterheadName('')
+    } catch {
+      alert('信紙上載失敗，請確認檔案格式')
+    } finally {
+      setLetterheadBusy(false)
+    }
+  }
 
   const snapshot = (action: string) => {
     const record: HistoryRecord = { recordId: `H-${Date.now()}`, savedAt: nowStamp(), action, memo: clone(memo) }
@@ -253,6 +278,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setTimeout(() => window.print(), 200)
   }
 
+  const selectedLetterhead = letterheads.find(item => item.id === memo.letterheadId)
+
   const cards = [
     { id: 1 as const, icon: Users, title: '收件人', hint: memo.recipient.company },
     { id: 2 as const, icon: FileText, title: '內容與事件', hint: `${memo.items.length} 項工項` },
@@ -260,6 +287,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     { id: 4 as const, icon: Paperclip, title: '附件', hint: `${memo.pdfAttachments.length} 份圖紙` },
     { id: 5 as const, icon: Boxes, title: '備用槽', hint: `EOT ${memo.spareModule.delayDays} 日` },
     { id: 6 as const, icon: PenLine, title: '發件人資料', hint: memo.signature ? '已簽名' : '未簽名' },
+    { id: 7 as const, icon: FileText, title: '信紙', hint: isRegistered ? (letterheads.find(item => item.id === memo.letterheadId)?.name || '未選擇') : '註冊版專有功能' },
   ]
 
   return (
@@ -282,7 +310,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           {cards.map(card => {
             const Icon = card.icon
             return (
-              <button key={card.id} className="memo-card" onClick={() => setModal(card.id)}>
+              <button key={card.id} className="memo-card" disabled={card.id === 7 && !isRegistered} onClick={() => setModal(card.id)}>
                 <Icon size={26} className="memo-card-icon" />
                 <strong>{card.title}</strong>
                 <span>{card.hint}</span>
@@ -465,6 +493,31 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
         </MemoModal>
       )}
 
+      {modal === 7 && isRegistered && (
+        <MemoModal title="信紙（註冊版專有功能）" onClose={() => setModal(null)}>
+          <Field label="信紙名稱（可選）">
+            <input value={letterheadName} onChange={e => setLetterheadName(e.target.value)} placeholder="例如：公司正式信紙" />
+          </Field>
+          <label className="memo-upload">
+            <Upload size={18} />
+            {letterheadBusy ? '上載中…' : '上載信紙圖片'}
+            <input type="file" accept="image/*" hidden disabled={letterheadBusy} onChange={e => addLetterhead(e.target.files)} />
+          </label>
+          {letterheads.map(letterhead => (
+            <div className="memo-letterhead-row" key={letterhead.id}>
+              <button className={memo.letterheadId === letterhead.id ? 'active' : ''} onClick={() => update({ letterheadId: letterhead.id })}>
+                <img src={letterhead.dataUrl} alt={letterhead.name} />
+                <span>{letterhead.name}{memo.letterheadId === letterhead.id ? '（目前使用）' : ''}</span>
+              </button>
+              <button className="memo-photo-del" onClick={() => { setLetterheads(current => current.filter(item => item.id !== letterhead.id)); if (memo.letterheadId === letterhead.id) update({ letterheadId: '' }) }}>
+                <Trash2 size={15} />
+                刪除
+              </button>
+            </div>
+          ))}
+        </MemoModal>
+      )}
+
       {modal === 6 && (
         <MemoModal title="發件人資料" onClose={() => setModal(null)}>
           <Field label="JV 名稱">
@@ -548,7 +601,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             </button>
           </div>
           <div className="memo-preview-scroll">
-            <MemoDocument memo={memo} onZoomImage={setZoomImage} />
+            <MemoDocument memo={memo} letterhead={selectedLetterhead} onZoomImage={setZoomImage} />
           </div>
         </div>
       )}
@@ -565,7 +618,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             </button>
           </div>
           <div className="memo-preview-scroll">
-            <MemoDocument memo={previewingHistory.memo} onZoomImage={setZoomImage} />
+            <MemoDocument memo={previewingHistory.memo} letterhead={letterheads.find(item => item.id === previewingHistory.memo.letterheadId)} onZoomImage={setZoomImage} />
           </div>
         </div>
       )}
@@ -577,7 +630,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       )}
 
       <div className="memo-export-target" aria-hidden>
-        <div ref={exportRef}>{pendingExport && <MemoDocument memo={pendingExport.memo} />}</div>
+        <div ref={exportRef}>{pendingExport && <MemoDocument memo={pendingExport.memo} letterhead={letterheads.find(item => item.id === pendingExport.memo.letterheadId)} />}</div>
       </div>
     </div>
   )

@@ -1,14 +1,14 @@
 import type { Memo } from './memo-data'
 
 // A4 portrait document shared by live preview, PDF export and history preview.
-export function MemoDocument({ memo, onZoomImage }: { memo: Memo; onZoomImage?: (url: string) => void }) {
+export function MemoDocument({ memo, letterhead, onZoomImage }: { memo: Memo; letterhead?: { name: string; dataUrl: string }; onZoomImage?: (url: string) => void }) {
   const attachmentCount = memo.pdfAttachments.reduce((total, a) => total + Math.max(a.totalPages, a.pages.length), 0)
 
   return (
     <div className="memo-doc">
       <section className="a4-portrait-page">
         <header style={{ textAlign: 'center', borderBottom: '2px solid #111', paddingBottom: '8px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '.06em', color: '#111' }}>SOUTHA</div>
+          {letterhead ? <img src={letterhead.dataUrl} alt={letterhead.name} style={{ width: '100%', maxHeight: '110px', objectFit: 'contain', objectPosition: 'center' }} /> : <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '.06em', color: '#111' }}>SOUTHA</div>}
           <div style={{ fontSize: '14.5px', fontWeight: 700, marginTop: '2px' }}>{memo.sender.jvName}</div>
           <div style={{ fontSize: '11.5px', color: '#333', marginTop: '3px', lineHeight: 1.35 }}>
             {memo.sender.address}
