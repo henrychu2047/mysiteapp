@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Building2, ChevronRight, FileText, Folder, Home, Images, Info, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
+import { renderPdfToPages } from '@/components/site-memo/memo-data'
 
 type DatabaseFile = { id: string; projectId: string; folder: string; path: string; name: string; type: string; size: number; dataUrl: string; createdAt: string }
 const DB_NAME = 'site-database-db'
@@ -126,19 +127,8 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     setPdfPages([])
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
       try {
-        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-        const pdf = await pdfjs.getDocument(file.dataUrl).promise
-        const pages: string[] = []
-        for (let index = 1; index <= pdf.numPages; index += 1) {
-          const page = await pdf.getPage(index)
-          const viewport = page.getViewport({ scale: 1.35 })
-          const canvas = document.createElement('canvas')
-          canvas.width = viewport.width
-          canvas.height = viewport.height
-          await page.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise
-          pages.push(canvas.toDataURL('image/jpeg', 0.92))
-        }
-        setPdfPages(pages)
+        const pages = await renderPdfToPages(file.dataUrl)
+        setPdfPages(pages.map(page => page.imageUrl))
       } catch {
         setPdfPages([])
       }
