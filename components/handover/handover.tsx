@@ -59,6 +59,8 @@ type Props = {
   onOpenPhotoSettings?: (label?: string) => void
   onPhotoSettingsBack?: () => void
   onStructureChange?: (options: Record<string, string[]>) => void
+  onResponsibleEmailChange?: (email: string) => void
+  isRegistered?: boolean
   onUpdateApp?: () => void
 }
 
@@ -85,7 +87,7 @@ const expandRoomSuffixRange = (start: string, end: string) => {
   })
 }
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onUpdateApp }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -173,12 +175,15 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         setTowers(data.towers)
         setResponsiblePerson(data.responsiblePerson)
         setResponsibleDraft(data.responsiblePerson)
+        onResponsibleEmailChange?.(data.responsiblePerson.email)
         setLoaded(true)
       })
       .catch(() => {
         setTowers([])
-        setResponsiblePerson(createResponsiblePerson())
-        setResponsibleDraft(createResponsiblePerson())
+        const emptyResponsible = createResponsiblePerson()
+        setResponsiblePerson(emptyResponsible)
+        setResponsibleDraft(emptyResponsible)
+        onResponsibleEmailChange?.('')
         setLoaded(true)
       })
     setView(initialView)
@@ -470,6 +475,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   }
   const saveResponsiblePerson = () => {
     setResponsiblePerson(responsibleDraft)
+    onResponsibleEmailChange?.(responsibleDraft.email)
     flash('負責人資料已儲存')
   }
   const addRoomPhotos = async (files: FileList | null) => {
@@ -526,8 +532,10 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     if (!confirm('此操作無法復原。請再次確認是否清除全部資料。')) return
     await clearAllHandover().catch(() => undefined)
     setTowers([])
-    setResponsiblePerson(createResponsiblePerson())
-    setResponsibleDraft(createResponsiblePerson())
+    const emptyResponsible = createResponsiblePerson()
+    setResponsiblePerson(emptyResponsible)
+    setResponsibleDraft(emptyResponsible)
+    onResponsibleEmailChange?.('')
     flash('已清除全部資料')
   }
 
@@ -666,12 +674,12 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               <h2>設定</h2>
             </div>
             <div className="ho-home-grid">
-              <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.()}><Pencil size={30} className="ho-home-icon" /><strong>設定</strong><span>標籤類別及選項</span></button>
+              <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.()}><Pencil size={30} className="ho-home-icon" /><strong>設定</strong><span>{isRegistered ? '標籤類別及選項' : '註冊版專有功能'}</span></button>
               <button className="ho-home-card" onClick={() => { setResponsibleDraft(responsiblePerson); setView('responsible-person') }}><UserRound size={30} className="ho-home-icon" /><strong>負責人</strong><span>Project 共用負責人資料</span></button>
               <button className="ho-home-card" onClick={() => setView('manage')}><Building2 size={30} className="ho-home-icon" /><strong>機房資料</strong><span>座數、樓層及機房</span></button>
-              <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('安全')}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>管理安全選項</span></button>
-              <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('收貨相關')}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>管理收貨選項</span></button>
-              <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('事項')}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>管理事項選項</span></button>
+              <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.('安全')}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>{isRegistered ? '管理安全選項' : '註冊版專有功能'}</span></button>
+              <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.('收貨相關')}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>{isRegistered ? '管理收貨選項' : '註冊版專有功能'}</span></button>
+              <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.('事項')}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>{isRegistered ? '管理事項選項' : '註冊版專有功能'}</span></button>
               <button className="ho-home-card" onClick={() => onNavigate('backup')}><Download size={30} className="ho-home-icon" /><strong>備份</strong><span>匯出或還原完整資料</span></button>
               <button className="ho-home-card" onClick={onUpdateApp}><Wand2 size={30} className="ho-home-icon" /><strong>更新 App</strong><span>檢查並套用最新版本</span></button>
             </div>
