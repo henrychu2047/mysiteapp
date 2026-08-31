@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArrowLeft, Building2, ChevronRight, FileText, Folder, Home, Images, Info, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
 import { renderPdfToPages } from '@/components/site-memo/memo-data'
@@ -72,6 +72,7 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   const [pdfEditMode, setPdfEditMode] = useState<'text' | 'draw' | null>(null)
   const [draftText, setDraftText] = useState('')
   const [drawingPoints, setDrawingPoints] = useState<Array<{ x: number; y: number }>>([])
+  const drawingPageRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -168,6 +169,8 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   }
   const handlePdfPointerDown = (event: ReactPointerEvent<HTMLDivElement>, page: number) => {
     if (pdfEditMode === 'draw') {
+      event.preventDefault()
+      drawingPageRef.current = page
       event.currentTarget.setPointerCapture(event.pointerId)
       setDrawingPoints([pointFromEvent(event)])
     } else if (pdfEditMode === 'text') {
@@ -177,7 +180,14 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     }
   }
   const handlePdfPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pdfEditMode === 'draw' && (event.buttons & 1) === 1 && drawingPoints.length) setDrawingPoints(current => [...current, pointFromEvent(event)])
+    if (pdfEditMode === 'draw' && drawingPageRef.current !== null && drawingPoints.length) {
+      event.preventDefault()
+      setDrawingPoints(current => [...current, pointFromEvent(event)])
+    }
+  }
+  const handlePdfPointerUp = (page: number) => {
+    if (pdfEditMode === 'draw' && drawingPageRef.current === page) finishPdfDrawing(page)
+    drawingPageRef.current = null
   }
   const clearLastAnnotation = () => {
     if (!viewer?.annotations?.length) return
@@ -204,7 +214,7 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
         {currentPath && <><div className="database-files">{visibleFiles.map(file => <div className="database-file" key={file.id}><button onClick={() => openFile(file)}><FileText size={24} /><span><strong>{file.name}</strong><small>{formatSize(file.size)}・{new Date(file.createdAt).toLocaleString('zh-HK', { hour12: false })}</small></span></button><button className="database-delete" onClick={() => remove(file.id)} aria-label={`刪除${file.name}`}><Trash2 size={16} /></button></div>)}{!visibleFiles.length && <p className="empty-state">此資料夾尚未有檔案。</p>}</div><div className="database-panel-actions"><button type="button" className="database-add-folder" onClick={addFolder} hidden={folder === '圖紙'}>＋新增資料夾</button><label className="database-upload"><Upload size={17} />{busy ? '上載中…' : '上載檔案'}<input hidden type="file" multiple accept="application/pdf,image/*" disabled={busy} onChange={e => { void upload(e.target.files); e.currentTarget.value = '' }} /></label></div></>}
       </div>
     </div>
-    {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><div>{editingFile ? <input value={viewer.name} onChange={event => setViewer({ ...viewer, name: event.target.value })} /> : <strong>{viewer.name}</strong>}</div><div className="database-viewer-actions">{editingFile ? <button onClick={saveViewerEdit}>保存</button> : <button onClick={() => { setEditingFile(true); setShowPdfTools(true) }}>編輯</button>}<button onClick={() => { setViewer(null); setPdfPages([]); setPdfEditMode(null); setShowPdfTools(false) }} aria-label="關閉"><X size={21} /></button></div></div>{(viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf')) && showPdfTools && <div className="database-pdf-toolbar"><strong>PDF 編輯工具</strong><button className={pdfEditMode === 'text' ? 'active' : ''} onClick={() => { setEditingFile(true); setShowPdfTools(true); setPdfEditMode(pdfEditMode === 'text' ? null : 'text') }}>＋文字</button><button className={pdfEditMode === 'draw' ? 'active' : ''} onClick={() => { setEditingFile(true); setShowPdfTools(true); setPdfEditMode(pdfEditMode === 'draw' ? null : 'draw') }}>✎ 手寫</button><button onClick={clearLastAnnotation} disabled={!viewer.annotations?.length}>清除最後註記</button><button className="save-annotation" onClick={saveViewerEdit}>保存註記</button><small>{pdfEditMode === 'text' ? '點擊頁面位置後輸入文字' : pdfEditMode === 'draw' ? '在頁面上拖曳手寫' : '按「＋文字」或「✎ 手寫」開始'}</small></div>}{viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf') ? <div className="database-pdf-pages">{pdfPages.length ? pdfPages.map((page, index) => <div className="database-pdf-page" key={index} onPointerDown={event => handlePdfPointerDown(event, index + 1)} onPointerMove={handlePdfPointerMove} onPointerUp={() => pdfEditMode === 'draw' && finishPdfDrawing(index + 1)} onPointerCancel={() => { setDrawingPoints([]); setPdfEditMode(null) }}>{<img src={page} alt={`${viewer.name} 第 ${index + 1} 頁`} />}{(viewer.annotations || []).filter(annotation => annotation.page === index + 1).map((annotation, annotationIndex) => annotation.kind === 'text' ? <span className="database-pdf-text-annotation" key={annotationIndex} style={{ left: `${annotation.x * 100}%`, top: `${annotation.y * 100}%` }}>{annotation.text}</span> : <svg className="database-pdf-draw-annotation" key={annotationIndex} viewBox="0 0 1 1" preserveAspectRatio="none"><polyline points={(annotation.points || []).map(point => `${point.x},${point.y}`).join(' ')} /></svg>)}</div>) : <iframe src={viewer.dataUrl} title={viewer.name} />}</div> : <div className="database-image-preview"><img src={viewer.dataUrl} alt={viewer.name} /></div>}</div>}
+    {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><div>{editingFile ? <input value={viewer.name} onChange={event => setViewer({ ...viewer, name: event.target.value })} /> : <strong>{viewer.name}</strong>}</div><div className="database-viewer-actions">{editingFile ? <button onClick={saveViewerEdit}>保存</button> : <button onClick={() => { setEditingFile(true); setShowPdfTools(true) }}>編輯</button>}<button onClick={() => { setViewer(null); setPdfPages([]); setPdfEditMode(null); setShowPdfTools(false) }} aria-label="關閉"><X size={21} /></button></div></div>{(viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf')) && showPdfTools && <div className="database-pdf-toolbar"><strong>PDF 編輯工具</strong><button className={pdfEditMode === 'text' ? 'active' : ''} onClick={() => { setEditingFile(true); setShowPdfTools(true); setPdfEditMode(pdfEditMode === 'text' ? null : 'text') }}>＋文字</button><button className={pdfEditMode === 'draw' ? 'active' : ''} onClick={() => { setEditingFile(true); setShowPdfTools(true); setPdfEditMode(pdfEditMode === 'draw' ? null : 'draw') }}>✎ 手寫</button><button onClick={clearLastAnnotation} disabled={!viewer.annotations?.length}>清除最後註記</button><button className="save-annotation" onClick={saveViewerEdit}>保存註記</button><small>{pdfEditMode === 'text' ? '點擊頁面位置後輸入文字' : pdfEditMode === 'draw' ? '在頁面上拖曳手寫' : '按「＋文字」或「✎ 手寫」開始'}</small></div>}{viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf') ? <div className="database-pdf-pages">{pdfPages.length ? pdfPages.map((page, index) => <div className="database-pdf-page" key={index} onPointerDown={event => handlePdfPointerDown(event, index + 1)} onPointerMove={handlePdfPointerMove} onPointerUp={() => handlePdfPointerUp(index + 1)} onPointerCancel={() => { drawingPageRef.current = null; setDrawingPoints([]) }}>{<img src={page} alt={`${viewer.name} 第 ${index + 1} 頁`} />}{(viewer.annotations || []).filter(annotation => annotation.page === index + 1).map((annotation, annotationIndex) => annotation.kind === 'text' ? <span className="database-pdf-text-annotation" key={annotationIndex} style={{ left: `${annotation.x * 100}%`, top: `${annotation.y * 100}%` }}>{annotation.text}</span> : <svg className="database-pdf-draw-annotation" key={annotationIndex} viewBox="0 0 1 1" preserveAspectRatio="none"><polyline points={(annotation.points || []).map(point => `${point.x},${point.y}`).join(' ')} /></svg>)}</div>) : <iframe src={viewer.dataUrl} title={viewer.name} />}</div> : <div className="database-image-preview"><img src={viewer.dataUrl} alt={viewer.name} /></div>}</div>}
   </section>
   <nav className="bottom-nav main-nav database-bottom-nav"><button onClick={onBack}><span><Home size={20} /></span>首頁</button><button onClick={onBack}><span><Images size={20} /></span>相簿</button><button onClick={onBack}><span><Building2 size={20} /></span>設定</button><button onClick={onBack}><span><Info size={20} /></span>資料</button></nav>
  </>
