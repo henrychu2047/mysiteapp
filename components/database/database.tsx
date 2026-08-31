@@ -89,10 +89,7 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     } finally { setBusy(false) }
   }
   const remove = (id: string) => setFiles(current => current.filter(file => file.id !== id))
-  const openFile = (file: DatabaseFile) => {
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) setViewer(file)
-    else window.open(file.dataUrl, '_blank', 'noopener,noreferrer')
-  }
+  const openFile = (file: DatabaseFile) => setViewer(file)
 
   return <section className="content database-page">
     <button className="back-link" onClick={onBack}><ArrowLeft size={16} /> 返回首頁</button>
@@ -108,6 +105,6 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
         {(folder !== '圖紙' || drawingPath) && <><div className="database-toolbar"><strong>{currentPath}</strong><label className="database-upload"><Upload size={17} />{busy ? '上載中…' : '上載檔案'}<input hidden type="file" multiple disabled={busy} onChange={e => { void upload(e.target.files); e.currentTarget.value = '' }} /></label></div><div className="database-files">{visibleFiles.map(file => <div className="database-file" key={file.id}><button onClick={() => openFile(file)}><FileText size={24} /><span><strong>{file.name}</strong><small>{formatSize(file.size)}・{new Date(file.createdAt).toLocaleString('zh-HK', { hour12: false })}</small></span></button><button className="database-delete" onClick={() => remove(file.id)} aria-label={`刪除${file.name}`}><Trash2 size={16} /></button></div>)}{!visibleFiles.length && <p className="empty-state">此資料夾尚未有檔案。</p>}</div></>}
       </div>
     </div>
-    {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><strong>{viewer.name}</strong><button onClick={() => setViewer(null)} aria-label="關閉"><X size={21} /></button></div><iframe src={viewer.dataUrl} title={viewer.name} /></div>}
+    {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><strong>{viewer.name}</strong><button onClick={() => setViewer(null)} aria-label="關閉"><X size={21} /></button></div>{viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf') ? <iframe src={viewer.dataUrl} title={viewer.name} /> : <div className="database-image-preview"><img src={viewer.dataUrl} alt={viewer.name} /></div>}</div>}
   </section>
 }
