@@ -59,7 +59,9 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   const [subfolder, setSubfolder] = useState('')
   const [customFolders, setCustomFolders] = useState<Record<string, string[]>>({})
   const [viewer, setViewer] = useState<DatabaseFile | null>(null)
+  const [pdfPages, setPdfPages] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [editingFile, setEditingFile] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -118,7 +120,35 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     } finally { setBusy(false) }
   }
   const remove = (id: string) => setFiles(current => current.filter(file => file.id !== id))
-  const openFile = (file: DatabaseFile) => setViewer(file)
+  const openFile = async (file: DatabaseFile) => {
+    setViewer(file)
+    setEditingFile(false)
+    setPdfPages([])
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      try {
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+        const pdf = await pdfjs.getDocument(file.dataUrl).promise
+        const pages: string[] = []
+        for (let index = 1; index <= pdf.numPages; index += 1) {
+          const page = await pdf.getPage(index)
+          const viewport = page.getViewport({ scale: 1.35 })
+          const canvas = document.createElement('canvas')
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          await page.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise
+          pages.push(canvas.toDataURL('image/jpeg', 0.92))
+        }
+        setPdfPages(pages)
+      } catch {
+        setPdfPages([])
+      }
+    }
+  }
+  const saveViewerEdit = () => {
+    if (!viewer) return
+    setFiles(current => current.map(file => file.id === viewer.id ? viewer : file))
+    setEditingFile(false)
+  }
 
   return <>
     <header className="topbar database-topbar"><div className="brand-mark" aria-hidden="true">▦</div><div className="project-trigger"><strong>{projectName}</strong></div></header>
@@ -140,7 +170,7 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
         {currentPath && <><div className="database-files">{visibleFiles.map(file => <div className="database-file" key={file.id}><button onClick={() => openFile(file)}><FileText size={24} /><span><strong>{file.name}</strong><small>{formatSize(file.size)}・{new Date(file.createdAt).toLocaleString('zh-HK', { hour12: false })}</small></span></button><button className="database-delete" onClick={() => remove(file.id)} aria-label={`刪除${file.name}`}><Trash2 size={16} /></button></div>)}{!visibleFiles.length && <p className="empty-state">此資料夾尚未有檔案。</p>}</div><div className="database-panel-actions"><button type="button" className="database-add-folder" onClick={addFolder} hidden={folder === '圖紙'}>＋新增資料夾</button><label className="database-upload"><Upload size={17} />{busy ? '上載中…' : '上載檔案'}<input hidden type="file" multiple accept="application/pdf,image/*" disabled={busy} onChange={e => { void upload(e.target.files); e.currentTarget.value = '' }} /></label></div></>}
       </div>
     </div>
-    {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><strong>{viewer.name}</strong><button onClick={() => setViewer(null)} aria-label="關閉"><X size={21} /></button></div>{viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf') ? <iframe src={viewer.dataUrl} title={viewer.name} /> : <div className="database-image-preview"><img src={viewer.dataUrl} alt={viewer.name} /></div>}</div>}
+    {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><div>{editingFile ? <input value={viewer.name} onChange={event => setViewer({ ...viewer, name: event.target.value })} /> : <strong>{viewer.name}</strong>}</div><div className="database-viewer-actions">{editingFile ? <button onClick={saveViewerEdit}>保存</button> : <button onClick={() => setEditingFile(true)}>編輯</button>}<button onClick={() => { setViewer(null); setPdfPages([]) }} aria-label="關閉"><X size={21} /></button></div></div>{viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf') ? <div className="database-pdf-pages">{pdfPages.length ? pdfPages.map((page, index) => <img key={index} src={page} alt={`${viewer.name} 第 ${index + 1} 頁`} />) : <iframe src={viewer.dataUrl} title={viewer.name} />}</div> : <div className="database-image-preview"><img src={viewer.dataUrl} alt={viewer.name} /></div>}</div>}
   </section>
   <nav className="bottom-nav main-nav database-bottom-nav"><button onClick={onBack}><span><Home size={20} /></span>首頁</button><button onClick={onBack}><span><Images size={20} /></span>相簿</button><button onClick={onBack}><span><Building2 size={20} /></span>設定</button><button onClick={onBack}><span><Info size={20} /></span>資料</button></nav>
  </>
