@@ -615,17 +615,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <strong>制房移交狀況</strong>
                 <span>日期、移交狀態、相片、Defect</span>
               </button>
-              <button
-                className="ho-home-card"
-                onClick={() => {
-                  setResponsibleDraft(responsiblePerson)
-                  setView('responsible-person')
-                }}
-              >
-                <UserRound size={30} className="ho-home-icon" />
-                <strong>負責人</strong>
-                <span>Project 共用負責人資料</span>
-              </button>
               <button className="ho-home-card" onClick={() => setView('stats')}>
                 <BarChart3 size={30} className="ho-home-icon" />
                 <strong>統計</strong>
@@ -678,6 +667,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             </div>
             <div className="ho-home-grid">
               <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.()}><Pencil size={30} className="ho-home-icon" /><strong>設定</strong><span>標籤類別及選項</span></button>
+              <button className="ho-home-card" onClick={() => { setResponsibleDraft(responsiblePerson); setView('responsible-person') }}><UserRound size={30} className="ho-home-icon" /><strong>負責人</strong><span>Project 共用負責人資料</span></button>
               <button className="ho-home-card" onClick={() => setView('manage')}><Building2 size={30} className="ho-home-icon" /><strong>機房資料</strong><span>座數、樓層及機房</span></button>
               <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('安全')}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>管理安全選項</span></button>
               <button className="ho-home-card" onClick={() => onOpenPhotoSettings?.('收貨相關')}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>管理收貨選項</span></button>
