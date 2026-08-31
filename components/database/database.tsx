@@ -85,7 +85,7 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     ? drawingPath || (drawingFloor ? `${drawingTower} / ${drawingFloor}` : drawingTower)
     : subfolder ? `${folder} / ${subfolder}` : folder
   const visibleFiles = files.filter(file => file.path === currentPath)
-  const breadcrumbParts = folder === '圖紙' ? [folder, ...(drawingPath || (drawingFloor ? `${drawingTower} / ${drawingFloor}` : drawingTower)).split(' / ').filter(Boolean)] : [folder, ...subfolder.split(' / ').filter(Boolean)]
+  const breadcrumbParts = folder === '圖紙' ? (drawingPath || (drawingFloor ? `${drawingTower} / ${drawingFloor}` : drawingTower)).split(' / ').filter(Boolean) : subfolder.split(' / ').filter(Boolean)
   const folderNames = (customFolders[folder] || []).filter(name => name.startsWith(customPrefix) && !name.slice(customPrefix.length).includes(' / ')).map(name => name.slice(customPrefix.length))
   const addFolder = () => {
     const name = window.prompt(`新增${folder}資料夾名稱`)
