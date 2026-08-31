@@ -77,6 +77,9 @@ body { background: linear-gradient(145deg, #f7f9fa 0%, var(--background) 55%, #e
 .capture-button:hover { transform: translateY(-2px); filter: brightness(1.03); box-shadow: 0 11px 24px rgba(21, 33, 43, .18); }
 .camera { background: linear-gradient(135deg, #f26b38, #e9532f); }
 .album { background: linear-gradient(135deg, #2477a9, #1b5f89); }
+.capture-settings { background: linear-gradient(135deg, #5966a8, #3f4d8b); }
+.capture-settings .capture-icon { display: inline-flex; flex: 0 0 auto; }
+.capture-button:disabled { opacity: .5; cursor: not-allowed; transform: none; filter: none; }
 .primary-button, .notebook-add-button { box-shadow: 0 5px 14px rgba(242, 107, 56, .2); transition: transform .18s ease, filter .18s ease; }
 .primary-button:hover, .notebook-add-button:hover { filter: brightness(1.05); transform: translateY(-1px); }
 .tag-chip, .ho-suggest, .notebook-filters button { transition: background .18s ease, border-color .18s ease, transform .18s ease; }
