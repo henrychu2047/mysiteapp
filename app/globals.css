@@ -129,6 +129,13 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .memo-field textarea, .memo-item-row textarea { min-height: auto; line-height: 1.4; resize: vertical; }
 .memo-ai-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font-weight: 700; }
 .memo-ai-btn:disabled { opacity: .6; }
+.memo-quick-groups { display: grid; gap: 12px; }
+.memo-quick-group { display: grid; gap: 7px; }
+.memo-quick-group > strong { color: var(--navy); font-size: 14px; }
+.memo-quick-group > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.memo-quick-group button { border: 1px solid var(--line); border-radius: 999px; padding: 8px 10px; background: var(--card); color: var(--foreground); text-align: left; }
+.memo-quick-group button.active { border-color: var(--orange); background: #fff3e8; color: var(--orange); font-weight: 700; }
+.memo-rough-input { min-height: 150px !important; }
 .memo-items { display: grid; gap: 10px; }
 .memo-items-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; }
 .memo-items-head button, .memo-upload, .memo-photo-del, .memo-menu-btn { display: inline-flex; align-items: center; gap: 6px; }

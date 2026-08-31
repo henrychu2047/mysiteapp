@@ -8,10 +8,10 @@ const SYSTEM_PROMPT = `你是一位資深香港建造業機電工程 (M&E) 合�
 
 要求：
 - 使用繁體中文（香港用語），保留必要的英文工程術語（如 Block、VG、EOT）。
-- 每一項工項獨立一行，並以「- 」作為前綴。
-- 語氣客觀、正式，聚焦阻礙、影響及責任，適合呈交予總承建商 (Main Contractor)。
-- 不要加入標題、編號、解釋或額外評論，只輸出潤色後的工項列表。
-- 保持與輸入相同的項目數量，不要合併或拆分。`
+- 將輸入按因果關係重組成完整 Site Memo 正文，清楚交代事件、阻礙、影響及要求。
+- 語氣客觀、正式，適合呈交予總承建商 (Main Contractor)。
+- 只輸出可直接放入 Site Memo 的正文，不要標題、編號、解釋或 Markdown。
+- 保留輸入中的日期、地點、設備名稱及待填入的括號欄位。`
 
 export async function POST(request: Request) {
   try {
@@ -65,12 +65,10 @@ export async function POST(request: Request) {
       return Response.json({ error: '未設定完整 AI 連線資料，請加入 AI_BASE_URL、AI_API_KEY 及 AI_MODEL' }, { status: 503 })
     }
 
-    const items = text
-      .split('\n')
-      .map(line => line.replace(/^[-•\d.、\s]+/, '').trim())
-      .filter(Boolean)
-
-    return Response.json({ items })
+    const polishedText = text.trim()
+    if (!polishedText) return Response.json({ error: 'AI 沒有返回可用內容' }, { status: 502 })
+    const items = polishedText.split(/\n+/).map(line => line.replace(/^[-•\d.、\s]+/, '').trim()).filter(Boolean)
+    return Response.json({ text: polishedText, items: items.length ? items : [polishedText] })
   } catch (error) {
     console.error('[v0] memo-polish error:', error)
     return Response.json({ error: 'AI 潤色失敗，請稍後再試' }, { status: 500 })

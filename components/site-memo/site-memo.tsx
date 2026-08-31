@@ -51,6 +51,14 @@ type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
 
 type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
 
+type QuickPhraseGroup = '開始' | '內容' | '結尾'
+
+const SITE_MEMO_QUICK_PHRASES: Record<QuickPhraseGroup, string[]> = {
+  開始: ['經近日巡查發現，', '收到貴司於 (XXXX 日期) 通知，', '收到貴司於 (XXXX 日期) 要求，', '根據本司於 (XXXX 日期) 日，', '經近日檢查由貴司提供的文件後發現，'],
+  內容: ['拆除我司已安裝的 (設備名)，', '額外安裝 (設備名)，', '受到阻礙，', '(地點名) 於原訂進度緩慢，', '(地點名) 於原訂時間未能交場，', '有關於 (資料) 的資料錯誤，'],
+  結尾: ['要求盡快完成。', '要求盡快交場。', '供貴司記錄使用。', '本公司保留追究權利。', '貴司盡快完成上述工作，以免延誤相關機電安裝進度及其後的測試及調試工作，更會影響整體交付時間。', '若因貴司或貴司之分判疏忽而導致任何索償、損失、工程延誤或其他後果，以及設備損壞所引致之維修或更換費用，本公司保留追究權利。'],
+}
+
 export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [letterheads, setLetterheads] = useState<MemoLetterhead[]>([])
@@ -63,6 +71,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [zoomImage, setZoomImage] = useState<string | null>(null)
   const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
   const [polishing, setPolishing] = useState(false)
+  const [quickPhrases, setQuickPhrases] = useState<Record<QuickPhraseGroup, string[]>>({ 開始: [], 內容: [], 結尾: [] })
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pendingExport, setPendingExport] = useState<{ memo: Memo; fileName: string } | null>(null)
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
@@ -145,6 +154,16 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setHistory(current => [record, ...current])
   }
 
+  const toggleQuickPhrase = (group: QuickPhraseGroup, phrase: string) => {
+    setQuickPhrases(current => {
+      const selected = current[group].includes(phrase) ? current[group].filter(item => item !== phrase) : [...current[group], phrase]
+      const next = { ...current, [group]: selected }
+      const composed = [...next.開始, ...next.內容, ...next.結尾].join('\n')
+      update({ roughInput: composed })
+      return next
+    })
+  }
+
   async function polishItems() {
     if (!memo.roughInput.trim() || polishing) return
     setPolishing(true)
@@ -155,8 +174,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
         body: JSON.stringify({ roughInput: memo.roughInput }),
       })
       const data = await response.json()
-      if (response.ok && Array.isArray(data.items) && data.items.length) {
-        update({ items: data.items })
+      if (response.ok && typeof data.text === 'string' && data.text.trim()) {
+        update({ roughInput: data.text, items: Array.isArray(data.items) && data.items.length ? data.items : [data.text] })
       } else {
         alert(data.error || 'AI 潤色失敗')
       }
@@ -374,10 +393,18 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 2 && (
         <MemoModal title="內容與事件" onClose={() => setModal(null)}>
-          <Field label="粗略巡查要點">
-            <textarea rows={5} value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
+          <Field label="Site Memo 內容">
+            <textarea className="memo-rough-input" rows={8} placeholder="請輸入 Site Memo 內容，或按下方快選句子組合" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
-          <button className="memo-ai-btn" onClick={polishItems} disabled={polishing}>
+          <div className="memo-quick-groups">
+            {(Object.keys(SITE_MEMO_QUICK_PHRASES) as QuickPhraseGroup[]).map(group => (
+              <div className="memo-quick-group" key={group}>
+                <strong>{group}</strong>
+                <div>{SITE_MEMO_QUICK_PHRASES[group].map(phrase => <button type="button" key={phrase} className={quickPhrases[group].includes(phrase) ? 'active' : ''} onClick={() => toggleQuickPhrase(group, phrase)}>{phrase}</button>)}</div>
+              </div>
+            ))}
+          </div>
+          <button className="memo-ai-btn" onClick={polishItems} disabled={polishing || !memo.roughInput.trim()}>
             <Sparkles size={18} />
             {polishing ? 'AI 潤色中…' : '一鍵 AI 行話潤色'}
           </button>
