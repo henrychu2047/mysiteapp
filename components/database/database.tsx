@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { Component, useEffect, useRef, useState, type ErrorInfo, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { ArrowLeft, Building2, ChevronRight, FileText, Folder, Home, Images, Info, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
 import { renderPdfToPages } from '@/components/site-memo/memo-data'
@@ -26,6 +26,13 @@ const STORE = 'files'
 const FOLDERS = ['圖紙', 'Spec', '照片', '其他'] as const
 
 type DatabaseProps = { projectId: string; projectName: string; onBack: () => void }
+
+class DatabaseErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('[database] render failed:', error, info) }
+  render() { return this.state.hasError ? <div className="database-error"><strong>資料庫照片無法載入</strong><p>請重新上載該圖片，或關閉後再試。</p></div> : this.props.children }
+}
 
 function openDb() {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -68,7 +75,7 @@ function formatSize(size: number) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
-export function Database({ projectId, projectName, onBack }: DatabaseProps) {
+function DatabaseContent({ projectId, projectName, onBack }: DatabaseProps) {
   const [files, setFiles] = useState<DatabaseFile[]>([])
   const [towers, setTowers] = useState<Tower[]>([])
   const [ready, setReady] = useState(false)
@@ -280,4 +287,8 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   </section>
   <nav className="bottom-nav main-nav database-bottom-nav"><button onClick={onBack}><span><Home size={20} /></span>首頁</button><button onClick={onBack}><span><Images size={20} /></span>相簿</button><button onClick={onBack}><span><Building2 size={20} /></span>設定</button><button onClick={onBack}><span><Info size={20} /></span>資料</button></nav>
  </>
+}
+
+export function Database(props: DatabaseProps) {
+ return <DatabaseErrorBoundary><DatabaseContent {...props} /></DatabaseErrorBoundary>
 }
