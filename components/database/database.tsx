@@ -48,15 +48,13 @@ function formatSize(size: number) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
-function generatedDrawingFolders(towers: Tower[]) {
-  return towers.flatMap(tower => tower.floors.flatMap(floor => floor.rooms.map(room => ({ path: `${tower.name} / ${floor.name} / ${room.name}`, label: `${tower.name} / ${floor.name} / ${room.name}` }))))
-}
-
 export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   const [files, setFiles] = useState<DatabaseFile[]>([])
   const [towers, setTowers] = useState<Tower[]>([])
   const [ready, setReady] = useState(false)
   const [folder, setFolder] = useState<string>('圖紙')
+  const [drawingTower, setDrawingTower] = useState('')
+  const [drawingFloor, setDrawingFloor] = useState('')
   const [drawingPath, setDrawingPath] = useState('')
   const [viewer, setViewer] = useState<DatabaseFile | null>(null)
   const [busy, setBusy] = useState(false)
@@ -77,7 +75,8 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     if (ready) void writeFiles(files)
   }, [files, ready])
 
-  const drawingFolders = useMemo(() => generatedDrawingFolders(towers), [towers])
+  const selectedTower = towers.find(tower => tower.name === drawingTower)
+  const selectedFloor = selectedTower?.floors.find(floor => floor.name === drawingFloor)
   const currentPath = folder === '圖紙' ? drawingPath : folder
   const visibleFiles = files.filter(file => file.path === currentPath)
   const upload = async (fileList: FileList | null) => {
@@ -102,10 +101,10 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     <div className="database-layout">
       <aside className="database-folders">
         <strong>資料夾</strong>
-        {FOLDERS.map(name => <button className={folder === name ? 'active' : ''} key={name} onClick={() => { setFolder(name); setDrawingPath('') }}><Folder size={18} />{name}<ChevronRight size={15} /></button>)}
+        {FOLDERS.map(name => <button className={folder === name ? 'active' : ''} key={name} onClick={() => { setFolder(name); setDrawingTower(''); setDrawingFloor(''); setDrawingPath('') }}><Folder size={18} />{name}<ChevronRight size={15} /></button>)}
       </aside>
       <div className="database-content">
-        {folder === '圖紙' && <div className="database-drawing-folders"><div className="database-subheading"><strong><FolderOpen size={17} />圖紙資料夾</strong><span>{drawingFolders.length} 個</span></div>{drawingFolders.length ? drawingFolders.map(item => <button className={drawingPath === item.path ? 'selected' : ''} key={item.path} onClick={() => setDrawingPath(item.path)}><Folder size={17} />{item.label}<ChevronRight size={15} /></button>) : <p className="empty-state">尚未有制房資料，請先在設定建立座數、樓層及機房。</p>}</div>}
+        {folder === '圖紙' && <div className="database-drawing-folders"><div className="database-subheading"><strong><FolderOpen size={17} />圖紙資料夾</strong><span>{towers.length} 個座名</span></div>{towers.length ? <>{!drawingTower && towers.map(tower => <button key={tower.name} onClick={() => { setDrawingTower(tower.name); setDrawingFloor(''); setDrawingPath('') }}><Folder size={17} />{tower.name}<ChevronRight size={15} /></button>)}{drawingTower && <><button className="database-folder-back" onClick={() => { setDrawingTower(''); setDrawingFloor(''); setDrawingPath('') }}><ArrowLeft size={16} />返回座名</button><div className="database-subheading"><strong><FolderOpen size={17} />{selectedTower?.name || drawingTower}</strong><span>{selectedTower?.floors.length || 0} 個樓數</span></div>{!drawingFloor && (selectedTower?.floors || []).map(floor => <button key={floor.name} onClick={() => { setDrawingFloor(floor.name); setDrawingPath('') }}><Folder size={17} />{floor.name}<ChevronRight size={15} /></button>)}{drawingFloor && <><button className="database-folder-back" onClick={() => { setDrawingFloor(''); setDrawingPath('') }}><ArrowLeft size={16} />返回樓數</button><div className="database-subheading"><strong><FolderOpen size={17} />{selectedFloor?.name || drawingFloor}</strong><span>{selectedFloor?.rooms.length || 0} 個機房</span></div>{!drawingPath && (selectedFloor?.rooms || []).map(room => { const path = `${drawingTower} / ${drawingFloor} / ${room.name}`; return <button className={drawingPath === path ? 'selected' : ''} key={room.name} onClick={() => setDrawingPath(path)}><Folder size={17} />{room.name}<ChevronRight size={15} /></button> })}</>}</>}</> : <p className="empty-state">尚未有制房資料，請先在設定建立座數、樓層及機房。</p>}</div>}
         {(folder !== '圖紙' || drawingPath) && <><div className="database-toolbar"><strong>{currentPath}</strong><label className="database-upload"><Upload size={17} />{busy ? '上載中…' : '上載檔案'}<input hidden type="file" multiple disabled={busy} onChange={e => { void upload(e.target.files); e.currentTarget.value = '' }} /></label></div><div className="database-files">{visibleFiles.map(file => <div className="database-file" key={file.id}><button onClick={() => openFile(file)}><FileText size={24} /><span><strong>{file.name}</strong><small>{formatSize(file.size)}・{new Date(file.createdAt).toLocaleString('zh-HK', { hour12: false })}</small></span></button><button className="database-delete" onClick={() => remove(file.id)} aria-label={`刪除${file.name}`}><Trash2 size={16} /></button></div>)}{!visibleFiles.length && <p className="empty-state">此資料夾尚未有檔案。</p>}</div></>}
       </div>
     </div>

@@ -398,7 +398,7 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .database-folders, .database-content { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 12px; }
 .database-folders { display: grid; gap: 8px; }
 .database-folders strong, .database-subheading { font-size: 14px; }
-.database-folders button, .database-drawing-folders > button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--foreground); text-align: left; }
+.database-folders button, .database-drawing-folders > button, .database-drawing-folders .database-folder-back { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--foreground); text-align: left; }
 .database-folders button svg:last-child, .database-drawing-folders > button svg:last-child { margin-left: auto; }
 .database-folders button.active, .database-drawing-folders > button.selected { background: var(--orange-soft); color: var(--orange); font-weight: 700; }
 .database-drawing-folders { display: grid; gap: 8px; }.database-subheading { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px 8px; }.database-subheading strong { display: inline-flex; align-items: center; gap: 6px; }.database-subheading span { color: var(--muted); font-size: 12px; }
