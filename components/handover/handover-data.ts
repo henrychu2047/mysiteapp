@@ -18,6 +18,7 @@ export type HandoverPhoto = { id: string; src: string; createdAt: string }
 export type ResponsiblePerson = {
   name: string
   company: string
+  email: string
   department: string
   position: string
 }
@@ -78,7 +79,7 @@ function normalizeTowers(towers: Tower[]): Tower[] {
 }
 
 export function createResponsiblePerson(): ResponsiblePerson {
-  return { name: '', company: '', department: '', position: '' }
+  return { name: '', company: '', email: '', department: '', position: '' }
 }
 
 export function createRoomHandover(): RoomHandover {
@@ -179,6 +180,7 @@ function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
           return {
             name: handover.personName || '',
             company: handover.personCompany || '',
+            email: '',
             department: handover.personDepartment || '',
             position: handover.personPosition || '',
           }
@@ -191,9 +193,10 @@ function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
 
 function normalizeProjectData(row: { towers?: Tower[]; responsiblePerson?: ResponsiblePerson } | undefined): HandoverProjectData {
   const towers = Array.isArray(row?.towers) ? normalizeTowers(row.towers) : []
+  const responsiblePerson = row?.responsiblePerson || responsiblePersonFromLegacyRooms(towers)
   return {
     towers,
-    responsiblePerson: row?.responsiblePerson || responsiblePersonFromLegacyRooms(towers),
+    responsiblePerson: { ...createResponsiblePerson(), ...responsiblePerson },
   }
 }
 
