@@ -18,7 +18,6 @@ export type HandoverPhoto = { id: string; src: string; createdAt: string }
 export type ResponsiblePerson = {
   name: string
   company: string
-  contractor: string
   department: string
   position: string
 }
@@ -79,7 +78,7 @@ function normalizeTowers(towers: Tower[]): Tower[] {
 }
 
 export function createResponsiblePerson(): ResponsiblePerson {
-  return { name: '', company: '', contractor: '', department: '', position: '' }
+  return { name: '', company: '', department: '', position: '' }
 }
 
 export function createRoomHandover(): RoomHandover {
@@ -180,7 +179,6 @@ function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
           return {
             name: handover.personName || '',
             company: handover.personCompany || '',
-            contractor: handover.personContractor || '',
             department: handover.personDepartment || '',
             position: handover.personPosition || '',
           }

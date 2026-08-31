@@ -390,7 +390,7 @@ export default function Page() {
     setCurrentProjectId(project.id)
     localStorage.setItem(PROJECTS_KEY, JSON.stringify([project]))
     localStorage.setItem(CURRENT_PROJECT_KEY, project.id)
-    await saveAllHandover({ [project.id]: { towers, responsiblePerson: { name: '', company: '', contractor: '', department: '', position: '' } } })
+    await saveAllHandover({ [project.id]: { towers, responsiblePerson: { name: '', company: '', department: '', position: '' } } })
     setFirstLaunch(false)
   }
   const renameCurrentProject = () => {

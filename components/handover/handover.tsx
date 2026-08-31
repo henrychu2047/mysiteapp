@@ -639,10 +639,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <span>公司名稱</span>
                 <input value={responsibleDraft.company} onChange={e => setResponsibleDraft({ ...responsibleDraft, company: e.target.value })} placeholder="ABC Engineering" />
               </label>
-              <label className="ho-field">
-                <span>承辦商名稱</span>
-                <input value={responsibleDraft.contractor} onChange={e => setResponsibleDraft({ ...responsibleDraft, contractor: e.target.value })} placeholder="機電承辦商" />
-              </label>
               <div className="ho-field-two">
                 <label className="ho-field">
                   <span>部門</span>
