@@ -84,6 +84,8 @@ function loadStoredPhotos() {
 }
 
 function hydratePhoto(photo: Photo): Photo {
+  const annotations = Array.isArray(photo.annotations) ? photo.annotations.filter(annotation => annotation && (annotation.kind === 'text' || annotation.kind === 'marker' || annotation.kind === 'draw')).map(annotation => ({ ...annotation, x: Number.isFinite(annotation.x) ? annotation.x : 0.5, y: Number.isFinite(annotation.y) ? annotation.y : 0.5, points: Array.isArray(annotation.points) ? annotation.points.filter(point => point && Number.isFinite(point.x) && Number.isFinite(point.y)) : undefined })) : []
+  photo = { ...photo, category: typeof photo.category === 'string' ? photo.category : '其它', tags: photo.tags && typeof photo.tags === 'object' ? photo.tags : {}, note: typeof photo.note === 'string' ? photo.note : '', annotations }
   if (!photo.originalBlob && !photo.thumbnailBlob) return photo
   const stampedUrl = photo.stampedBlob ? URL.createObjectURL(photo.stampedBlob) : photo.src
     const originalUrl = photo.originalBlob ? URL.createObjectURL(photo.originalBlob) : photo.cleanSrc
@@ -110,7 +112,7 @@ function saveStoredPhotos(photos: Photo[], projectId: string) {
       })
       photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === projectId).forEach(photo => store.put(photo.originalBlob || photo.stampedBlob ? { ...photo, src: '', cleanSrc: '' } : photo))
     }
-    existingRequest.onerror = () => reject(existingRequest.error)
+    existingRequest.onerror = () => { reject(existingRequest.error); try { transaction.abort() } catch {} }
     transaction.oncomplete = () => resolve()
     transaction.onerror = () => reject(transaction.error)
   }))
@@ -290,7 +292,7 @@ export default function Page() {
   }, [])
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=21', { updateViaCache: 'none' }).then((registration) => {
+      navigator.serviceWorker.register('/sw.js?v=22', { updateViaCache: 'none' }).then((registration) => {
         const markUpdate = () => setUpdateAvailable(true)
         if (registration.waiting) markUpdate()
         registration.addEventListener('updatefound', () => {
@@ -600,7 +602,7 @@ export default function Page() {
   const addCategory = (name: string) => { if (name.trim()) setCategories(c => [...c, { name: name.trim(), icon: '＋' }]); setNewCategory(false) }
   const removeCategory = (name: string) => { if (confirm(`確定刪除「${name}」及其相片？`)) { setCategories(c => c.filter(x => x.name !== name)); setPhotos(p => p.filter(x => x.category !== name)) } }
   const photoPoint = (event: ReactPointerEvent<HTMLDivElement>) => { const rect = event.currentTarget.getBoundingClientRect(); return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)) } }
-  const photoPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => { const point = photoPoint(event); if (photoEditMode === 'marker') { event.preventDefault(); if (detail) setDetail({ ...detail, annotations: [...(detail.annotations || []), { kind: 'marker', x: point.x, y: point.y }] }); return } if (photoEditMode === 'text') { event.preventDefault(); const text = prompt('輸入相片註記文字'); if (text?.trim() && detail) setDetail({ ...detail, annotations: [...(detail.annotations || []), { kind: 'text', x: point.x, y: point.y, text: text.trim() }] }); setPhotoEditMode(null); return } if (photoEditMode !== 'draw') return; event.preventDefault(); try { event.currentTarget.setPointerCapture(event.pointerId) } catch {} setPhotoDrawing([point]) }
+  const photoPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => { if (!photoEditorOpen) return; const point = photoPoint(event); if (photoEditMode === 'marker') { event.preventDefault(); if (detail) setDetail({ ...detail, annotations: [...(Array.isArray(detail.annotations) ? detail.annotations : []), { kind: 'marker', x: point.x, y: point.y }] }); return } if (photoEditMode === 'text') { event.preventDefault(); const text = prompt('輸入相片註記文字'); if (text?.trim() && detail) setDetail({ ...detail, annotations: [...(Array.isArray(detail.annotations) ? detail.annotations : []), { kind: 'text', x: point.x, y: point.y, text: text.trim() }] }); setPhotoEditMode(null); return } if (photoEditMode !== 'draw') return; event.preventDefault(); try { event.currentTarget.setPointerCapture(event.pointerId) } catch {} setPhotoDrawing([point]) }
   const photoPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => { if (photoEditMode !== 'draw' || !photoDrawing.length) return; event.preventDefault(); setPhotoDrawing(points => points.length >= 800 ? points : [...points, photoPoint(event)]) }
   const photoPointerUp = () => { if (photoEditMode === 'draw' && detail && photoDrawing.length > 1) { setDetail({ ...detail, annotations: [...(detail.annotations || []), { kind: 'draw', x: 0, y: 0, points: photoDrawing }] }); setPhotoDrawing([]) } }
   const savePhotoEdit = () => { if (!detail) return; setPhotos(current => current.map(photo => photo.id === detail.id ? detail : photo)); setPhotoEditorOpen(false); setPhotoEditMode(null); setPhotoDrawing([]); setSaveToast('相片註記已保存'); window.setTimeout(() => setSaveToast(''), 2500) }
