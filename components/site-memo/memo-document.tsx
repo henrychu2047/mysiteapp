@@ -6,15 +6,16 @@ export function MemoDocument({ memo, letterhead, onZoomImage }: { memo: Memo; le
 
   return (
     <div className="memo-doc">
-      <section className="a4-portrait-page">
-        <header style={{ textAlign: 'center', borderBottom: '2px solid #111', paddingBottom: '8px' }}>
-          {letterhead ? <img src={letterhead.dataUrl} alt={letterhead.name} style={{ width: '100%', maxHeight: '110px', objectFit: 'contain', objectPosition: 'center' }} /> : <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '.06em', color: '#111' }}>SOUTHA</div>}
-          <div style={{ fontSize: '14.5px', fontWeight: 700, marginTop: '2px' }}>{memo.sender.jvName}</div>
-          <div style={{ fontSize: '11.5px', color: '#333', marginTop: '3px', lineHeight: 1.35 }}>
+      <section className={`a4-portrait-page ${letterhead ? 'has-letterhead' : ''}`}>
+        {letterhead && <img className="memo-letterhead-page" src={letterhead.dataUrl} alt={letterhead.name} />}
+        <header style={{ textAlign: 'center', borderBottom: letterhead ? '0' : '2px solid #111', paddingBottom: '8px', minHeight: letterhead ? '30mm' : undefined }}>
+          {!letterhead && <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '.06em', color: '#111' }}>SOUTHA</div>}
+          {!letterhead && <div style={{ fontSize: '14.5px', fontWeight: 700, marginTop: '2px' }}>{memo.sender.jvName}</div>}
+          {!letterhead && <div style={{ fontSize: '11.5px', color: '#333', marginTop: '3px', lineHeight: 1.35 }}>
             {memo.sender.address}
             <br />
             Tel: {memo.sender.tel}　Fax: {memo.sender.fax}　Email: {memo.sender.email}
-          </div>
+          </div>}
         </header>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '12px' }}>

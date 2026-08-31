@@ -126,8 +126,10 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setLetterheadBusy(true)
     try {
       const file = files[0]
-      const dataUrl = await readFileAsDataUrl(file)
-      const letterhead: MemoLetterhead = { id: `L-${Date.now()}`, name: letterheadName.trim() || file.name, dataUrl }
+      const sourceDataUrl = await readFileAsDataUrl(file)
+      const dataUrl = file.type === 'application/pdf' ? (await renderPdfToPages(sourceDataUrl))[0]?.imageUrl : sourceDataUrl
+      if (!dataUrl) throw new Error('信紙 PDF 沒有可用頁面')
+      const letterhead: MemoLetterhead = { id: `L-${Date.now()}`, name: letterheadName.trim() || file.name.replace(/\.pdf$/i, ''), dataUrl }
       setLetterheads(current => [...current, letterhead])
       setMemo(current => ({ ...current, letterheadId: letterhead.id }))
       setLetterheadName('')
@@ -500,8 +502,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           </Field>
           <label className="memo-upload">
             <Upload size={18} />
-            {letterheadBusy ? '上載中…' : '上載信紙圖片'}
-            <input type="file" accept="image/*" hidden disabled={letterheadBusy} onChange={e => addLetterhead(e.target.files)} />
+            {letterheadBusy ? '上載中…' : '上載 A4 信紙（PDF 或圖片）'}
+            <input type="file" accept="application/pdf,image/*" hidden disabled={letterheadBusy} onChange={e => addLetterhead(e.target.files)} />
           </label>
           {letterheads.map(letterhead => (
             <div className="memo-letterhead-row" key={letterhead.id}>
