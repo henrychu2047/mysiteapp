@@ -38,7 +38,7 @@ function openDb() {
 function readFiles(projectId: string) {
   return openDb().then(db => new Promise<DatabaseFile[]>((resolve, reject) => {
     const request = db.transaction(STORE, 'readonly').objectStore(STORE).getAll()
-    request.onsuccess = () => resolve((request.result as DatabaseFile[]).filter(file => file.projectId === projectId))
+    request.onsuccess = () => resolve((request.result as unknown[]).filter(file => file && typeof file === 'object' && (file as DatabaseFile).projectId === projectId).map(file => normalizeFile(file as DatabaseFile)))
     request.onerror = () => reject(request.error)
   }))
 }
@@ -149,6 +149,7 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   const remove = (id: string) => setFiles(current => current.filter(file => file.id !== id))
   const openFile = async (file: DatabaseFile) => {
     const safeFile = normalizeFile(file)
+    if (!safeFile.dataUrl) { window.alert('檔案資料無法讀取，請重新上載。'); return }
     setViewer(safeFile)
     setEditingFile(false)
     setShowPdfTools(false)
