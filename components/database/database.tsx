@@ -185,12 +185,15 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     } catch { drawingPageRef.current = null; setDrawingPoints([]) }
   }
   const handlePdfPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    try {
-      if (pdfEditMode === 'draw' && drawingPageRef.current !== null && drawingPoints.length) {
-        event.preventDefault()
-        setDrawingPoints(current => [...current, pointFromEvent(event)])
-      }
-    } catch { drawingPageRef.current = null; setDrawingPoints([]) }
+    if (pdfEditMode !== 'draw' || drawingPageRef.current === null) return
+    event.preventDefault()
+    const point = pointFromEvent(event)
+    setDrawingPoints(current => {
+      if (!current.length) return [point]
+      const previous = current[current.length - 1]
+      if (Math.abs(previous.x - point.x) < 0.002 && Math.abs(previous.y - point.y) < 0.002) return current
+      return current.length >= 1200 ? current : [...current, point]
+    })
   }
   const handlePdfPointerUp = (page: number) => {
     if (pdfEditMode === 'draw' && drawingPageRef.current === page) finishPdfDrawing(page)
