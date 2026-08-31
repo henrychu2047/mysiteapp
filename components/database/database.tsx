@@ -159,12 +159,15 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   }
   const finishPdfDrawing = (page: number) => {
     if (!viewer || drawingPoints.length < 2) return
-    setViewer({ ...viewer, annotations: [...(viewer.annotations || []), { page, kind: 'draw', x: 0, y: 0, points: drawingPoints }] })
+    const points = drawingPoints.filter(point => Number.isFinite(point.x) && Number.isFinite(point.y))
+    if (points.length < 2) return
+    setViewer(current => current ? { ...current, annotations: [...(current.annotations || []), { page, kind: 'draw', x: 0, y: 0, points }] } : current)
     setDrawingPoints([])
     setPdfEditMode(null)
   }
   const pointFromEvent = (event: ReactPointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
+    if (!rect.width || !rect.height) return { x: 0, y: 0 }
     return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)) }
   }
   const handlePdfPointerDown = (event: ReactPointerEvent<HTMLDivElement>, page: number) => {
