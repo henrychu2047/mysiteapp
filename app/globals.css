@@ -78,6 +78,12 @@ body { background: linear-gradient(145deg, #f7f9fa 0%, var(--background) 55%, #e
 .camera { background: linear-gradient(135deg, #f26b38, #e9532f); }
 .album { background: linear-gradient(135deg, #2477a9, #1b5f89); }
 .capture-settings { background: linear-gradient(135deg, #5966a8, #3f4d8b); }
+.tag-display-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0 18px; }
+.tag-display-card { position: relative; min-height: 86px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #f5f7f8; color: var(--foreground); text-align: left; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+.tag-display-card.chosen { border-color: var(--orange); background: var(--orange-soft); }
+.tag-display-card strong { font-size: 15px; }
+.tag-display-card span { color: var(--muted); font-size: 11px; }
+.tag-display-card b { position: absolute; top: 10px; right: 12px; color: var(--orange); font-size: 18px; }
 .capture-settings .capture-icon { display: inline-flex; flex: 0 0 auto; }
 .capture-button:disabled { opacity: .5; cursor: not-allowed; transform: none; filter: none; }
 .primary-button, .notebook-add-button { box-shadow: 0 5px 14px rgba(242, 107, 56, .2); transition: transform .18s ease, filter .18s ease; }
