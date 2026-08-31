@@ -505,6 +505,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             {letterheadBusy ? '上載中…' : '上載 A4 信紙（PDF 或圖片）'}
             <input type="file" accept="application/pdf,image/*" hidden disabled={letterheadBusy} onChange={e => addLetterhead(e.target.files)} />
           </label>
+          <p className="memo-empty">如沒有上載信紙，請在「發件人資料」內手動輸入公司名稱、地址、電話、傳真及電郵，文件會自動顯示。</p>
           {letterheads.map(letterhead => (
             <div className="memo-letterhead-row" key={letterhead.id}>
               <button className={memo.letterheadId === letterhead.id ? 'active' : ''} onClick={() => update({ letterheadId: letterhead.id })}>
@@ -522,14 +523,35 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 6 && (
         <MemoModal title="發件人資料" onClose={() => setModal(null)}>
-          <Field label="JV 名稱">
+          <Field label="JV／公司名稱（沒有上載信紙時會顯示）">
             <input value={memo.sender.jvName} onChange={e => updateSender({ jvName: e.target.value })} />
+          </Field>
+          <Field label="公司地址（沒有上載信紙時會顯示）">
+            <textarea rows={2} value={memo.sender.address} onChange={e => updateSender({ address: e.target.value })} />
+          </Field>
+          <Field label="電話">
+            <input value={memo.sender.tel} onChange={e => updateSender({ tel: e.target.value })} />
+          </Field>
+          <Field label="傳真">
+            <input value={memo.sender.fax} onChange={e => updateSender({ fax: e.target.value })} />
+          </Field>
+          <Field label="公司電郵">
+            <input type="email" value={memo.sender.email} onChange={e => updateSender({ email: e.target.value })} />
           </Field>
           <Field label="項目經理姓名">
             <input value={memo.sender.signerName} onChange={e => updateSender({ signerName: e.target.value })} />
           </Field>
           <Field label="職位">
             <input value={memo.sender.signerRole} onChange={e => updateSender({ signerRole: e.target.value })} />
+          </Field>
+          <Field label="合約編號">
+            <input value={memo.sender.contractNo} onChange={e => updateSender({ contractNo: e.target.value })} />
+          </Field>
+          <Field label="工程名稱">
+            <input value={memo.sender.projectTitle} onChange={e => updateSender({ projectTitle: e.target.value })} />
+          </Field>
+          <Field label="變電站／工程位置">
+            <input value={memo.sender.substationTitle} onChange={e => updateSender({ substationTitle: e.target.value })} />
           </Field>
           <Field label="電子手寫簽名">
             <SignaturePad value={memo.signature} onChange={signature => update({ signature })} />
