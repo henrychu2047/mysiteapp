@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ChevronRight, FileText, Folder, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, FileText, Folder, Home, Images, Info, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
 
 type DatabaseFile = { id: string; projectId: string; folder: string; path: string; name: string; type: string; size: number; dataUrl: string; createdAt: string }
@@ -120,7 +120,9 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
   const remove = (id: string) => setFiles(current => current.filter(file => file.id !== id))
   const openFile = (file: DatabaseFile) => setViewer(file)
 
-  return <section className="content database-page">
+  return <>
+    <header className="topbar database-topbar"><div className="brand-mark" aria-hidden="true">▦</div><div className="project-trigger"><strong>{projectName}</strong></div></header>
+    <section className="content database-page">
     <button className="back-link" onClick={onBack}><ArrowLeft size={16} /> 返回首頁</button>
     <div className="section-heading"><div><p className="eyebrow">PROJECT DATABASE</p><h2>資料庫</h2></div><span className="photo-total">{projectName}</span></div>
     <p className="settings-intro">管理目前 Project 的圖紙、Spec、照片及其它檔案。圖紙資料夾會跟隨制房資料自動更新。</p>
@@ -140,4 +142,6 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     </div>
     {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><strong>{viewer.name}</strong><button onClick={() => setViewer(null)} aria-label="關閉"><X size={21} /></button></div>{viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf') ? <iframe src={viewer.dataUrl} title={viewer.name} /> : <div className="database-image-preview"><img src={viewer.dataUrl} alt={viewer.name} /></div>}</div>}
   </section>
+  <nav className="bottom-nav main-nav database-bottom-nav"><button onClick={onBack}><span><Home size={20} /></span>首頁</button><button onClick={onBack}><span><Images size={20} /></span>相簿</button><button onClick={onBack}><span><Building2 size={20} /></span>設定</button><button onClick={onBack}><span><Info size={20} /></span>資料</button></nav>
+ </>
 }
