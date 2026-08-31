@@ -171,22 +171,26 @@ export function Database({ projectId, projectName, onBack }: DatabaseProps) {
     return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)) }
   }
   const handlePdfPointerDown = (event: ReactPointerEvent<HTMLDivElement>, page: number) => {
-    if (pdfEditMode === 'draw') {
-      event.preventDefault()
-      drawingPageRef.current = page
-      try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* Pointer capture is optional on older browsers. */ }
-      setDrawingPoints([pointFromEvent(event)])
-    } else if (pdfEditMode === 'text') {
-      const point = pointFromEvent(event)
-      const text = window.prompt('輸入 PDF 註記文字')
-      if (text?.trim()) addPdfText(page, point.x, point.y, text)
-    }
+    try {
+      if (pdfEditMode === 'draw') {
+        event.preventDefault()
+        drawingPageRef.current = page
+        try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* Pointer capture is optional on older browsers. */ }
+        setDrawingPoints([pointFromEvent(event)])
+      } else if (pdfEditMode === 'text') {
+        const point = pointFromEvent(event)
+        const text = window.prompt('輸入 PDF 註記文字')
+        if (text?.trim()) addPdfText(page, point.x, point.y, text)
+      }
+    } catch { drawingPageRef.current = null; setDrawingPoints([]) }
   }
   const handlePdfPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pdfEditMode === 'draw' && drawingPageRef.current !== null && drawingPoints.length) {
-      event.preventDefault()
-      setDrawingPoints(current => [...current, pointFromEvent(event)])
-    }
+    try {
+      if (pdfEditMode === 'draw' && drawingPageRef.current !== null && drawingPoints.length) {
+        event.preventDefault()
+        setDrawingPoints(current => [...current, pointFromEvent(event)])
+      }
+    } catch { drawingPageRef.current = null; setDrawingPoints([]) }
   }
   const handlePdfPointerUp = (page: number) => {
     if (pdfEditMode === 'draw' && drawingPageRef.current === page) finishPdfDrawing(page)
