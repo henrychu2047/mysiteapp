@@ -202,11 +202,12 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     if (!onStructureChange) return
     const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)))
     const rooms = towers.flatMap(tower => tower.floors.flatMap(floor => floor.rooms.map(room => room.name)))
+    const floorLocations = Object.fromEntries(towers.flatMap(tower => tower.floors.map(floor => [`位置:${floor.name}`, unique(floor.rooms.map(room => room.name))])))
     onStructureChange({
       座數: unique(towers.map(tower => tower.name)),
       樓層: unique(towers.flatMap(tower => tower.floors.map(floor => floor.name))),
-      機房: unique(rooms),
-      房間名稱: unique(rooms),
+      位置: unique(rooms),
+      ...floorLocations,
     })
   }, [towers, onStructureChange])
 
