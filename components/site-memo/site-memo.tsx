@@ -163,23 +163,28 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     })
   }
 
+  function localPolish(input: string) {
+    const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
+    const start = lines.find(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line)) || ''
+    const ending = lines.filter(line => /^(要求|供貴司|本公司保留|若因貴司|貴司盡快)/.test(line))
+    const content = lines.filter(line => line !== start && !ending.includes(line)).map(line => line.replace(/[，。]+$/, '')).join('；')
+    return [start, content ? `${content}。` : '', ...ending].filter(Boolean).join('\n\n')
+  }
+
   async function polishItems() {
-    if (!memo.roughInput.trim() || polishing) return
+    const input = memo.roughInput.trim()
+    if (!input || polishing) return
     setPolishing(true)
     try {
-      const response = await fetch('/api/memo-polish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roughInput: memo.roughInput }),
-      })
-      const data = await response.json()
-      if (response.ok && typeof data.text === 'string' && data.text.trim()) {
-        update({ roughInput: data.text, items: [data.text] })
-      } else {
-        alert(data.error || 'AI 潤色失敗')
+      let polished = ''
+      try {
+        const response = await fetch('/api/memo-polish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roughInput: input }) })
+        const data = await response.json()
+        if (response.ok && typeof data.text === 'string') polished = data.text.trim()
+      } catch {
+        polished = ''
       }
-    } catch {
-      alert('AI 潤色失敗，請檢查 Portainer 的 AI_BASE_URL、AI_API_KEY 及 AI_MODEL 設定')
+      update({ roughInput: polished || localPolish(input), items: [polished || localPolish(input)] })
     } finally {
       setPolishing(false)
     }
