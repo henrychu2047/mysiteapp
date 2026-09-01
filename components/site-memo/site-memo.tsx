@@ -776,17 +776,26 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
 function PhraseButton({ phrase, custom, onAdd, onDelete }: { phrase: string; custom: boolean; onAdd: (phrase: string) => void; onDelete: () => void }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const deleteRequested = useRef(false)
   const clearTimer = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } }
+  const startPress = () => {
+    deleteRequested.current = false
+    timer.current = setTimeout(() => {
+            deleteRequested.current = true
+            onDelete()
+    }, 700)
+  }
   return (
     <button
-      type="button"
-      onClick={() => onAdd(phrase)}
-      onPointerDown={() => { timer.current = setTimeout(onDelete, 700) }}
-      onPointerUp={clearTimer}
-      onPointerLeave={clearTimer}
-            onContextMenu={event => { event.preventDefault(); onDelete() }}
-      title="點擊加入，長按刪除"
-    >{phrase}</button>
+            type="button"
+            onClick={() => { if (!deleteRequested.current) onAdd(phrase); deleteRequested.current = false }}
+            onDoubleClick={onDelete}
+            onPointerDown={startPress}
+            onPointerUp={clearTimer}
+            onPointerLeave={clearTimer}
+            onContextMenu={event => { event.preventDefault(); deleteRequested.current = true; onDelete() }}
+            title="點擊加入；長按、雙擊或右鍵刪除"
+    >{phrase} <span aria-hidden="true">×</span></button>
   )
 }
 
