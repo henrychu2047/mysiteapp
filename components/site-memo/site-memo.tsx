@@ -52,6 +52,10 @@ type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'b
 
 type QuickPhraseGroup = '開始' | '內容' | '結尾'
 
+const FIXED_LIABILITY_PHRASE = /若因\s*貴司\s*或\s*貴司之分判\s*[,，]?\s*疏忽而導致任何索償\s*[,，、]?\s*損失\s*[,，、]?\s*工程延誤或其他後果\s*[,，、]?\s*以及設備損壞所引致之維修或更換費用\s*[,，、]?\s*本公司保留追究權利\s*[。.]?/g
+
+const removeFixedLiabilityPhrase = (value: string) => value.replace(FIXED_LIABILITY_PHRASE, '').replace(/\n{3,}/g, '\n\n').trim()
+
 const SITE_MEMO_QUICK_PHRASES: Record<QuickPhraseGroup, string[]> = {
   開始: [
     '根據',
@@ -142,7 +146,13 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           .replace(/請貴司盡快完成上述工作[,，]?以免延誤相關機電安裝進度及其後的測試及調試工作[,，]?更會影響整交付時間[。.]?/g, '')
           .replace(/若因貴司或貴司之分判疏忽而導致任何索償[,，]?損失[,，]?工程延誤或其他後果[,，]?以及設備損壞所引致之維修或更換費用[,，]?本公司保留追究權利[。.]?/g, '')
           .trim()
-        setMemo({ ...createDefaultMemo(), ...storedMemo, legalClause: cleanedLegalClause, letterheadId: storedMemo.letterheadId || '' })
+        setMemo({
+          ...createDefaultMemo(),
+          ...storedMemo,
+          roughInput: removeFixedLiabilityPhrase(storedMemo.roughInput || ''),
+          legalClause: cleanedLegalClause,
+          letterheadId: storedMemo.letterheadId || '',
+        })
       }
       setHistory(storedHistory)
       setLetterheads(storedLetterheads)
@@ -178,7 +188,12 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     return () => window.removeEventListener('beforeunload', warnBeforeLeave)
   }, [saveState])
 
-  const update = (partial: Partial<Memo>) => setMemo(current => ({ ...current, ...partial }))
+  const update = (partial: Partial<Memo>) => setMemo(current => ({
+    ...current,
+    ...partial,
+    roughInput: partial.roughInput === undefined ? current.roughInput : removeFixedLiabilityPhrase(partial.roughInput),
+    legalClause: partial.legalClause === undefined ? current.legalClause : removeFixedLiabilityPhrase(partial.legalClause),
+  }))
   const updateRecipient = (partial: Partial<Memo['recipient']>) =>
     setMemo(current => ({ ...current, recipient: { ...current.recipient, ...partial } }))
   const updateSender = (partial: Partial<Memo['sender']>) =>
