@@ -175,18 +175,24 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   async function polishItems() {
     const input = memo.roughInput.trim()
     if (!input || polishing) return
+
+    // Show a result immediately; the optional server AI response must never block the editor.
+    const immediateResult = localPolish(input)
+    update({ roughInput: immediateResult, items: [immediateResult] })
     setPolishing(true)
     try {
-      let polished = ''
-      try {
-        const response = await fetch('/api/memo-polish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roughInput: input }) })
-        const data = await response.json()
-        if (response.ok && typeof data.text === 'string') polished = data.text.trim()
-      } catch {
-        polished = ''
+      const response = await fetch('/api/memo-polish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roughInput: input }),
+      })
+      const data = await response.json()
+      if (response.ok && typeof data.text === 'string' && data.text.trim()) {
+        const serverResult = data.text.trim()
+        update({ roughInput: serverResult, items: [serverResult] })
       }
-      const result = polished || localPolish(input)
-      update({ roughInput: result, items: [result] })
+    } catch {
+      // The immediate local result remains in the large text box when AI is unavailable.
     } finally {
       setPolishing(false)
     }
