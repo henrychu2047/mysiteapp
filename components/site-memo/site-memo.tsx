@@ -176,11 +176,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   }
 
   const appendQuickPhrase = (phrase: string) => {
-    update({ roughInput: memo.roughInput ? `${memo.roughInput.replace(/\s+$/, '')}\n${phrase}` : phrase })
-  }
-
-  const removeQuickLine = (lineIndex: number) => {
-    update({ roughInput: memo.roughInput.split('\n').filter((_, index) => index !== lineIndex).join('\n') })
+    update({ roughInput: memo.roughInput ? `${memo.roughInput.replace(/\s+$/, '')} ${phrase}` : phrase })
   }
 
   const clearMemoInput = () => {
@@ -436,11 +432,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       {modal === 2 && (
         <MemoModal title="內容與事件" onClose={() => setModal(null)}>
           <div className="memo-quick-header"><strong>📱 Site Memo 快速生成器</strong><button type="button" onClick={clearMemoInput}>清空</button></div>
-          <Field label="📝 智能字框架">
-            <div className="memo-token-box">
-              {memo.roughInput.split('\n').filter(Boolean).map((line, index) => <span className="memo-token" key={`${line}-${index}`}>{line}<button type="button" aria-label={`移除第 ${index + 1} 項`} onClick={() => removeQuickLine(index)}>×</button></span>)}
-            </div>
-            <textarea className="memo-rough-input" rows={5} placeholder="亦可直接輸入 Site Memo 內容" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
+          <Field label="Site Memo 內容">
+            <textarea className="memo-rough-input" rows={8} placeholder="按下方快選詞語快速輸入，按 Enter 換行" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
           <div className="memo-quick-groups">
             {(Object.keys(SITE_MEMO_PHRASES) as PhraseGroup[]).map(group => (
