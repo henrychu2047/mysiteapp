@@ -50,67 +50,20 @@ type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
 
 type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
 
-type QuickPhraseGroup = '開始' | '內容' | '結尾'
+type PhraseGroup = '動態變數' | '角色對象' | '事由依據' | '現場狀況與問題' | '要求行動' | '影響與後果預警' | '索償與免責聲明' | '附件與結語'
 
 const FIXED_LIABILITY_PHRASE = /若因\s*貴司\s*或\s*貴司之分判\s*[,，]?\s*疏忽而導致任何索償\s*[,，、]?\s*損失\s*[,，、]?\s*工程延誤或其他後果\s*[,，、]?\s*以及設備損壞所引致之維修或更換費用\s*[,，、]?\s*本公司保留追究權利\s*[。.]?/g
-
 const removeFixedLiabilityPhrase = (value: string) => value.replace(new RegExp(FIXED_LIABILITY_PHRASE.source, 'g'), '').replace(/\n{3,}/g, '\n\n').trim()
 
-const SITE_MEMO_QUICK_PHRASES: Record<QuickPhraseGroup, string[]> = {
-  開始: [
-    '根據',
-    '近日',
-    '收到',
-    '巡查',
-    '發現',
-    '檢查',
-    '由',
-    '於',
-    '貴司',
-    '本司',
-    '員工',
-    '打理',
-    '判頭',
-    '通知',
-    '要求',
-    '提供的',
-    '謹通知',
-    '地盤',
-    '制房',
-    '(待定)',
-  ],
-  內容: [
-    '有關於',
-    '因應',
-    '安裝',
-    '拆除',
-    '已安裝的(設備名)',
-    '額外的(設備名)，',
-    '文件',
-    '資料',
-    '與設計不符，',
-    '與設計有差異，',
-    '受到阻礙，',
-    '受到破壞',
-    '未能安裝',
-    '未能交場',
-    '資料錯誤',
-    '進度緩慢',
-  ],
-  結尾: [
-    '墾請貴司盡快完成相關事項，',
-    '墾請貴司盡快完成上述工作，',
-    '墾請貴司盡快移交相關位置給我司，',
-    '現附上有關相片以作參考及記錄，',
-    '現附上相關資料供貴司施工，',
-    '以免延誤相關機電安裝進度，',
-    '以免影響整交付時間，',
-    '以免影響其後的測試及調試工作，',
-    '本公司保留追究權利，',
-    '若因此引致未能按照進行測試，本公司不會附上相關責任',
-    '若因此引致未能按照計劃完工，本公司不會附上相關責任',
-    '如有疑問,請與本公司駐地盤員工聯絡。',
-  ],
+const SITE_MEMO_PHRASES: Record<PhraseGroup, string[]> = {
+  動態變數: ['📍 地點名', '⚙️ 設備名', '📅 日期', '⏳ 限期日期', '合約/項目編號', '圖則編號', '樓層/區域'],
+  角色對象: ['本公司', '本司', '我司', '貴司', '貴公司', '貴司之分判', '判頭', '打理', '駐地盤員工', '總承建商(大判)', '建築師(側師)', '設計師', '機電顧問', '駐地盤工程師(RE)'],
+  事由依據: ['根據', '近日', '收到', '發出', '電郵', '口頭通知', '書面指示', '地盤協調會議紀錄', '日常巡查時', '聯合巡查發現', '經檢查後', '經測試後', '最新批核圖則', '協調圖(CSD/CBWD)', '合約規格要求', '相關資料/文件'],
+  現場狀況與問題: ['現場環境', '已安裝的', '額外的', '與設計不符', '與設計有差異', '與批核圖則不一致', '資料錯誤', '尺寸不合', '受到阻礙', '受到破壞', '遭受撞毀', '設備損壞', '保護層被擅自拆除', '結構開窿偏差', '預埋管受阻', '未能安裝', '未能移交', '通道受阻', '現場堆放雜物/廢料', '天花未完工', '牆身未交場', '現場積水/滲水', '缺乏工作平台', '未預留維修空間', '進度緩慢', '工序重疊衝突', '疏忽'],
+  要求行動: ['謹通知', '特此通知', '懇請', '要求', '指示', '請貴司', '盡快', '即時', '限於日期前', '立即停止相關工序', '完成相關事項', '完成上述工作', '移交相關位置給我司', '重新開放工作面', '妥善清理現場雜物', '修復受損部分', '補做保護措施', '提交補救方案', '安排聯合驗收', '重新覆核尺寸', '積極配合'],
+  影響與後果預警: ['以免延誤', '延誤機電安裝進度', '影響整體交付時間', '嚴重拖延總工程進度', '未能按照進度進行測試', '未能按照計劃完工', '影響其後的測試及調試工作(T&C)', '影響法定驗收進度(FSD/OP)', '造成本司工人窩工', '衍生額外吊運/倉存成本', '造成後續工種連鎖延誤'],
+  索償與免責聲明: ['本公司保留追究權利', '保留申請工期延長(EOT)', '保留追討直接及間接經濟損失', '若因貴司或分判疏忽', '若因非本司原因引致', '本公司不會負上相關責任', '貴司全權承擔一切責任', '設備損壞引致之維修更換費用', '相關款項將於貴司期款中全數扣除'],
+  附件與結語: ['現附上相關相片以作參考及記錄', '隨函附上位置圖則', '相關資料供貴司施工', '如有疑問請與本司員工聯絡', '敬請儘速回覆並回簽確認', '耑此函達', '敬請垂注'],
 }
 
 export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean }) {
@@ -125,7 +78,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [zoomImage, setZoomImage] = useState<string | null>(null)
   const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
   const [polishing, setPolishing] = useState(false)
-  const [quickPhrases, setQuickPhrases] = useState<Record<QuickPhraseGroup, string[]>>({ 開始: [], 內容: [], 結尾: [] })
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pendingExport, setPendingExport] = useState<{ memo: Memo; fileName: string } | null>(null)
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
@@ -223,15 +175,19 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setHistory(current => [record, ...current])
   }
 
-  const toggleQuickPhrase = (group: QuickPhraseGroup, phrase: string) => {
-    setQuickPhrases(current => {
-      const selected = current[group].includes(phrase) ? current[group].filter(item => item !== phrase) : [...current[group], phrase]
-      const next = { ...current, [group]: selected }
-      const composed = [...next.開始, ...next.內容, ...next.結尾].join('\n')
-      update({ roughInput: composed })
-      return next
-    })
+  const appendQuickPhrase = (phrase: string) => {
+    update({ roughInput: memo.roughInput ? `${memo.roughInput.replace(/\s+$/, '')}\n${phrase}` : phrase })
   }
+
+  const removeQuickLine = (lineIndex: number) => {
+    update({ roughInput: memo.roughInput.split('\n').filter((_, index) => index !== lineIndex).join('\n') })
+  }
+
+  const clearMemoInput = () => {
+    update({ roughInput: '', items: [] })
+  }
+
+  const insertMemoLineBreak = () => update({ roughInput: `${memo.roughInput.replace(/\s+$/, '')}\n` })
 
   function localPolish(input: string) {
     const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
@@ -479,21 +435,25 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 2 && (
         <MemoModal title="內容與事件" onClose={() => setModal(null)}>
-          <Field label="Site Memo 內容">
-            <textarea className="memo-rough-input" rows={8} placeholder="請輸入 Site Memo 內容，或按下方快選句子組合" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
+          <div className="memo-quick-header"><strong>📱 Site Memo 快速生成器</strong><button type="button" onClick={clearMemoInput}>清空</button></div>
+          <Field label="📝 智能字框架">
+            <div className="memo-token-box">
+              {memo.roughInput.split('\n').filter(Boolean).map((line, index) => <span className="memo-token" key={`${line}-${index}`}>{line}<button type="button" aria-label={`移除第 ${index + 1} 項`} onClick={() => removeQuickLine(index)}>×</button></span>)}
+            </div>
+            <textarea className="memo-rough-input" rows={5} placeholder="亦可直接輸入 Site Memo 內容" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
           <div className="memo-quick-groups">
-            {(Object.keys(SITE_MEMO_QUICK_PHRASES) as QuickPhraseGroup[]).map(group => (
+            {(Object.keys(SITE_MEMO_PHRASES) as PhraseGroup[]).map(group => (
               <div className="memo-quick-group" key={group}>
-                <strong>{group}</strong>
-                <div>{SITE_MEMO_QUICK_PHRASES[group].map(phrase => <button type="button" key={phrase} className={quickPhrases[group].includes(phrase) ? 'active' : ''} onClick={() => toggleQuickPhrase(group, phrase)}>{phrase}</button>)}</div>
+                <strong>▼ {group}</strong>
+                <div>{SITE_MEMO_PHRASES[group].map(phrase => <button type="button" key={phrase} onClick={() => appendQuickPhrase(phrase)}>{phrase}</button>)}</div>
               </div>
             ))}
           </div>
-          <button className="memo-ai-btn" onClick={polishItems} disabled={polishing || !memo.roughInput.trim()}>
-            <Sparkles size={18} />
-            {polishing ? 'AI 潤色中…' : '一鍵 AI 行話潤色'}
-          </button>
+          <div className="memo-action-row">
+            <button className="memo-ai-btn" onClick={polishItems} disabled={polishing || !memo.roughInput.trim()}><Sparkles size={18} />{polishing ? 'AI 優化中…' : 'AI 優化'}</button>
+            <button type="button" className="memo-enter-btn" onClick={insertMemoLineBreak}>Enter</button>
+          </div>
         </MemoModal>
       )}
 

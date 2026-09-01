@@ -135,7 +135,15 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .memo-quick-group > div { display: flex; flex-wrap: wrap; gap: 7px; }
 .memo-quick-group button { border: 1px solid var(--line); border-radius: 999px; padding: 8px 10px; background: var(--card); color: var(--foreground); text-align: left; }
 .memo-quick-group button.active { border-color: var(--orange); background: #fff3e8; color: var(--orange); font-weight: 700; }
-.memo-rough-input { min-height: 150px !important; }
+.memo-quick-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.memo-quick-header button, .memo-enter-btn { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; background: var(--card); color: var(--foreground); font-weight: 700; }
+.memo-token-box { display: flex; flex-wrap: wrap; gap: 7px; min-height: 44px; padding: 8px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fafafa; }
+.memo-token { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; background: #e9f2ff; color: var(--navy); font-size: 13px; }
+.memo-token button { border: 0; background: transparent; color: inherit; font-weight: 800; cursor: pointer; }
+.memo-rough-input { min-height: 120px !important; }
+.memo-action-row { display: grid; grid-template-columns: 1fr 110px; gap: 8px; margin-top: 10px; }
+.memo-action-row .memo-ai-btn { width: 100%; }
+
 .memo-items { display: grid; gap: 10px; }
 .memo-items-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; }
 .memo-items-head button, .memo-upload, .memo-photo-del, .memo-menu-btn { display: inline-flex; align-items: center; gap: 6px; }
