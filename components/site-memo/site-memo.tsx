@@ -445,7 +445,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 2 && (
         <MemoModal title="內容與事件" className="memo-quick-generator" onClose={() => setModal(null)}>
-          <div className="memo-quick-header"><strong>📱 Site Memo 快速生成器</strong><button type="button" onClick={clearMemoInput}>清空</button></div>
           <Field label="Site Memo 內容">
             <textarea className="memo-rough-input" rows={8} placeholder="按下方快選詞語快速輸入，按 Enter 換行" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
@@ -464,7 +463,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           </div>
           <div className="memo-action-row">
             <button className="memo-ai-btn" onClick={polishItems} disabled={polishing || !memo.roughInput.trim()}><Sparkles size={18} />{polishing ? 'AI 優化中…' : 'AI 優化'}</button>
-            <button type="button" className="memo-enter-btn" onClick={insertMemoLineBreak}>Enter</button>
+            <button type="button" className="memo-enter-btn" onClick={insertMemoLineBreak}>隔行</button>
+            <button type="button" className="memo-clear-btn" onClick={clearMemoInput}>清空</button>
           </div>
         </MemoModal>
       )}
