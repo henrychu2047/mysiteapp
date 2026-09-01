@@ -42,12 +42,11 @@ export function MemoDocument({ memo, letterhead, onZoomImage }: { memo: Memo; le
 
         <h2 style={{ textAlign: 'left', fontSize: '15.5px', fontWeight: 800, margin: '14px 0 8px', color: '#111' }}>{memo.subject}</h2>
 
-        <div style={{ fontSize: '13.5px', lineHeight: 1.4 }}>
-          <p style={{ margin: '0 0 8px' }}>茲於 {memo.inspectionDate} 進行地盤巡查，發現以下建築未完成位置阻礙機電安裝，詳列如下：</p>
-          <div style={{ whiteSpace: 'pre-line' }}>{memo.roughInput}</div>
-        </div>
+        <div style={{ fontSize: '13.5px', lineHeight: 1.4, whiteSpace: 'pre-line' }}>{memo.roughInput}</div>
 
-        <div style={{ fontSize: '12.5px', lineHeight: 1.4, marginTop: '10px', whiteSpace: 'pre-line' }}>{memo.legalClause}</div>
+        {memo.legalClause.trim() && (
+          <div style={{ fontSize: '12.5px', lineHeight: 1.4, marginTop: '10px', whiteSpace: 'pre-line' }}>{memo.legalClause}</div>
+        )}
 
         <div style={{ fontSize: '13px', marginTop: '18px' }}>
           <div>Yours faithfully,</div>

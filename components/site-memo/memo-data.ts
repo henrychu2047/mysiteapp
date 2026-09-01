@@ -80,8 +80,7 @@ export function createDefaultMemo(): Memo {
       '周界牆位置尚未完成整幅牆身及批盪,阻礙安裝牆身水喉/喉碼。',
       'Block 1外牆仍未開始批盪,此位置阻礙安裝外牆水喉/喉碼以致接駁250L纖維水缸。',
     ],
-    legalClause:
-      '請貴司盡快完成上述工作,以免延誤相關機電安裝進度及其後的測試及調試工作,更會影響整交付時間。\n\n若因貴司或貴司之分判疏忽而導致任何索償、損失、工程延誤或其他後果,以及設備損壞所引致之維修或更換費用,本公司保留追究權利。',
+    legalClause: '',
     photos: [],
     pdfAttachments: [],
     letterheadId: '',
