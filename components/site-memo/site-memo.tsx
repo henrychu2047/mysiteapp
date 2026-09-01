@@ -184,20 +184,37 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   const insertMemoLineBreak = () => update({ roughInput: `${memo.roughInput.replace(/\s+$/, '')}\n` })
 
-  const applyTemplate = () => {
-    const template = SITE_MEMO_TEMPLATES.find(item => item.id === templateId)
+  const selectTemplate = (id: MemoTemplateId) => {
+    const template = SITE_MEMO_TEMPLATES.find(item => item.id === id)
     if (!template) return
+    setTemplateId(id)
+    setTemplateOptions([])
+    update({ roughInput: template.body })
+  }
+
+  const buildTemplateBody = () => {
+    const template = SITE_MEMO_TEMPLATES.find(item => item.id === templateId)
+    if (!template) return ''
+    const equipment = templateEquipment === '其他' ? customEquipment.trim() : templateEquipment
+    let body = template.body.replace(/\[地點\/樓層\]/g, templateLocation.trim() || '[地點／樓層]').replace(/\[事發\/巡查日期\]/g, templateDate || '[事發／巡查日期]').replace(/\[要求限期\/時間\]/g, templateDeadline || '[要求限期／時間]').replace(/\[涉及設備\/系統\]/g, equipment || '[涉及設備／系統]')
+    if (templateId === 'handover-delay' && templateOptions.length) body = body.replace('之相關工序尚未完工／現場受大量雜物阻塞', templateOptions.join(''))
+    if (templateId === 'damage-backcharge' && templateOptions.length) body = body.replace('遭受損壞', templateOptions.join(''))
+    if (templateId === 'design-conflict' && templateOptions.length) body = body.replace('結構開窿位置／尺寸偏差、缺乏足夠維修空間或與其他工種管道空間衝突', templateOptions.join('、'))
+    if (templateId === 'completion-handover' && templateOptions.length) body = body.replace('水壓／氣密測試、試通電測試或運作調試', templateOptions.join('、'))
+    return body
+  }
+
+  useEffect(() => {
+    if (templateId) update({ roughInput: buildTemplateBody(), items: [] })
+  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions])
+
+  const applyTemplate = () => {
     const equipment = templateEquipment === '其他' ? customEquipment.trim() : templateEquipment
     if (!templateLocation.trim() || !templateDate || !templateDeadline || !equipment) {
       alert('請先填寫地點、日期、要求限期及涉及設備／系統')
       return
     }
-    let body = template.body.replace(/\[地點\/樓層\]/g, templateLocation.trim()).replace(/\[事發\/巡查日期\]/g, templateDate).replace(/\[要求限期\/時間\]/g, templateDeadline).replace(/\[涉及設備\/系統\]/g, equipment)
-    if (templateId === 'handover-delay' && templateOptions.length) body = body.replace('之相關工序尚未完工／現場受大量雜物阻塞', templateOptions.join(''))
-    if (templateId === 'damage-backcharge' && templateOptions.length) body = body.replace('遭受損壞', templateOptions.join(''))
-    if (templateId === 'design-conflict' && templateOptions.length) body = body.replace('結構開窿位置／尺寸偏差、缺乏足夠維修空間或與其他工種管道空間衝突', templateOptions.join('、'))
-    if (templateId === 'completion-handover' && templateOptions.length) body = body.replace('水壓／氣密測試、試通電測試或運作調試', templateOptions.join('、'))
-    update({ roughInput: body, items: [] })
+    update({ roughInput: buildTemplateBody(), items: [] })
     setModal(2)
     setTemplateId(null)
   }
@@ -449,10 +466,22 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       {modal === 2 && (
         <MemoModal title="內容與事件" className="memo-quick-generator" onClose={() => setModal(null)}>
           <Field label="Site Memo 內容">
-            <textarea className="memo-rough-input" rows={8} placeholder="按下方快選詞語快速輸入，按 Enter 換行" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
+            <textarea className="memo-rough-input" rows={8} placeholder="選擇下方 Site Memo 範本後，內容會即時顯示於此；亦可直接編輯文字" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
           <div className="memo-quick-scroll">
-            <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => { setTemplateId(template.id); setTemplateOptions([]); setModal(8) }}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>
+            <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => selectTemplate(template.id)}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>
+            {templateId && <div className="memo-template-form">
+              <Field label="地點／樓層"><input value={templateLocation} onChange={event => setTemplateLocation(event.target.value)} placeholder="請輸入地點／樓層" /></Field>
+              <Field label="事發／巡查日期"><input type="date" value={templateDate} onChange={event => setTemplateDate(event.target.value)} /></Field>
+              <Field label="要求限期／時間"><input type="date" value={templateDeadline} onChange={event => setTemplateDeadline(event.target.value)} /></Field>
+              <Field label="涉及設備／系統"><select value={templateEquipment} onChange={event => setTemplateEquipment(event.target.value)}>{equipmentOptions.map(option => <option key={option}>{option}</option>)}<option>其他</option></select></Field>
+              {templateEquipment === '其他' && <Field label="新增設備／系統"><input value={customEquipment} onChange={event => setCustomEquipment(event.target.value)} /></Field>}
+              {templateId === 'handover-delay' && <TemplateOption label="現場狀況" options={['之相關工序尚未完工', '／現場受大量雜物阻塞']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
+              {templateId === 'damage-backcharge' && <TemplateOption label="損壞情況" options={['遭受外力嚴重撞毀及損壞', '／保護層被擅自拆除', '／遭受泥水及積水污染浸損']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
+              {templateId === 'design-conflict' && <TemplateOption label="衝突情況" options={['結構開窿位置／尺寸偏差', '缺乏足夠維修空間', '與其他工種管道空間衝突']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
+              {templateId === 'completion-handover' && <TemplateOption label="驗收項目" options={['水壓／氣密測試', '試通電測試', '運作調試']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
+              <button type="button" className="memo-ai-btn" onClick={applyTemplate}>套用資料到文字框</button>
+            </div>}
           </div>
           <div className="memo-action-row">
             <button className="memo-ai-btn" onClick={polishItems} disabled={polishing || !memo.roughInput.trim()}><Sparkles size={18} />{polishing ? 'AI 優化中…' : 'AI 優化'}</button>
@@ -618,7 +647,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       {modal === 8 && (
         <MemoModal title="Site Memo 範本" onClose={() => setModal(null)}>
           <div className="memo-template-grid">
-            {SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => { setTemplateId(template.id); setTemplateOptions([]); setModal(8) }}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}
+            {SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => selectTemplate(template.id)}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}
           </div>
           {templateId && <>
             <Field label="地點／樓層"><input value={templateLocation} onChange={event => setTemplateLocation(event.target.value)} placeholder="請輸入地點／樓層" /></Field>
