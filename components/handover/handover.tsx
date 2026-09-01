@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { BottomNav } from '@/components/ui/bottom-nav'
 import {
   Camera,
   PenLine,
@@ -1296,12 +1297,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         </div>
       )}
 
-      <nav className="bottom-nav main-nav">
-        <button onClick={() => onNavigate('home')}><span>⌂</span>首頁</button>
-        <button onClick={() => onNavigate('photo')}><span>▧</span>相簿</button>
-        <button className={view === 'settings' ? 'active' : ''} onClick={() => setView('settings')}><span><Building2 size={20} /></span>設定</button>
-        <button onClick={() => onNavigate('about')}><span><Info size={20} /></span>資料</button>
-      </nav>
+      <BottomNav onNavigate={onNavigate} />
     </div>
   )
 }

@@ -1,7 +1,8 @@
 'use client'
 
 import { Component, useEffect, useRef, useState, type ErrorInfo, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { ArrowLeft, Building2, ChevronRight, FileText, Folder, Home, Images, Info, Trash2, Upload, X } from 'lucide-react'
+import { BottomNav } from '@/components/ui/bottom-nav'
+import { ArrowLeft, ChevronRight, FileText, Folder, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
 import { renderPdfToPages } from '@/components/site-memo/memo-data'
 
@@ -49,7 +50,7 @@ const DB_NAME = 'site-database-db'
 const STORE = 'files'
 const FOLDERS = ['圖紙', 'Spec', '照片', '其他'] as const
 
-type DatabaseProps = { projectId: string; projectName: string; onBack: () => void }
+type DatabaseProps = { projectId: string; projectName: string; onBack: () => void; onNavigate?: (mode: 'home' | 'photo' | 'handover' | 'about') => void }
 
 class DatabaseErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false }
@@ -99,7 +100,7 @@ function formatSize(size: number) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
-function DatabaseContent({ projectId, projectName, onBack }: DatabaseProps) {
+function DatabaseContent({ projectId, projectName, onBack, onNavigate }: DatabaseProps) {
   const [files, setFiles] = useState<DatabaseFile[]>([])
   const [towers, setTowers] = useState<Tower[]>([])
   const [ready, setReady] = useState(false)
@@ -311,7 +312,7 @@ function DatabaseContent({ projectId, projectName, onBack }: DatabaseProps) {
     </div>
     {viewer && <div className="database-viewer" role="dialog" aria-modal="true"><div className="database-viewer-bar"><div>{editingFile ? <input value={viewer.name} onChange={event => setViewer({ ...viewer, name: event.target.value })} /> : <strong>{viewer.name}</strong>}</div><div className="database-viewer-actions">{editingFile ? <button onClick={saveViewerEdit}>保存</button> : <button onClick={() => { const isPdf = viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf'); setEditingFile(true); setShowPdfTools(isPdf); setFileEditMode(isPdf ? null : 'marker') }}>編輯</button>}<button onClick={() => { setViewer(null); setPdfPages([]); setPdfEditMode(null); setFileEditMode(null); setDrawingPoints([]); setShowPdfTools(false) }} aria-label="關閉"><X size={21} /></button></div></div>{(viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf')) && showPdfTools && <div className="database-pdf-toolbar"><strong>PDF 編輯工具</strong><button className={pdfEditMode === 'text' ? 'active' : ''} onClick={() => { setEditingFile(true); setShowPdfTools(true); setPdfEditMode(pdfEditMode === 'text' ? null : 'text') }}>＋文字</button><button className={pdfEditMode === 'draw' ? 'active' : ''} onClick={() => { setEditingFile(true); setShowPdfTools(true); setPdfEditMode(pdfEditMode === 'draw' ? null : 'draw') }}>✎ 手寫</button><button onClick={clearLastAnnotation} disabled={!viewer.annotations?.length}>清除最後註記</button><button className="save-annotation" onClick={saveViewerEdit}>保存註記</button><small>{pdfEditMode === 'text' ? '點擊頁面位置後輸入文字' : pdfEditMode === 'draw' ? '在頁面上拖曳手寫' : '按「＋文字」或「✎ 手寫」開始'}</small></div>}{viewer.type === 'application/pdf' || viewer.name.toLowerCase().endsWith('.pdf') ? <div className="database-pdf-pages">{pdfPages.length ? pdfPages.map((page, index) => <div className="database-pdf-page" key={index} onPointerDown={event => handlePdfPointerDown(event, index + 1)} onPointerMove={handlePdfPointerMove} onPointerUp={() => handlePdfPointerUp(index + 1)} onPointerCancel={() => { drawingPageRef.current = null; setDrawingPoints([]) }}>{<img src={page} alt={`${viewer.name} 第 ${index + 1} 頁`} />}{(Array.isArray(viewer.annotations) ? viewer.annotations : []).filter(annotation => annotation.page === index + 1).map((annotation, annotationIndex) => annotation.kind === 'text' ? <span className="database-pdf-text-annotation" key={annotationIndex} style={{ left: `${annotation.x * 100}%`, top: `${annotation.y * 100}%` }}>{annotation.text || ''}</span> : <svg className="database-pdf-draw-annotation" key={annotationIndex} viewBox="0 0 1 1" preserveAspectRatio="none"><polyline points={annotationPoints(annotation)} /></svg>)}{pdfEditMode === 'draw' && drawingPageRef.current === index + 1 && drawingPoints.length > 1 && <svg className="database-pdf-draw-annotation database-pdf-draw-preview" viewBox="0 0 1 1" preserveAspectRatio="none"><polyline points={drawingPoints.map(point => `${point.x},${point.y}`).join(' ')} /></svg>}</div>) : <iframe src={viewer.dataUrl} title={viewer.name} />}</div> : <><div className="database-image-toolbar">{editingFile ? <><button className={fileEditMode === 'text' ? 'active' : ''} onClick={() => setFileEditMode(fileEditMode === 'text' ? null : 'text')}>＋文字</button><button className={fileEditMode === 'marker' ? 'active' : ''} onClick={() => setFileEditMode(fileEditMode === 'marker' ? null : 'marker')}>◉ 標記</button><button className={fileEditMode === 'draw' ? 'active' : ''} onClick={() => setFileEditMode(fileEditMode === 'draw' ? null : 'draw')}>✎ 手寫</button><button onClick={clearLastAnnotation} disabled={!viewer.annotations?.length}>清除</button><button className="save-annotation" onClick={saveViewerEdit}>保存</button></> : <button onClick={() => { setEditingFile(true); setFileEditMode(null) }}>編輯圖片</button>}</div><div className={`database-image-preview ${fileEditMode ? 'editing' : ''}`} onPointerDown={handleImagePointerDown} onPointerMove={handleImagePointerMove} onPointerUp={handleImagePointerUp} onPointerCancel={() => { imageDrawingRef.current = false; setDrawingPoints([]) }}>{imageLoadError ? <div className="database-image-fallback"><strong>資料庫照片無法載入</strong><span>請重新上載該圖片，或關閉後再試。</span></div> : <img src={viewer.dataUrl} alt={viewer.name} onError={() => setImageLoadError(true)} />}{(Array.isArray(viewer.annotations) ? viewer.annotations : []).map((annotation, index) => annotation.kind === 'text' ? <span className="database-image-text-annotation" key={index} style={{ left: `${annotation.x * 100}%`, top: `${annotation.y * 100}%` }}>{annotation.text || ''}</span> : annotation.kind === 'marker' ? <span className="database-image-marker-annotation" key={index} style={{ left: `${annotation.x * 100}%`, top: `${annotation.y * 100}%` }}>●</span> : <svg className="database-image-draw-annotation" key={index} viewBox="0 0 1 1" preserveAspectRatio="none"><polyline points={annotationPoints(annotation)} /></svg>)}{fileEditMode === 'draw' && drawingPoints.length > 1 && <svg className="database-image-draw-annotation database-image-draw-preview" viewBox="0 0 1 1" preserveAspectRatio="none"><polyline points={drawingPoints.map(point => `${point.x},${point.y}`).join(' ')} /></svg>}</div></>}</div>}
   </section>
-  <nav className="bottom-nav main-nav database-bottom-nav"><button onClick={onBack}><span><Home size={20} /></span>首頁</button><button onClick={onBack}><span><Images size={20} /></span>相簿</button><button onClick={onBack}><span><Building2 size={20} /></span>設定</button><button onClick={onBack}><span><Info size={20} /></span>資料</button></nav>
+  <BottomNav onNavigate={onNavigate || (() => onBack())} />
  </>
 }
 

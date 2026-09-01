@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { BottomNav } from '@/components/ui/bottom-nav'
 import {
   X,
   Users,
@@ -18,10 +19,6 @@ import {
   Copy,
   Upload,
   Pencil,
-  Home,
-  Images,
-  Building2,
-  Info,
 } from 'lucide-react'
 import {
   type Memo,
@@ -433,12 +430,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       </main>
       {saveToast && <div className="memo-save-toast" role="alert">{saveToast}</div>}
 
-      <nav className="bottom-nav main-nav">
-        <button onClick={() => onNavigate('home')}><span><Home size={20} /></span>首頁</button>
-        <button onClick={() => onNavigate('photo')}><span><Images size={20} /></span>相簿</button>
-        <button onClick={() => (onOpenMachineDataManage ? onOpenMachineDataManage() : onNavigate('handover'))}><span><Building2 size={20} /></span>機房資料</button>
-        <button onClick={() => onNavigate('about')}><span><Info size={20} /></span>資料</button>
-      </nav>
+      <BottomNav onNavigate={onNavigate} />
 
       {modal === 1 && (
         <MemoModal title="收件人" onClose={() => setModal(null)}>
