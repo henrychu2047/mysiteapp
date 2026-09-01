@@ -54,7 +54,7 @@ const FIXED_LIABILITY_PHRASE = /若因\s*貴司\s*或\s*貴司之分判\s*[,，]
 const removeFixedLiabilityPhrase = (value: string) => value.replace(new RegExp(FIXED_LIABILITY_PHRASE.source, 'g'), '').replace(/\n{3,}/g, '\n\n').trim()
 
 const SITE_MEMO_TEMPLATES: Array<{ id: MemoTemplateId; title: string; subtitle: string; body: string }> = [
-  { id: 'handover-delay', title: '交場延誤', subtitle: 'Site Handover Delay', body: '1. 根據本司於 [事發/巡查日期] 之現場巡查，發現位於 [地點/樓層] 之相關工序尚未完工／現場受大量雜物阻塞，導致本司無法進場展開 [涉及設備/系統] 之安裝工序。\n2. 為免拖延整體機電安裝進度及後續之測試及調試（T&C）工作，特此懇請貴司即時督促相關分判商清理及交場，並限於 [要求限期/時間] 前完成移交。\n3. 若因是次延遲交場導致本司工人窩工或影響總工期，本司將保留申請工期延長（EOT）及追討經濟損失之合約權利。\n4. 隨函附上現場相片以作記錄。如有疑問，請即與本司駐地盤代表聯絡。' },
+  { id: 'handover-delay', title: '交場延誤', subtitle: 'Site Handover Delay', body: '1. 根據本司於 [事發/巡查日期] 之現場巡查，發現位於 [地點/樓層] [現場狀況]，導致本司無法進場展開 [涉及設備/系統] 之安裝工序。\n2. 為免拖延整體機電安裝進度及後續之測試及調試（T&C）工作，特此懇請貴司即時督促相關分判商清理及交場，並限於 [要求限期/時間] 前完成移交。\n3. 若因是次延遲交場導致本司工人窩工或影響總工期，本司將保留申請工期延長（EOT）及追討經濟損失之合約權利。\n4. 隨函附上現場相片以作記錄。如有疑問，請即與本司駐地盤代表聯絡。' },
   { id: 'damage-backcharge', title: '設備損壞', subtitle: 'Damage & Backcharge', body: '1. 本司駐地盤員工於 [事發/巡查日期] 在 [地點/樓層] 巡查時，發現本司已安裝完成並設有保護之 [涉及設備/系統] 遭受損壞。\n2. 經現場查核，該損壞乃因貴司或貴司之分判商施工期間操作不當所致，相關重造、更換及人工物料費用將全數由貴司承擔。\n3. 相關款項將直接於貴司之中期糧款（Interim Payment）中全數扣除（Backcharge）；請貴司於 [要求限期/時間] 前書面確認更換安排。\n4. 隨函附上現場損壞相片及受影響位置圖則以資佐證。' },
   { id: 'design-conflict', title: '圖則衝突', subtitle: 'Design Conflict', body: '1. 根據最新批核之協調圖則（CSD/CBWD），本司原定於 [地點/樓層] 進行 [涉及設備/系統] 之穿越結構及安裝工程。\n2. 經本司於 [事發/巡查日期] 現場覆核尺寸後，發現現場結構存在重大差異（結構開窿位置／尺寸偏差、缺乏足夠維修空間或與其他工種管道空間衝突），導致相關工序被迫暫停。\n3. 特此通知貴司及顧問團隊盡快協調，並限於 [要求限期/時間] 前發出正式修改指示或補救方案，以便本司配合落實施工。\n4. 隨函附上現場相片及相關問題標記圖則供審閱。' },
   { id: 'progress-warning', title: '進度預警', subtitle: 'Progress Warning', body: '1. 謹此發出進度預警，根據本司於 [事發/巡查日期] 之現場評估，[地點/樓層] 之相關工序進度持續滯後或配合人手嚴重不足，已直接阻礙本司後續 [涉及設備/系統] 之正常施工流程。\n2. 若相關配合工序未能於 [要求限期/時間] 前完成並交出場地，將直接延誤關鍵施工節點，並嚴重威脅後續之測試及調試（T&C）及法定驗收進度。\n3. 請貴司高度重視上述情況，即時加派人手追趕工期，確保後續工序能如期銜接。\n4. 耑此函達，敬請貴司儘速回覆具體追趕施工時間表。' },
@@ -204,8 +204,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     const template = SITE_MEMO_TEMPLATES.find(item => item.id === templateId)
     if (!template) return ''
     const equipment = templateEquipment === '其他' ? customEquipment.trim() : templateEquipment
-    let body = template.body.replace(/\[地點\/樓層\]/g, templateLocation.trim() || '[地點／樓層]').replace(/\[事發\/巡查日期\]/g, templateDate || '[事發／巡查日期]').replace(/\[要求限期\/時間\]/g, templateDeadline || '[要求限期／時間]').replace(/\[涉及設備\/系統\]/g, equipment || '[涉及設備／系統]')
-    if (templateId === 'handover-delay' && templateOptions.length) body = body.replace('之相關工序尚未完工／現場受大量雜物阻塞', templateOptions.join(''))
+    let body = template.body.replace(/\[地點[\/／]樓層\]/g, templateLocation.trim() || '[地點／樓層]').replace(/\[事發[\/／]巡查日期\]/g, templateDate || '[事發／巡查日期]').replace(/\[要求限期[\/／]時間\]/g, templateDeadline || '[要求限期／時間]').replace(/\[涉及設備[\/／]系統\]/g, equipment || '[涉及設備／系統]')
+    if (templateId === 'handover-delay' && templateOptions.length) body = body.replace('[現場狀況]', templateOptions.join(''))
     if (templateId === 'damage-backcharge' && templateOptions.length) body = body.replace('遭受損壞', templateOptions.join(''))
     if (templateId === 'design-conflict' && templateOptions.length) body = body.replace('結構開窿位置／尺寸偏差、缺乏足夠維修空間或與其他工種管道空間衝突', templateOptions.join('、'))
     if (templateId === 'completion-handover' && templateOptions.length) body = body.replace('水壓／氣密測試、試通電測試或運作調試', templateOptions.join('、'))
