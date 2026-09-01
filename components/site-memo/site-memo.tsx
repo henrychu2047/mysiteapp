@@ -55,7 +55,7 @@ type QuickPhraseGroup = '開始' | '內容' | '結尾'
 const SITE_MEMO_QUICK_PHRASES: Record<QuickPhraseGroup, string[]> = {
   開始: ['經近日巡查發現，', '收到貴司於 (XXXX 日期) 通知，', '收到貴司於 (XXXX 日期) 要求，', '根據本司於 (XXXX 日期) 日，', '經近日檢查由貴司提供的文件後發現，'],
   內容: ['拆除我司已安裝的 (設備名)，', '額外安裝 (設備名)，', '受到阻礙，', '(地點名) 於原訂進度緩慢，', '(地點名) 於原訂時間未能交場，', '有關於 (資料) 的資料錯誤，'],
-  結尾: ['要求盡快完成。', '要求盡快交場。', '供貴司記錄使用。', '本公司保留追究權利。', '貴司盡快完成上述工作，以免延誤相關機電安裝進度及其後的測試及調試工作，更會影響整體交付時間。', '若因貴司或貴司之分判疏忽而導致任何索償、損失、工程延誤或其他後果，以及設備損壞所引致之維修或更換費用，本公司保留追究權利。'],
+  結尾: ['要求盡快完成。', '要求盡快交場。', '供貴司記錄使用。', '本公司保留追究權利。'],
 }
 
 export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean }) {
@@ -86,7 +86,13 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setLetterheads([])
     Promise.all([loadMemo(projectId), loadHistory(projectId), loadLetterheads(projectId)]).then(([storedMemo, storedHistory, storedLetterheads]) => {
       if (cancelled) return
-      if (storedMemo) setMemo({ ...createDefaultMemo(), ...storedMemo, letterheadId: storedMemo.letterheadId || '' })
+      if (storedMemo) {
+        const cleanedLegalClause = (storedMemo.legalClause || '')
+          .replace(/請貴司盡快完成上述工作[,，]?以免延誤相關機電安裝進度及其後的測試及調試工作[,，]?更會影響整交付時間[。.]?/g, '')
+          .replace(/若因貴司或貴司之分判疏忽而導致任何索償[,，]?損失[,，]?工程延誤或其他後果[,，]?以及設備損壞所引致之維修或更換費用[,，]?本公司保留追究權利[。.]?/g, '')
+          .trim()
+        setMemo({ ...createDefaultMemo(), ...storedMemo, legalClause: cleanedLegalClause, letterheadId: storedMemo.letterheadId || '' })
+      }
       setHistory(storedHistory)
       setLetterheads(storedLetterheads)
       setReady(true)
