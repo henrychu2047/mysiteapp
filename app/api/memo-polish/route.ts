@@ -3,15 +3,6 @@ export const maxDuration = 30
 
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
-function fallbackPolish(input: string) {
-  const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
-  const start = lines.filter(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line))
-  const ending = lines.filter(line => /^(要求|供貴司|本公司保留|若因貴司|貴司盡快)/.test(line))
-  const content = lines.filter(line => !start.includes(line) && !ending.includes(line))
-  const body = content.length ? content.map(line => line.replace(/[，。]+$/, '')).join('；') + '。' : ''
-  return [...start.slice(0, 1), body, ...ending].filter(Boolean).join('\n\n')
-}
-
 const SYSTEM_PROMPT = `你是一位資深香港建造業機電工程 (M&E) 合約專家，專責撰寫地盤公函 (Site Memo)。
 使用者會提供口語、粗略的巡查要點，請將其潤色為正式、專業的香港工程合約行話。
 
@@ -32,11 +23,11 @@ export async function POST(request: Request) {
     const prompt = `請潤色以下巡查要點：\n\n${roughInput.trim()}`
     let text = ''
 
-    const baseUrl = process.env.AI_BASE_URL?.replace(/\/$/, '')
     const apiKey = process.env.AI_API_KEY
-    const model = process.env.AI_MODEL
+    const baseUrl = (process.env.AI_BASE_URL || (apiKey ? 'https://api.openai.com/v1' : '')).replace(/\/$/, '')
+    const model = process.env.AI_MODEL || 'gpt-4o-mini'
 
-    if (baseUrl && apiKey && model) {
+    if (baseUrl && apiKey) {
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -52,8 +43,6 @@ export async function POST(request: Request) {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error?.message || 'AI request failed')
       text = data.choices?.[0]?.message?.content || ''
-    } else if (process.env.AI_GATEWAY_API_KEY) {
-      text = fallbackPolish(roughInput)
     } else if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}`,
@@ -71,7 +60,7 @@ export async function POST(request: Request) {
       if (!response.ok) throw new Error(data.error?.message || 'Google AI request failed')
       text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     } else {
-      text = fallbackPolish(roughInput)
+      return Response.json({ error: '未設定 AI API Key。請在 Portainer 設定 AI_API_KEY，或 GOOGLE_GENERATIVE_AI_API_KEY。' }, { status: 503 })
     }
 
     const polishedText = text.trim()

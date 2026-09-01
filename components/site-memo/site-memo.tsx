@@ -182,9 +182,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     const input = memo.roughInput.trim()
     if (!input || polishing) return
 
-    // Show a result immediately; the optional server AI response must never block the editor.
-    const immediateResult = localPolish(input)
-    update({ roughInput: immediateResult, items: [immediateResult] })
     setPolishing(true)
     try {
       const response = await fetch('/api/memo-polish', {
@@ -193,12 +190,13 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
         body: JSON.stringify({ roughInput: input }),
       })
       const data = await response.json()
-      if (response.ok && typeof data.text === 'string' && data.text.trim()) {
-        const serverResult = data.text.trim()
-        update({ roughInput: serverResult, items: [serverResult] })
+      if (!response.ok || typeof data.text !== 'string' || !data.text.trim()) {
+        throw new Error(data.error || 'AI 潤色失敗')
       }
-    } catch {
-      // The immediate local result remains in the large text box when AI is unavailable.
+      const serverResult = data.text.trim()
+      update({ roughInput: serverResult, items: [serverResult] })
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'AI 潤色失敗，請檢查 AI 設定')
     } finally {
       setPolishing(false)
     }
