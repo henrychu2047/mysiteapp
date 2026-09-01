@@ -165,10 +165,11 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   function localPolish(input: string) {
     const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
-    const start = lines.find(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line)) || ''
+    const start = lines.find(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line)) || '經整理後，'
     const ending = lines.filter(line => /^(要求|供貴司|本公司保留|若因貴司|貴司盡快)/.test(line))
-    const content = lines.filter(line => line !== start && !ending.includes(line)).map(line => line.replace(/[，。]+$/, '')).join('；')
-    return [start, content ? `${content}。` : '', ...ending].filter(Boolean).join('\n\n')
+    const content = lines.filter(line => line !== start && !ending.includes(line)).map(line => line.replace(/^[\d.、\-\s]+/, '').replace(/[，。；]+$/, '')).join('；')
+    const body = content ? `${content}，並可能影響相關機電安裝進度。` : ''
+    return [start.replace(/[，。]+$/, '，'), body, ...ending.map(line => line.replace(/[，。]+$/, '。'))].filter(Boolean).join('\n\n')
   }
 
   async function polishItems() {
@@ -184,7 +185,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       } catch {
         polished = ''
       }
-      update({ roughInput: polished || localPolish(input), items: [polished || localPolish(input)] })
+      const result = polished || localPolish(input)
+      update({ roughInput: result, items: [result] })
     } finally {
       setPolishing(false)
     }
