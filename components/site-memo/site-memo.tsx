@@ -75,6 +75,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [templateDeadline, setTemplateDeadline] = useState('')
   const [templateEquipment, setTemplateEquipment] = useState('電器設備')
   const [customEquipment, setCustomEquipment] = useState('')
+  const [addingEquipment, setAddingEquipment] = useState(false)
   const [equipmentOptions, setEquipmentOptions] = useState(['電器設備', '冷氣設備', '消防設備'])
   const [templateOptions, setTemplateOptions] = useState<string[]>([])
   const [templateMode, setTemplateMode] = useState(false)
@@ -197,6 +198,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setTemplateMode(true)
     setTemplateOptions([])
     setAttachmentOption('')
+    setAddingEquipment(false)
+    setCustomEquipment('')
     update({ roughInput: template.body })
   }
 
@@ -483,8 +486,11 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               <Field label="事發／巡查日期"><input type="date" value={templateDate} onChange={event => setTemplateDate(event.target.value)} /></Field>
               <Field label="要求限期／時間"><input type="date" value={templateDeadline} onChange={event => setTemplateDeadline(event.target.value)} /></Field>
               {templateId !== 'completion-handover' && <>
-                <Field label="涉及設備／系統"><select value={templateEquipment} onChange={event => setTemplateEquipment(event.target.value)}>{equipmentOptions.map(option => <option key={option}>{option}</option>)}<option>其他</option></select></Field>
-                {templateEquipment === '其他' && <Field label="新增設備／系統"><input value={customEquipment} onChange={event => setCustomEquipment(event.target.value)} /></Field>}
+                <div className="memo-equipment-picker">
+                  <Field label="涉及設備／系統"><select value={templateEquipment} onChange={event => setTemplateEquipment(event.target.value)}>{equipmentOptions.map(option => <option key={option}>{option}</option>)}</select></Field>
+                  <button type="button" className="memo-add-option-btn" onClick={() => setAddingEquipment(current => !current)}>＋新增</button>
+                </div>
+                {addingEquipment && <div className="memo-add-option-form"><input value={customEquipment} onChange={event => setCustomEquipment(event.target.value)} placeholder="輸入設備／系統名稱" /><button type="button" onClick={() => { const value = customEquipment.trim(); if (!value) return; setEquipmentOptions(current => current.includes(value) ? current : [...current, value]); setTemplateEquipment(value); setCustomEquipment(''); setAddingEquipment(false) }}>加入選單</button></div>}
               </>}
               {templateId === 'handover-delay' && <TemplateOption label="現場狀況" options={['之相關工序尚未完工', '／現場受大量雜物阻塞']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
               {templateId === 'damage-backcharge' && <TemplateOption label="損壞情況" options={['遭受外力嚴重撞毀及損壞', '／保護層被擅自拆除', '／遭受泥水及積水污染浸損']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}

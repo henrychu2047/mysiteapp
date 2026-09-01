@@ -136,6 +136,11 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .memo-template-options { display: grid; gap: 7px; margin: 12px 0; }
 .memo-template-options > span { font-weight: 700; }
 .memo-template-options label { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.memo-equipment-picker { display: flex; gap: 10px; align-items: end; }
+.memo-equipment-picker .memo-field { flex: 1; }
+.memo-add-option-btn, .memo-add-option-form button { min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--navy); font-weight: 700; }
+.memo-add-option-form { display: flex; gap: 8px; margin: -4px 0 12px; }
+.memo-add-option-form input { flex: 1; min-width: 0; }
 .memo-inline-templates { display: grid; gap: 8px; margin-top: 8px; }
 .memo-inline-templates > strong { color: var(--navy); }
 .memo-quick-groups { display: grid; gap: 12px; }
