@@ -143,6 +143,11 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .memo-rough-input { min-height: 120px !important; }
 .memo-action-row { display: grid; grid-template-columns: 1fr 110px; gap: 8px; margin-top: 10px; }
 .memo-action-row .memo-ai-btn { width: 100%; }
+.memo-quick-generator { display: flex; flex-direction: column; min-height: 0; }
+.memo-quick-generator > .memo-modal-body { overflow: hidden; }
+.memo-quick-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.memo-custom-phrase-form { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 7px; }
+.memo-custom-phrase-form input, .memo-custom-phrase-form select { min-width: 0; }
 
 .memo-items { display: grid; gap: 10px; }
 .memo-items-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; }
