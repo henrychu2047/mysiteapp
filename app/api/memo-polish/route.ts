@@ -1,6 +1,8 @@
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
+const API_VERSION = 'memo-polish-2026-09-01-2'
+
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
 const SYSTEM_PROMPT = `你是一位資深香港建造業機電工程 (M&E) 合約專家，專責撰寫地盤公函 (Site Memo)。
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
       if (!response.ok) throw new Error(data.error?.message || 'Google AI request failed')
       text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     } else {
-      return Response.json({ error: '目前 Container 未讀到 AI API Key。請在 Portainer 的 Container > Env 設定 AI_API_KEY=新的Key，然後重新部署／重建 Container。' }, { status: 503 })
+      return Response.json({ error: `目前 Container 未讀到 AI API Key（${API_VERSION}）。請在 Portainer 的 Container > Env 設定 AI_API_KEY，然後重新部署／重建 Container。` }, { status: 503 })
     }
 
     const polishedText = text.trim()
