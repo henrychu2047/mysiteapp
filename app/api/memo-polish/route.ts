@@ -28,20 +28,30 @@ export async function POST(request: Request) {
     const model = process.env.AI_MODEL || 'gpt-4o-mini'
 
     if (baseUrl && apiKey) {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model,
-          temperature: 0.2,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: prompt },
-          ],
-        }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error?.message || 'AI request failed')
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 25000)
+      let response: Response
+      try {
+        response = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey.trim()}` },
+          body: JSON.stringify({
+            model: model.trim(),
+            temperature: 0.2,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: prompt },
+            ],
+          }),
+          signal: controller.signal,
+        })
+      } finally {
+        clearTimeout(timeout)
+      }
+      const raw = await response.text()
+      let data: { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }> } = {}
+      try { data = JSON.parse(raw) } catch { /* Provider returned non-JSON text. */ }
+      if (!response.ok) throw new Error(data.error?.message || `AI 服務錯誤（HTTP ${response.status}）`)
       text = data.choices?.[0]?.message?.content || ''
     } else if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       const response = await fetch(

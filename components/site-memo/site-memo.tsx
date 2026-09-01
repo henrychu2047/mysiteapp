@@ -196,7 +196,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       const serverResult = data.text.trim()
       update({ roughInput: serverResult, items: [serverResult] })
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'AI 潤色失敗，請檢查 AI 設定')
+      alert(error instanceof Error ? `AI 潤色失敗：${error.message}` : 'AI 潤色失敗，請檢查 AI 設定')
     } finally {
       setPolishing(false)
     }
