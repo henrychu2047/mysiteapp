@@ -57,7 +57,7 @@ const SITE_MEMO_TEMPLATES: Array<{ id: MemoTemplateId; title: string; subtitle: 
   { id: 'handover-delay', title: '交場延誤', subtitle: 'Site Handover Delay', body: '1. 根據本司於 [事發/巡查日期] 之現場巡查，發現位於 [地點/樓層] [現場狀況]，導致本司無法進場展開 [涉及設備/系統] 之安裝工序。\n2. 為免拖延整體機電安裝進度及後續之測試及調試（T&C）工作，特此懇請貴司即時督促相關分判商清理及交場，並限於 [要求限期/時間] 前完成移交。\n3. 若因是次延遲交場導致本司工人窩工或影響總工期，本司將保留申請工期延長（EOT）及追討經濟損失之合約權利。\n[附件段落]' },
   { id: 'damage-backcharge', title: '設備損壞', subtitle: 'Damage & Backcharge', body: '1. 本司駐地盤員工於 [事發/巡查日期] 在 [地點/樓層] 巡查時，發現本司已安裝完成並設有保護之 [涉及設備/系統] 遭受[損壞情況]。\n2. 經現場查核，該損壞乃因貴司或貴司之分判商施工期間操作不當所致，相關重造、更換及人工物料費用將全數由貴司承擔。\n3. 相關款項將直接於貴司之中期糧款（Interim Payment）中全數扣除（Backcharge）；請貴司於 [要求限期/時間] 前書面確認更換安排。\n[附件段落]' },
   { id: 'design-conflict', title: '圖則衝突', subtitle: 'Design Conflict', body: '1. 根據最新批核之協調圖則（CSD/CBWD），本司原定於 [地點/樓層] 進行 [涉及設備/系統] 之穿越結構及安裝工程。\n2. 經本司於 [事發/巡查日期] 現場覆核尺寸後，發現現場 [衝突情況]，導致相關工序被迫暫停。\n3. 特此通知貴司及顧問團隊盡快協調，並限於 [要求限期/時間] 前發出正式修改指示或補救方案，以便本司配合落實施工。\n[附件段落]' },
-  { id: 'progress-warning', title: '進度預警', subtitle: 'Progress Warning', body: '1. 謹此發出進度預警，根據本司於 [事發/巡查日期] 之現場評估，[地點/樓層] 之相關工序進度持續滯後或配合人手嚴重不足，已直接阻礙本司後續 [涉及設備/系統] 之正常施工流程。\n2. 若相關配合工序未能於 [要求限期/時間] 前完成並交出場地，將直接延誤關鍵施工節點，並嚴重威脅後續之測試及調試（T&C）及法定驗收進度。\n3. 請貴司高度重視上述情況，即時加派人手追趕工期，確保後續工序能如期銜接。\n[附件段落]' },
+  { id: 'progress-warning', title: '進度預警', subtitle: 'Progress Warning', body: '1. 謹此發出進度預警，根據本司於 [事發/巡查日期] 之現場評估，[地點/樓層] 之相關工序進度持續滯後或配合人手嚴重不足，已直接阻礙本司後續 [涉及設備/系統] 之正常施工流程。\n2. 若相關配合工序未能於 [要求限期/時間] 前完成並交出場地，將直接延誤關鍵施工節點，並嚴重威脅後續之測試及調試（T&C）及法定驗收進度。\n3. 請貴司高度重視上述情況，即時加派人手追趕工期，確保後續工序能如期銜接。\n4. 耑此函達，敬請貴司儘速回覆具體追趕施工時間表。' },
   { id: 'completion-handover', title: '完工通知', subtitle: 'Completion & Handover', body: '1. 本司謹此通知，位於 [地點/樓層] 之 電器設備 安裝工程及相關之 [驗收項目]已於 [事發/巡查日期] 順利完成，並符合批核圖則及規格要求。\n2. 現特此邀請貴司及駐地盤代表（ＢＳＩ）於 [要求限期/時間] 進行驗收並辦理交場手續，以便安排下一工種進場。\n3. 驗收移交後，若上述設施因後續其他工種施工而遭受任何損壞，相關修復費用及工期責任概由責任方全權承擔。\n[附件段落]' },
 ]
 
@@ -78,7 +78,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [equipmentOptions, setEquipmentOptions] = useState(['電器設備', '冷氣設備', '消防設備'])
   const [templateOptions, setTemplateOptions] = useState<string[]>([])
   const [templateMode, setTemplateMode] = useState(false)
-  const [includeAttachmentNote, setIncludeAttachmentNote] = useState(false)
+  const [attachmentOption, setAttachmentOption] = useState('')
   const [overlay, setOverlay] = useState<'preview' | 'export' | 'history' | null>(null)
   const [zoomImage, setZoomImage] = useState<string | null>(null)
   const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
@@ -185,7 +185,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setTemplateId(null)
     setTemplateMode(false)
     setTemplateOptions([])
-    setIncludeAttachmentNote(false)
+    setAttachmentOption('')
   }
 
   const insertMemoLineBreak = () => update({ roughInput: `${memo.roughInput.replace(/\s+$/, '')}\n` })
@@ -196,7 +196,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setTemplateId(id)
     setTemplateMode(true)
     setTemplateOptions([])
-    setIncludeAttachmentNote(false)
+    setAttachmentOption('')
     update({ roughInput: template.body })
   }
 
@@ -209,17 +209,13 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     if (templateId === 'damage-backcharge' && templateOptions.length) body = body.replace('[損壞情況]', templateOptions.join(''))
     if (templateId === 'design-conflict' && templateOptions.length) body = body.replace('[衝突情況]', templateOptions.join('、'))
     if (templateId === 'completion-handover' && templateOptions.length) body = body.replace('[驗收項目]', templateOptions.join('、'))
-    if (templateId === 'handover-delay') body = body.replace('[附件段落]', includeAttachmentNote ? '4. 現附上圖片及貴司參考及記錄。' : '')
-    if (templateId === 'damage-backcharge') body = body.replace('[附件段落]', includeAttachmentNote ? '4. 現附上圖片及貴司參考及記錄。' : '')
-    if (templateId === 'design-conflict') body = body.replace('[附件段落]', includeAttachmentNote ? '4. 現附上圖片及貴司參考及記錄。' : '')
-    if (templateId === 'progress-warning') body = body.replace('[附件段落]', includeAttachmentNote ? '4. 現附上圖片及貴司參考及記錄。' : '')
-    if (templateId === 'completion-handover') body = body.replace('[附件段落]', includeAttachmentNote ? '4. 現附上圖片及貴司參考及記錄。' : '')
+    if (attachmentOption) body = body.replace('[附件段落]', attachmentOption)
     return body
   }
 
   useEffect(() => {
     if (templateId) update({ roughInput: buildTemplateBody(), items: [] })
-  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, includeAttachmentNote])
+  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, attachmentOption])
 
   const applyTemplate = () => {
     const equipment = templateEquipment === '其他' ? customEquipment.trim() : templateEquipment
@@ -494,7 +490,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               {templateId === 'damage-backcharge' && <TemplateOption label="損壞情況" options={['遭受外力嚴重撞毀及損壞', '／保護層被擅自拆除', '／遭受泥水及積水污染浸損']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
               {templateId === 'design-conflict' && <TemplateOption label="衝突情況" options={['結構開窿位置／尺寸偏差', '缺乏足夠維修空間', '與其他工種管道空間衝突']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
               {templateId === 'completion-handover' && <TemplateOption label="驗收項目" options={['水壓／氣密測試', '試通電測試', '運作調試']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
-              <label className="memo-template-checkbox"><input type="checkbox" checked={includeAttachmentNote} onChange={event => setIncludeAttachmentNote(event.target.checked)} />現附上圖片及貴司參考及記錄</label>
+              <TemplateOption label="附件段落" options={['4. 隨函附上相關記錄以供備案。', '4. 隨函附上相關相片以供備案。', '4. 隨函附上相關記錄及相片以供備案。']} selected={attachmentOption ? [attachmentOption] : []} onToggle={value => setAttachmentOption(current => current === value ? '' : value)} />
               <button type="button" className="memo-ai-btn" onClick={applyTemplate}>套用資料到文字框</button>
             </div>}
           </div>
