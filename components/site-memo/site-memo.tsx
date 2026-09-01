@@ -165,11 +165,17 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   function localPolish(input: string) {
     const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
-    const start = lines.find(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line)) || '經整理後，'
-    const ending = lines.filter(line => /^(要求|供貴司|本公司保留|若因貴司|貴司盡快)/.test(line))
-    const content = lines.filter(line => line !== start && !ending.includes(line)).map(line => line.replace(/^[\d.、\-\s]+/, '').replace(/[，。；]+$/, '')).join('；')
-    const body = content ? `${content}，並可能影響相關機電安裝進度。` : ''
-    return [start.replace(/[，。]+$/, '，'), body, ...ending.map(line => line.replace(/[，。]+$/, '。'))].filter(Boolean).join('\n\n')
+    const start = lines.find(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line)) || '經近日巡查發現，'
+    const endings = lines.filter(line => /^(要求|供貴司|本公司保留|若因貴司|貴司盡快)/.test(line))
+    const content = lines
+      .filter(line => line !== start && !endings.includes(line))
+      .map(line => line.replace(/^[\d.、\-\s]+/, '').replace(/[，。；]+$/, '').trim())
+      .filter(Boolean)
+    const body = content.length
+      ? `現場${content.join('；')}。上述情況已對相關機電安裝工作造成阻礙，並可能影響後續測試、調試及整體交付進度。`
+      : '現場相關工作仍未完成，已對機電安裝工作造成阻礙，並可能影響後續測試、調試及整體交付進度。'
+    const closing = endings.length ? endings.map(line => line.replace(/[，。；]+$/, '') + '。') : ['請貴司盡快跟進及完成上述工作。']
+    return [start.replace(/[，。；]+$/, '') + '，', body, ...closing].join('\n\n')
   }
 
   async function polishItems() {
