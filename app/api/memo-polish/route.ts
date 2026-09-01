@@ -25,10 +25,11 @@ export async function POST(request: Request) {
     const prompt = `請潤色以下巡查要點：\n\n${roughInput.trim()}`
     let text = ''
 
-    const cleanEnv = (value: string | undefined) => value?.trim().replace(/^['"]|['"]$/g, '') || ''
-    const apiKey = cleanEnv(process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.SHARES_AI_API_KEY)
-    const baseUrl = cleanEnv(process.env.AI_BASE_URL || process.env.OPENAI_BASE_URL || (apiKey ? 'https://api.openai.com/v1' : '')).replace(/\/$/, '')
-    const model = cleanEnv(process.env.AI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini')
+    const cleanEnv = (value: string | undefined) => value?.trim().replace(/^['"]|['"]$/g, '').trim() || ''
+    const firstConfigured = (...values: Array<string | undefined>) => values.map(cleanEnv).find(Boolean) || ''
+    const apiKey = firstConfigured(process.env.AI_API_KEY, process.env.OPENAI_API_KEY, process.env.SHARES_AI_API_KEY)
+    const baseUrl = (firstConfigured(process.env.AI_BASE_URL, process.env.OPENAI_BASE_URL) || (apiKey ? 'https://api.openai.com/v1' : '')).replace(/\/$/, '')
+    const model = firstConfigured(process.env.AI_MODEL, process.env.OPENAI_MODEL) || 'gpt-4o-mini'
 
     if (baseUrl && apiKey) {
       const controller = new AbortController()
@@ -73,7 +74,10 @@ export async function POST(request: Request) {
       if (!response.ok) throw new Error(data.error?.message || 'Google AI request failed')
       text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     } else {
-      return Response.json({ error: `目前 Container 未讀到 AI API Key（${API_VERSION}）。請在 Portainer 的 Container > Env 設定 AI_API_KEY，然後重新部署／重建 Container。` }, { status: 503 })
+      const configuredNames = ['AI_API_KEY', 'OPENAI_API_KEY', 'SHARES_AI_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY']
+        .filter(name => cleanEnv(process.env[name]))
+      const detected = configuredNames.length ? `已讀到：${configuredNames.join('、')}，但未能建立 AI 連線。` : '完全沒有讀到任何 AI Key。'
+      return Response.json({ error: `目前 Container 未讀到可用的 AI API Key（${API_VERSION}）。${detected} 請在 Portainer 的同一個 Container > Env 設定變數，然後 Redeploy／Recreate；不要只 Restart。` }, { status: 503 })
     }
 
     const polishedText = text.trim()
