@@ -72,6 +72,18 @@ public/
   manifest.webmanifest     # PWA manifest
 ```
 
+## AI 潤色設定（Portainer / Docker）
+
+在 Portainer 的 Container 環境變數加入以下設定（不要把 Key 寫入 Git）：
+
+```text
+AI_BASE_URL=https://api.sharesai.xyz/v1
+AI_API_KEY=你的新APIKey
+AI_MODEL=gpt-5.4-mini
+```
+
+儲存後必須 **Redeploy / Recreate Container**，單純 Restart 有時不會套用新的 Stack 環境變數。可在 Container > Inspect > Config.Env 確認已載入；不要在畫面或日誌公開完整 Key。
+
 ## 本機開發
 需要 Node.js 及 pnpm，建議依照專案 lockfile 安裝：
 ```bash

@@ -23,9 +23,10 @@ export async function POST(request: Request) {
     const prompt = `請潤色以下巡查要點：\n\n${roughInput.trim()}`
     let text = ''
 
-    const apiKey = process.env.AI_API_KEY
-    const baseUrl = (process.env.AI_BASE_URL || (apiKey ? 'https://api.openai.com/v1' : '')).replace(/\/$/, '')
-    const model = process.env.AI_MODEL || 'gpt-4o-mini'
+    const cleanEnv = (value: string | undefined) => value?.trim().replace(/^['"]|['"]$/g, '') || ''
+    const apiKey = cleanEnv(process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.SHARES_AI_API_KEY)
+    const baseUrl = cleanEnv(process.env.AI_BASE_URL || process.env.OPENAI_BASE_URL || (apiKey ? 'https://api.openai.com/v1' : '')).replace(/\/$/, '')
+    const model = cleanEnv(process.env.AI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini')
 
     if (baseUrl && apiKey) {
       const controller = new AbortController()
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       if (!response.ok) throw new Error(data.error?.message || 'Google AI request failed')
       text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     } else {
-      return Response.json({ error: '未設定 AI API Key。請在 Portainer 設定 AI_API_KEY，或 GOOGLE_GENERATIVE_AI_API_KEY。' }, { status: 503 })
+      return Response.json({ error: '目前 Container 未讀到 AI API Key。請在 Portainer 的 Container > Env 設定 AI_API_KEY=新的Key，然後重新部署／重建 Container。' }, { status: 503 })
     }
 
     const polishedText = text.trim()
