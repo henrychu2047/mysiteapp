@@ -220,16 +220,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     if (templateId) update({ roughInput: buildTemplateBody(), items: [] })
   }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, attachmentOption])
 
-  const applyTemplate = () => {
-    const equipment = templateEquipment === '其他' ? customEquipment.trim() : templateEquipment
-    if (!templateLocation.trim() || !templateDate || !templateDeadline || (templateId !== 'completion-handover' && !equipment)) {
-      alert(templateId === 'completion-handover' ? '請先填寫地點、日期及要求限期' : '請先填寫地點、日期、要求限期及涉及設備／系統')
-      return
-    }
-    update({ roughInput: buildTemplateBody(), items: [] })
-    setModal(2)
-  }
-
   function localPolish(input: string) {
     const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
     const start = lines.find(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line)) || '經近日巡查發現，'
@@ -497,7 +487,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               {templateId === 'design-conflict' && <TemplateOption label="衝突情況" options={['結構開窿位置／尺寸偏差', '缺乏足夠維修空間', '與其他工種管道空間衝突']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
               {templateId === 'completion-handover' && <TemplateOption label="驗收項目" options={['水壓／氣密測試', '試通電測試', '運作調試']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
               <TemplateOption label="附件段落" options={['4. 隨函附上相關記錄以供備案。', '4. 隨函附上相關相片以供備案。', '4. 隨函附上相關記錄及相片以供備案。']} selected={attachmentOption ? [attachmentOption] : []} onToggle={value => setAttachmentOption(current => current === value ? '' : value)} />
-              <button type="button" className="memo-ai-btn" onClick={applyTemplate}>套用資料到文字框</button>
             </div>}
           </div>
           <div className="memo-action-row">
