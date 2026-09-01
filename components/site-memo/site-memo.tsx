@@ -50,8 +50,6 @@ type MemoTemplateId = 'handover-delay' | 'damage-backcharge' | 'design-conflict'
 
 type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
 
-type PhraseGroup = '事由起因與依據' | '抬頭、對象與項目資訊' | '現場狀況與問題' | '要求行動與時限' | '後果與工期預警' | '合約索償與免責聲明' | '附件說明與結語聯絡'
-
 const FIXED_LIABILITY_PHRASE = /若因\s*貴司\s*或\s*貴司之分判\s*[,，]?\s*疏忽而導致任何索償\s*[,，、]?\s*損失\s*[,，、]?\s*工程延誤或其他後果\s*[,，、]?\s*以及設備損壞所引致之維修或更換費用\s*[,，、]?\s*本公司保留追究權利\s*[。.]?/g
 const removeFixedLiabilityPhrase = (value: string) => value.replace(new RegExp(FIXED_LIABILITY_PHRASE.source, 'g'), '').replace(/\n{3,}/g, '\n\n').trim()
 
@@ -62,16 +60,6 @@ const SITE_MEMO_TEMPLATES: Array<{ id: MemoTemplateId; title: string; subtitle: 
   { id: 'progress-warning', title: '進度預警', subtitle: 'Progress Warning', body: '1. 謹此發出進度預警，根據本司於 [事發/巡查日期] 之現場評估，[地點/樓層] 之相關工序進度持續滯後或配合人手嚴重不足，已直接阻礙本司後續 [涉及設備/系統] 之正常施工流程。\n2. 若相關配合工序未能於 [要求限期/時間] 前完成並交出場地，將直接延誤關鍵施工節點，並嚴重威脅後續之測試及調試（T&C）及法定驗收進度。\n3. 請貴司高度重視上述情況，即時加派人手追趕工期，確保後續工序能如期銜接。\n4. 耑此函達，敬請貴司儘速回覆具體追趕施工時間表。' },
   { id: 'completion-handover', title: '完工通知', subtitle: 'Completion & Handover', body: '1. 本司謹此通知，位於 [地點/樓層] 之 [涉及設備/系統] 安裝工程及相關之水壓／氣密測試、試通電測試或運作調試已於 [事發/巡查日期] 順利完成，並符合批核圖則及規格要求。\n2. 現特此邀請貴司及駐地盤代表（RE/COW）於 [要求限期/時間] 進行聯合巡查驗收（Joint Inspection）並辦理交場手續，以便安排下一工種進場。\n3. 驗收移交後，若上述設施因後續其他工種施工而遭受任何損壞，相關修復費用及工期責任概由責任方全權承擔。\n4. 隨函附上相關測試記錄及完工相片以供備案。' },
 ]
-
-const SITE_MEMO_PHRASES: Record<PhraseGroup, string[]> = {
-  '事由起因與依據': ['根據', '近日', '收到', '發出', '電郵', '文件', '要求', '口頭通知', '書面指示', '地盤協調會議紀錄', '巡查', '日常巡查時', '經檢查後', '經測試後', '最新批核圖則', 'CSD/CBWD圖'],
-  '抬頭、對象與項目資訊': ['[樓層/區域]', '[地點名]', '[設備名]', '[日期]', '貴司', '貴公司', '貴司之分判', '我司', '判頭', '打理', '現場負責人', '總承建商', '側師', '機電顧問', '地盤主管'],
-  '現場狀況與問題': ['電線槽/梯架', '燈喉', '配電箱', '燈具', '消防喉', '花灑頭', '消防泵', '已安裝的', '額外的', '與設計不符', '與設計有差異', '與批核圖則不一致', '資料錯誤', '尺寸不合', '結構開窿偏差', '受到阻礙', '受到破壞', '遭受撞毀', '設備損壞', '未能安裝', '未能移交', '通道受阻', '現場堆放雜物/廢料', '天花未完工', '牆身未交場', '現場積水/滲水', '缺乏工作平台', '進度緩慢'],
-  '要求行動與時限': ['謹通知', '特此通知', '懇請', '要求', '指示', '盡快', '即時', '未能', '根據', '原定', '計劃', '日期', '於[日期]前', '立即', '停止', '完成', '重新', '拆除', '妥善', '清理', '修復', '補做', '提交', '移交', '安排', '相關工序', '相關事項', '上述工作', '相關位置', '開放工作面', '現場雜物', '受損部分', '保護措施', '補救方案', '重新覆核尺寸', '積極配合'],
-  '後果與工期預警': ['以免', '延誤', '造成', '影響', '進行', '進度', '測試', '完工', '嚴重拖延', '其後的', '機電安裝', '整體交付時間', '測試及調試工作', '總工程進度', '驗收進度', '未能按照進度', '未能按照計劃', '衍生額外成本', '後續工種連鎖延誤', '給', '的', '請', '已'],
-  '合約索償與免責聲明': ['若因貴司或貴司之分判疏忽', '若因非本司原因引致', '本公司不會負上相關責任', '貴司全權承擔一切責任', '本公司保留追究權利', '保留申請工期延長(EOT)', '保留追討直接及間接經濟損失', '設備損壞引致之維修或更換費用', '相關款項將於貴司期款中全數扣除'],
-  '附件說明與結語聯絡': ['現附上相關相片以作參考及記錄', '隨函附上受影響位置圖則', '相關資料供貴司施工', '如有疑問請與本公司駐地盤員工聯絡', '敬請儘速回覆並回簽確認', '耑此函達', '敬請垂注'],
-}
 
 export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
@@ -93,8 +81,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [zoomImage, setZoomImage] = useState<string | null>(null)
   const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
   const [polishing, setPolishing] = useState(false)
-  const [customPhrases, setCustomPhrases] = useState<Record<PhraseGroup, string[]>>({ '事由起因與依據': [], '抬頭、對象與項目資訊': [], '現場狀況與問題': [], '要求行動與時限': [], '後果與工期預警': [], '合約索償與免責聲明': [], '附件說明與結語聯絡': [] })
-  const [deletedPhrases, setDeletedPhrases] = useState<Record<PhraseGroup, string[]>>({ '事由起因與依據': [], '抬頭、對象與項目資訊': [], '現場狀況與問題': [], '要求行動與時限': [], '後果與工期預警': [], '合約索償與免責聲明': [], '附件說明與結語聯絡': [] })
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pendingExport, setPendingExport] = useState<{ memo: Memo; fileName: string } | null>(null)
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
@@ -190,24 +176,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const snapshot = (action: string) => {
     const record: HistoryRecord = { recordId: `H-${Date.now()}`, savedAt: nowStamp(), action, memo: clone(memo) }
     setHistory(current => [record, ...current])
-  }
-
-  const appendQuickPhrase = (phrase: string) => {
-    update({ roughInput: memo.roughInput ? `${memo.roughInput.replace(/\s+$/, '')} ${phrase}` : phrase })
-  }
-
-  const addCustomPhrase = (group: PhraseGroup) => {
-    const phrase = window.prompt(`新增「${group}」字詞或句子`)
-    if (!phrase?.trim()) return
-    setCustomPhrases(current => ({ ...current, [group]: [...current[group], phrase.trim()] }))
-  }
-
-  const deletePhrase = (group: PhraseGroup, phrase: string, custom: boolean) => {
-    if (custom) {
-      setCustomPhrases(current => ({ ...current, [group]: current[group].filter(item => item !== phrase) }))
-      return
-    }
-    setDeletedPhrases(current => ({ ...current, [group]: current[group].includes(phrase) ? current[group] : [...current[group], phrase] }))
   }
 
   const clearMemoInput = () => {
@@ -483,14 +451,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           <Field label="Site Memo 內容">
             <textarea className="memo-rough-input" rows={8} placeholder="按下方快選詞語快速輸入，按 Enter 換行" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
-          <div className="memo-quick-groups memo-quick-scroll">
-            {(Object.keys(SITE_MEMO_PHRASES) as PhraseGroup[]).map(group => (
-              <div className="memo-quick-group" key={group}>
-                <strong>▼ {group}</strong>
-                <div>{[...SITE_MEMO_PHRASES[group].filter(phrase => !deletedPhrases[group].includes(phrase)), ...customPhrases[group]].map((phrase, index) => { const custom = index >= SITE_MEMO_PHRASES[group].filter(item => !deletedPhrases[group].includes(item)).length; return <PhraseButton key={`${phrase}-${index}`} phrase={phrase} custom={custom} onAdd={appendQuickPhrase} onDelete={() => deletePhrase(group, phrase, custom)} /> })}<button type="button" className="memo-add-phrase-btn" onClick={() => addCustomPhrase(group)}>＋新增</button></div>
-                {group === '附件說明與結語聯絡' && <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => { setTemplateId(template.id); setTemplateOptions([]); setModal(8) }}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>}
-              </div>
-            ))}
+          <div className="memo-quick-scroll">
+            <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => { setTemplateId(template.id); setTemplateOptions([]); setModal(8) }}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>
           </div>
           <div className="memo-action-row">
             <button className="memo-ai-btn" onClick={polishItems} disabled={polishing || !memo.roughInput.trim()}><Sparkles size={18} />{polishing ? 'AI 優化中…' : 'AI 優化'}</button>
@@ -771,31 +733,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
         <div ref={exportRef}>{pendingExport && <MemoDocument memo={pendingExport.memo} letterhead={letterheads.find(item => item.id === pendingExport.memo.letterheadId)} />}</div>
       </div>
     </div>
-  )
-}
-
-function PhraseButton({ phrase, custom, onAdd, onDelete }: { phrase: string; custom: boolean; onAdd: (phrase: string) => void; onDelete: () => void }) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const deleteRequested = useRef(false)
-  const clearTimer = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } }
-  const startPress = () => {
-    deleteRequested.current = false
-    timer.current = setTimeout(() => {
-            deleteRequested.current = true
-            onDelete()
-    }, 700)
-  }
-  return (
-    <button
-            type="button"
-            onClick={() => { if (!deleteRequested.current) onAdd(phrase); deleteRequested.current = false }}
-            onDoubleClick={onDelete}
-            onPointerDown={startPress}
-            onPointerUp={clearTimer}
-            onPointerLeave={clearTimer}
-            onContextMenu={event => { event.preventDefault(); deleteRequested.current = true; onDelete() }}
-            title="點擊加入；長按、雙擊或右鍵刪除"
-    >{phrase} <span aria-hidden="true">×</span></button>
   )
 }
 
