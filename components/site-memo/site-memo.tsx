@@ -13,7 +13,6 @@ import {
   Download,
   History,
   Sparkles,
-  Plus,
   Trash2,
   Printer,
   Copy,
@@ -175,7 +174,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       })
       const data = await response.json()
       if (response.ok && typeof data.text === 'string' && data.text.trim()) {
-        update({ roughInput: data.text, items: Array.isArray(data.items) && data.items.length ? data.items : [data.text] })
+        update({ roughInput: data.text, items: [data.text] })
       } else {
         alert(data.error || 'AI 潤色失敗')
       }
@@ -271,7 +270,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       '',
       target.subject,
       '',
-      ...target.items.map((item, index) => `${index + 1}. - ${item}`),
+      target.roughInput,
       '',
       target.legalClause,
       '',
@@ -303,7 +302,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   const cards = [
     { id: 1 as const, icon: Users, title: '收件人', hint: memo.recipient.company },
-    { id: 2 as const, icon: FileText, title: '內容與事件', hint: `${memo.items.length} 項工項` },
+    { id: 2 as const, icon: FileText, title: '內容與事件', hint: memo.roughInput ? '已輸入 Site Memo 內容' : '尚未輸入內容' },
     { id: 3 as const, icon: Camera, title: '巡查照片', hint: `${memo.photos.length} 張` },
     { id: 4 as const, icon: Paperclip, title: '附件', hint: `${memo.pdfAttachments.length} 份圖紙` },
     { id: 5 as const, icon: Boxes, title: '備用槽', hint: `EOT ${memo.spareModule.delayDays} 日` },
@@ -408,28 +407,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             <Sparkles size={18} />
             {polishing ? 'AI 潤色中…' : '一鍵 AI 行話潤色'}
           </button>
-          <div className="memo-items">
-            <div className="memo-items-head">
-              <span>工項 ({memo.items.length})</span>
-              <button onClick={() => update({ items: [...memo.items, ''] })}>
-                <Plus size={16} />
-                新增
-              </button>
-            </div>
-            {memo.items.map((item, index) => (
-              <div className="memo-item-row" key={index}>
-                <span>{index + 1}.</span>
-                <textarea
-                  rows={2}
-                  value={item}
-                  onChange={e => update({ items: memo.items.map((v, i) => (i === index ? e.target.value : v)) })}
-                />
-                <button onClick={() => update({ items: memo.items.filter((_, i) => i !== index) })} aria-label="刪除工項">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
         </MemoModal>
       )}
 

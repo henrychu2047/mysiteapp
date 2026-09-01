@@ -44,11 +44,7 @@ export function MemoDocument({ memo, letterhead, onZoomImage }: { memo: Memo; le
 
         <div style={{ fontSize: '13.5px', lineHeight: 1.4 }}>
           <p style={{ margin: '0 0 8px' }}>茲於 {memo.inspectionDate} 進行地盤巡查，發現以下建築未完成位置阻礙機電安裝，詳列如下：</p>
-          {memo.items.map((item, index) => (
-            <div key={index} style={{ margin: '0 0 6px' }}>
-              {index + 1}. - {item}
-            </div>
-          ))}
+          <div style={{ whiteSpace: 'pre-line' }}>{memo.roughInput}</div>
         </div>
 
         <div style={{ fontSize: '12.5px', lineHeight: 1.4, marginTop: '10px', whiteSpace: 'pre-line' }}>{memo.legalClause}</div>
