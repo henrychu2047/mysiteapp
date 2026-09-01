@@ -18,7 +18,6 @@ import {
   Copy,
   Upload,
   Pencil,
-  ClipboardList,
   Home,
   Images,
   Building2,
@@ -95,6 +94,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
   const [polishing, setPolishing] = useState(false)
   const [customPhrases, setCustomPhrases] = useState<Record<PhraseGroup, string[]>>({ '事由起因與依據': [], '抬頭、對象與項目資訊': [], '現場狀況與問題': [], '要求行動與時限': [], '後果與工期預警': [], '合約索償與免責聲明': [], '附件說明與結語聯絡': [] })
+  const [deletedPhrases, setDeletedPhrases] = useState<Record<PhraseGroup, string[]>>({ '事由起因與依據': [], '抬頭、對象與項目資訊': [], '現場狀況與問題': [], '要求行動與時限': [], '後果與工期預警': [], '合約索償與免責聲明': [], '附件說明與結語聯絡': [] })
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pendingExport, setPendingExport] = useState<{ memo: Memo; fileName: string } | null>(null)
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
@@ -202,8 +202,12 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setCustomPhrases(current => ({ ...current, [group]: [...current[group], phrase.trim()] }))
   }
 
-  const deleteCustomPhrase = (group: PhraseGroup, phrase: string) => {
-    setCustomPhrases(current => ({ ...current, [group]: current[group].filter(item => item !== phrase) }))
+  const deletePhrase = (group: PhraseGroup, phrase: string, custom: boolean) => {
+    if (custom) {
+      setCustomPhrases(current => ({ ...current, [group]: current[group].filter(item => item !== phrase) }))
+      return
+    }
+    setDeletedPhrases(current => ({ ...current, [group]: current[group].includes(phrase) ? current[group] : [...current[group], phrase] }))
   }
 
   const clearMemoInput = () => {
@@ -392,7 +396,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     { id: 5 as const, icon: Boxes, title: '備用槽', hint: `EOT ${memo.spareModule.delayDays} 日` },
     { id: 6 as const, icon: PenLine, title: '發件人資料', hint: memo.signature ? '已簽名' : '未簽名' },
     { id: 7 as const, icon: FileText, title: '信紙', hint: isRegistered ? (letterheads.find(item => item.id === memo.letterheadId)?.name || '未選擇') : '註冊版專有功能' },
-    { id: 8 as const, icon: ClipboardList, title: 'Site Memo 範本', hint: '交場延誤／設備損壞／圖則衝突／進度預警／完工通知' },
   ]
 
   return (
@@ -484,7 +487,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             {(Object.keys(SITE_MEMO_PHRASES) as PhraseGroup[]).map(group => (
               <div className="memo-quick-group" key={group}>
                 <strong>▼ {group}</strong>
-                <div>{[...SITE_MEMO_PHRASES[group], ...customPhrases[group]].map((phrase, index) => <PhraseButton key={`${phrase}-${index}`} phrase={phrase} custom={index >= SITE_MEMO_PHRASES[group].length} onAdd={appendQuickPhrase} onDelete={() => deleteCustomPhrase(group, phrase)} />)}<button type="button" className="memo-add-phrase-btn" onClick={() => addCustomPhrase(group)}>＋新增</button></div>
+                <div>{[...SITE_MEMO_PHRASES[group].filter(phrase => !deletedPhrases[group].includes(phrase)), ...customPhrases[group]].map((phrase, index) => { const custom = index >= SITE_MEMO_PHRASES[group].filter(item => !deletedPhrases[group].includes(item)).length; return <PhraseButton key={`${phrase}-${index}`} phrase={phrase} custom={custom} onAdd={appendQuickPhrase} onDelete={() => deletePhrase(group, phrase, custom)} /> })}<button type="button" className="memo-add-phrase-btn" onClick={() => addCustomPhrase(group)}>＋新增</button></div>
+                {group === '附件說明與結語聯絡' && <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => { setTemplateId(template.id); setTemplateOptions([]); setModal(8) }}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>}
               </div>
             ))}
           </div>
@@ -652,7 +656,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       {modal === 8 && (
         <MemoModal title="Site Memo 範本" onClose={() => setModal(null)}>
           <div className="memo-template-grid">
-            {SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => { setTemplateId(template.id); setTemplateOptions([]) }}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}
+            {SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => { setTemplateId(template.id); setTemplateOptions([]); setModal(8) }}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}
           </div>
           {templateId && <>
             <Field label="地點／樓層"><input value={templateLocation} onChange={event => setTemplateLocation(event.target.value)} placeholder="請輸入地點／樓層" /></Field>
@@ -777,11 +781,11 @@ function PhraseButton({ phrase, custom, onAdd, onDelete }: { phrase: string; cus
     <button
       type="button"
       onClick={() => onAdd(phrase)}
-      onPointerDown={() => { if (custom) timer.current = setTimeout(onDelete, 700) }}
+      onPointerDown={() => { timer.current = setTimeout(onDelete, 700) }}
       onPointerUp={clearTimer}
       onPointerLeave={clearTimer}
-      onContextMenu={event => { if (custom) { event.preventDefault(); onDelete() } }}
-      title={custom ? '點擊加入，長按刪除' : '點擊加入'}
+            onContextMenu={event => { event.preventDefault(); onDelete() }}
+      title="點擊加入，長按刪除"
     >{phrase}</button>
   )
 }
