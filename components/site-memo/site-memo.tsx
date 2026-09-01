@@ -79,8 +79,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
   const [polishing, setPolishing] = useState(false)
   const [customPhrases, setCustomPhrases] = useState<Record<PhraseGroup, string[]>>({ 動態變數: [], 角色對象: [], 事由依據: [], 現場狀況與問題: [], 要求行動: [], 影響與後果預警: [], 索償與免責聲明: [], 附件與結語: [] })
-  const [newPhrase, setNewPhrase] = useState('')
-  const [newPhraseGroup, setNewPhraseGroup] = useState<PhraseGroup>('現場狀況與問題')
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pendingExport, setPendingExport] = useState<{ memo: Memo; fileName: string } | null>(null)
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
@@ -182,11 +180,10 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     update({ roughInput: memo.roughInput ? `${memo.roughInput.replace(/\s+$/, '')} ${phrase}` : phrase })
   }
 
-  const addCustomPhrase = () => {
-    const phrase = newPhrase.trim()
-    if (!phrase) return
-    setCustomPhrases(current => ({ ...current, [newPhraseGroup]: [...current[newPhraseGroup], phrase] }))
-    setNewPhrase('')
+  const addCustomPhrase = (group: PhraseGroup) => {
+    const phrase = window.prompt(`新增「${group}」字詞或句子`)
+    if (!phrase?.trim()) return
+    setCustomPhrases(current => ({ ...current, [group]: [...current[group], phrase.trim()] }))
   }
 
   const deleteCustomPhrase = (group: PhraseGroup, phrase: string) => {
@@ -452,14 +449,9 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             {(Object.keys(SITE_MEMO_PHRASES) as PhraseGroup[]).map(group => (
               <div className="memo-quick-group" key={group}>
                 <strong>▼ {group}</strong>
-                <div>{[...SITE_MEMO_PHRASES[group], ...customPhrases[group]].map((phrase, index) => <PhraseButton key={`${phrase}-${index}`} phrase={phrase} custom={index >= SITE_MEMO_PHRASES[group].length} onAdd={appendQuickPhrase} onDelete={() => deleteCustomPhrase(group, phrase)} />)}</div>
+                <div>{[...SITE_MEMO_PHRASES[group], ...customPhrases[group]].map((phrase, index) => <PhraseButton key={`${phrase}-${index}`} phrase={phrase} custom={index >= SITE_MEMO_PHRASES[group].length} onAdd={appendQuickPhrase} onDelete={() => deleteCustomPhrase(group, phrase)} />)}<button type="button" className="memo-add-phrase-btn" onClick={() => addCustomPhrase(group)}>＋新增</button></div>
               </div>
             ))}
-          </div>
-          <div className="memo-custom-phrase-form">
-            <select value={newPhraseGroup} onChange={e => setNewPhraseGroup(e.target.value as PhraseGroup)}>{(Object.keys(SITE_MEMO_PHRASES) as PhraseGroup[]).map(group => <option key={group} value={group}>{group}</option>)}</select>
-            <input value={newPhrase} onChange={e => setNewPhrase(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomPhrase() } }} placeholder="新增字詞或句子" />
-            <button type="button" onClick={addCustomPhrase}>新增</button>
           </div>
           <div className="memo-action-row">
             <button className="memo-ai-btn" onClick={polishItems} disabled={polishing || !memo.roughInput.trim()}><Sparkles size={18} />{polishing ? 'AI 優化中…' : 'AI 優化'}</button>
