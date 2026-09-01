@@ -477,7 +477,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             <textarea className="memo-rough-input" rows={8} placeholder="選擇下方 Site Memo 範本後，內容會即時顯示於此；亦可直接編輯文字" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
           <div className="memo-quick-scroll">
-            {!templateMode && <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className="memo-template-card" onClick={() => selectTemplate(template.id)}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>}
+            {templateId === null && <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button type="button" key={template.id} className="memo-template-card" onClick={() => selectTemplate(template.id)}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>}
             {templateId && <div className="memo-template-form">
               <Field label="地點／樓層"><input value={templateLocation} onChange={event => setTemplateLocation(event.target.value)} placeholder="請輸入地點／樓層" /></Field>
               <Field label="事發／巡查日期"><input type="date" value={templateDate} onChange={event => setTemplateDate(event.target.value)} /></Field>
