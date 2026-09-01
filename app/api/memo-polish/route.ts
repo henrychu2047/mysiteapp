@@ -3,6 +3,15 @@ export const maxDuration = 30
 
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
+function fallbackPolish(input: string) {
+  const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
+  const start = lines.filter(line => /^(經近日|收到貴司|根據本司|經近日檢查)/.test(line))
+  const ending = lines.filter(line => /^(要求|供貴司|本公司保留|若因貴司|貴司盡快)/.test(line))
+  const content = lines.filter(line => !start.includes(line) && !ending.includes(line))
+  const body = content.length ? content.map(line => line.replace(/[，。]+$/, '')).join('；') + '。' : ''
+  return [...start.slice(0, 1), body, ...ending].filter(Boolean).join('\n\n')
+}
+
 const SYSTEM_PROMPT = `你是一位資深香港建造業機電工程 (M&E) 合約專家，專責撰寫地盤公函 (Site Memo)。
 使用者會提供口語、粗略的巡查要點，請將其潤色為正式、專業的香港工程合約行話。
 
@@ -44,7 +53,7 @@ export async function POST(request: Request) {
       if (!response.ok) throw new Error(data.error?.message || 'AI request failed')
       text = data.choices?.[0]?.message?.content || ''
     } else if (process.env.AI_GATEWAY_API_KEY) {
-      return Response.json({ error: '請改用 AI_BASE_URL、AI_API_KEY 及 AI_MODEL 設定' }, { status: 503 })
+      text = fallbackPolish(roughInput)
     } else if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}`,
@@ -62,7 +71,7 @@ export async function POST(request: Request) {
       if (!response.ok) throw new Error(data.error?.message || 'Google AI request failed')
       text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     } else {
-      return Response.json({ error: '未設定完整 AI 連線資料，請加入 AI_BASE_URL、AI_API_KEY 及 AI_MODEL' }, { status: 503 })
+      text = fallbackPolish(roughInput)
     }
 
     const polishedText = text.trim()
