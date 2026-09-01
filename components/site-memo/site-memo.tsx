@@ -45,7 +45,7 @@ import {
 } from './memo-data'
 import { MemoDocument } from './memo-document'
 
-type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null
+type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
 type MemoTemplateId = 'handover-delay' | 'damage-backcharge' | 'design-conflict' | 'progress-warning' | 'completion-handover'
 
 type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
@@ -644,26 +644,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           <Field label="電子手寫簽名">
             <SignaturePad value={memo.signature} onChange={signature => update({ signature })} />
           </Field>
-        </MemoModal>
-      )}
-
-      {modal === 8 && (
-        <MemoModal title="Site Memo 範本" onClose={() => setModal(null)}>
-          <div className="memo-template-grid">
-            {SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className={`memo-template-card ${templateId === template.id ? 'active' : ''}`} onClick={() => selectTemplate(template.id)}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}
-          </div>
-          {templateId && <>
-            <Field label="地點／樓層"><input value={templateLocation} onChange={event => setTemplateLocation(event.target.value)} placeholder="請輸入地點／樓層" /></Field>
-            <Field label="事發／巡查日期"><input type="date" value={templateDate} onChange={event => setTemplateDate(event.target.value)} /></Field>
-            <Field label="要求限期／時間"><input type="date" value={templateDeadline} onChange={event => setTemplateDeadline(event.target.value)} /></Field>
-            <Field label="涉及設備／系統"><select value={templateEquipment} onChange={event => setTemplateEquipment(event.target.value)}>{equipmentOptions.map(option => <option key={option}>{option}</option>)}<option>其他</option></select></Field>
-            {templateId === 'handover-delay' && <TemplateOption label="現場狀況" options={['之相關工序尚未完工', '／現場受大量雜物阻塞']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
-            {templateId === 'damage-backcharge' && <TemplateOption label="損壞情況" options={['遭受外力嚴重撞毀及損壞', '／保護層被擅自拆除', '／遭受泥水及積水污染浸損']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
-            {templateId === 'design-conflict' && <TemplateOption label="衝突情況" options={['結構開窿位置／尺寸偏差', '缺乏足夠維修空間', '與其他工種管道空間衝突']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
-            {templateId === 'completion-handover' && <TemplateOption label="驗收項目" options={['水壓／氣密測試', '試通電測試', '運作調試']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} />}
-            {templateEquipment === '其他' && <Field label="新增設備／系統"><input value={customEquipment} onChange={event => setCustomEquipment(event.target.value)} placeholder="輸入後會加入選單" onBlur={() => { if (customEquipment.trim() && !equipmentOptions.includes(customEquipment.trim())) setEquipmentOptions(current => [...current, customEquipment.trim()]) }} /></Field>}
-            <button className="memo-ai-btn" onClick={applyTemplate}>使用此範本</button>
-          </>}
         </MemoModal>
       )}
 
