@@ -77,6 +77,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [customEquipment, setCustomEquipment] = useState('')
   const [equipmentOptions, setEquipmentOptions] = useState(['電器設備', '冷氣設備', '消防設備'])
   const [templateOptions, setTemplateOptions] = useState<string[]>([])
+  const [templateMode, setTemplateMode] = useState(false)
   const [includeAttachmentNote, setIncludeAttachmentNote] = useState(false)
   const [overlay, setOverlay] = useState<'preview' | 'export' | 'history' | null>(null)
   const [zoomImage, setZoomImage] = useState<string | null>(null)
@@ -181,6 +182,10 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   const clearMemoInput = () => {
     update({ roughInput: '', items: [] })
+    setTemplateId(null)
+    setTemplateMode(false)
+    setTemplateOptions([])
+    setIncludeAttachmentNote(false)
   }
 
   const insertMemoLineBreak = () => update({ roughInput: `${memo.roughInput.replace(/\s+$/, '')}\n` })
@@ -189,6 +194,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     const template = SITE_MEMO_TEMPLATES.find(item => item.id === id)
     if (!template) return
     setTemplateId(id)
+    setTemplateMode(true)
     setTemplateOptions([])
     setIncludeAttachmentNote(false)
     update({ roughInput: template.body })
@@ -471,7 +477,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             <textarea className="memo-rough-input" rows={8} placeholder="選擇下方 Site Memo 範本後，內容會即時顯示於此；亦可直接編輯文字" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
           <div className="memo-quick-scroll">
-            {!templateId && <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className="memo-template-card" onClick={() => selectTemplate(template.id)}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>}
+            {!templateMode && <div className="memo-inline-templates"><strong>Site Memo 五類範本</strong><div className="memo-template-grid">{SITE_MEMO_TEMPLATES.map(template => <button key={template.id} className="memo-template-card" onClick={() => selectTemplate(template.id)}><strong>{template.title}</strong><span>{template.subtitle}</span></button>)}</div></div>}
             {templateId && <div className="memo-template-form">
               <Field label="地點／樓層"><input value={templateLocation} onChange={event => setTemplateLocation(event.target.value)} placeholder="請輸入地點／樓層" /></Field>
               <Field label="事發／巡查日期"><input type="date" value={templateDate} onChange={event => setTemplateDate(event.target.value)} /></Field>
