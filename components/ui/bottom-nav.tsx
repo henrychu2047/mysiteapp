@@ -12,10 +12,10 @@ type BottomNavProps = {
 export function BottomNav({ active, onNavigate }: BottomNavProps) {
   return (
     <nav className="bottom-nav main-nav">
-      <button className={active === 'home' ? 'active' : ''} onClick={() => onNavigate('home')}><span><Home size={20} /></span>首頁</button>
-      <button className={active === 'photo' ? 'active' : ''} onClick={() => onNavigate('photo')}><span><Images size={20} /></span>相簿</button>
-      <button className={active === 'handover' ? 'active' : ''} onClick={() => onNavigate('handover')}><span><Building2 size={20} /></span>設定</button>
-      <button className={active === 'about' ? 'active' : ''} onClick={() => onNavigate('about')}><span><Info size={20} /></span>資料</button>
+      <button className={active === 'home' ? 'active' : ''} onClick={() => onNavigate('home')}><span><Home /></span>首頁</button>
+      <button className={active === 'photo' ? 'active' : ''} onClick={() => onNavigate('photo')}><span><Images /></span>相簿</button>
+      <button className={active === 'handover' ? 'active' : ''} onClick={() => onNavigate('handover')}><span><Building2 /></span>設定</button>
+      <button className={active === 'about' ? 'active' : ''} onClick={() => onNavigate('about')}><span><Info /></span>資料</button>
     </nav>
   )
 }
