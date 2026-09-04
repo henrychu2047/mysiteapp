@@ -55,7 +55,20 @@ const SITE_MEMO_TEMPLATES: Array<{ id: MemoTemplateId; title: string; subtitle: 
   { id: 'damage-backcharge', title: '設備損壞', subtitle: 'Damage & Backcharge', body: '1. 本司駐地盤員工於 [事發/巡查日期] 在 [地點/樓層] 巡查時，發現本司已安裝完成並設有保護之 [涉及設備/系統] 遭受[損壞情況]。\n2. 經現場查核，該損壞乃因貴司或貴司之分判商施工期間操作不當所致，相關重造、更換及人工物料費用將全數由貴司承擔。\n3. 相關款項將直接於貴司之中期糧款（Interim Payment）中全數扣除（Backcharge）；請貴司於 [要求限期/時間] 前書面確認更換安排。\n[附件段落]' },
   { id: 'design-conflict', title: '圖則衝突', subtitle: 'Design Conflict', body: '1. 根據最新批核之協調圖則（CSD/CBWD），本司原定於 [地點/樓層] 進行 [涉及設備/系統] 之穿越結構及安裝工程。\n2. 經本司於 [事發/巡查日期] 現場覆核尺寸後，發現現場 [衝突情況]，導致相關工序被迫暫停。\n3. 特此通知貴司及顧問團隊盡快協調，並限於 [要求限期/時間] 前發出正式修改指示或補救方案，以便本司配合落實施工。\n[附件段落]' },
   { id: 'progress-warning', title: '進度預警', subtitle: 'Progress Warning', body: '1. 謹此發出進度預警，根據本司於 [事發/巡查日期] 之現場評估，[地點/樓層] 之相關工序進度持續滯後或配合人手嚴重不足，已直接阻礙本司後續 [涉及設備/系統] 之正常施工流程。\n2. 若相關配合工序未能於 [要求限期/時間] 前完成並交出場地，將直接延誤關鍵施工節點，並嚴重威脅後續之測試及調試（T&C）及法定驗收進度。\n3. 請貴司高度重視上述情況，即時加派人手追趕工期，確保後續工序能如期銜接。\n4. 耑此函達，敬請貴司儘速回覆具體追趕施工時間表。\n[附件段落]' },
-  { id: 'completion-handover', title: '完工通知', subtitle: 'Completion & Handover', body: '1. 本司謹此通知，位於 [地點/樓層] 之 [涉及設備/系統] 安裝工程及相關之 [驗收項目] 已於 [事發/巡查日期] 順利完成，並符合批核圖則及規格要求。\n2. 現特此邀請貴司及駐地盤代表（BSI）於 [要求限期/時間] 進行驗收並辦理交場手續，以便安排下一工種進場。\n3. 驗收移交後，若上述設施因後續其他工種施工而遭受任何損壞，相關修復費用及工期責任概由責任方全權承擔。\n[附件段落]' },
+  { id: 'completion-handover', title: '完工通知', subtitle: 'Completion & Handover', body: '1. 本司謹此通知，位於 [地點/樓層] 之 [設備／系統] 安裝工程及相關之 [驗收項目] 已於 [事發/巡查日期] 順利完成，並符合批核圖則及規格要求。\n2. 現特此邀請貴司及駐地盤代表（BSI）於 [要求限期/時間] 進行驗收並辦理交場手續，以便安排下一工種進場。\n3. 驗收移交後，若上述設施因後續其他工種施工而遭受任何損壞，相關修復費用及工期責任概由責任方全權承擔。\n[附件段落]' },
+]
+
+const MEMO_TONES = [
+  { label: '正式客觀', text: '' },
+  { label: '嚴正提醒', text: '請貴司立即正視上述情況並採取必要行動。' },
+  { label: '保留合約權利', text: '本司明確保留根據合約追討相關工期及費用責任之權利。' },
+]
+
+const MEMO_CONTRACT_CLAUSES = [
+  { label: '不加入條款', text: '' },
+  { label: '工期延長（EOT）', text: '如上述事件影響關鍵工序或整體工期，本司保留按照合約申請工期延長（EOT）之權利。' },
+  { label: '費用及損失追討', text: '如上述事件引致本司額外費用或損失，本司保留按照合約向責任方追討之權利。' },
+  { label: '責任及費用一併保留', text: '本司保留按照合約申請工期延長（EOT）及追討相關費用、損失之全部權利。' },
 ]
 
 export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean }) {
@@ -78,6 +91,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [templateMode, setTemplateMode] = useState(false)
   const [attachmentOption, setAttachmentOption] = useState('')
   const [templateCustomOption, setTemplateCustomOption] = useState('')
+  const [memoTone, setMemoTone] = useState('')
+  const [contractClause, setContractClause] = useState('')
   const [overlay, setOverlay] = useState<'preview' | 'export' | 'history' | null>(null)
   const [zoomImage, setZoomImage] = useState<string | null>(null)
   const [previewingHistory, setPreviewingHistory] = useState<HistoryRecord | null>(null)
@@ -186,6 +201,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setTemplateOptions([])
     setTemplateCustomOption('')
     setAttachmentOption('')
+    setMemoTone('')
+    setContractClause('')
   }
 
   const formatTemplateDate = (value: string) => {
@@ -204,6 +221,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setTemplateOptions([])
     setTemplateCustomOption('')
     setAttachmentOption('')
+    setMemoTone('')
+    setContractClause('')
     setAddingEquipment(false)
     setCustomEquipment('')
     update({ roughInput: template.body })
@@ -217,20 +236,13 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     const deadline = formatTemplateDate(templateDeadline) || '[要求限期／時間]'
     const custom = templateCustomOption.trim()
     const optionText = templateOptions.length ? templateOptions.join(templateId === 'design-conflict' || templateId === 'completion-handover' ? '、' : templateId === 'handover-delay' || templateId === 'damage-backcharge' ? '，且' : '') : ''
-    let body = template.body.replace(/\[地點[\/／]樓層\]/g, templateLocation.trim() || '[地點／樓層]').replace(/\[事發[\/／]巡查日期\]/g, date).replace(/\[要求限期[\/／]時間\]/g, deadline).replace(/\[涉及設備[\/／]系統\]/g, equipment || '[涉及設備／系統]')
+    let body = template.body.replace(/\[地點[\/／]樓層\]/g, templateLocation.trim() || '[地點／樓層]').replace(/\[事發[\/／]巡查日期\]/g, date).replace(/\[要求限期[\/／]時間\]/g, deadline).replace(/\[(?:涉及)?設備[\/／]系統\]/g, equipment || '[設備／系統]')
     if (templateId === 'handover-delay') body = body.replace('[現場狀況]', optionText || custom || '[現場狀況]')
     if (templateId === 'damage-backcharge') body = body.replace('[損壞情況]', optionText || custom || '[損壞情況]')
     if (templateId === 'design-conflict') body = body.replace('[衝突情況]', optionText || custom || '[衝突情況]')
     if (templateId === 'completion-handover') body = body.replace('[驗收項目]', optionText || custom || '[驗收項目]')
-    const attachmentText = attachmentOption || (memo.pdfAttachments.length > 0 && memo.photos.length > 0
-      ? '4. 隨函附上相關記錄及相片以供備案。'
-      : memo.pdfAttachments.length > 0
-        ? '4. 隨函附上相關記錄以供備案。'
-        : memo.photos.length > 0
-          ? '4. 隨函附上相關相片以供備案。'
-          : '')
-    body = body.replace('[附件段落]', attachmentText)
-    return body
+    body = body.replace('[附件段落]', attachmentOption)
+    return [body, memoTone, contractClause].filter(Boolean).join('\n\n')
   }
 
   const hasUnfilledPlaceholders = (target: Memo) => /\[[^\]]+\]/.test(target.roughInput)
@@ -245,7 +257,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   useEffect(() => {
     if (templateId) update({ roughInput: buildTemplateBody(), items: [] })
-  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, templateCustomOption, attachmentOption, memo.photos.length, memo.pdfAttachments.length])
+  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, templateCustomOption, attachmentOption, memoTone, contractClause])
 
   function localPolish(input: string) {
     const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
@@ -508,7 +520,18 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               {templateId === 'design-conflict' && <TemplateOption label="衝突情況" options={['結構開窿位置／尺寸偏差', '缺乏足夠維修空間', '與其他工種管道空間衝突']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} customValue={templateCustomOption} onCustomChange={setTemplateCustomOption} />}
               {templateId === 'completion-handover' && <TemplateOption label="驗收項目" options={['水壓／氣密測試', '試通電測試', '運作調試']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} customValue={templateCustomOption} onCustomChange={setTemplateCustomOption} />}
               <TemplateOption label="附件段落" options={['4. 隨函附上相關記錄以供備案。', '4. 隨函附上相關相片以供備案。', '4. 隨函附上相關記錄及相片以供備案。']} selected={attachmentOption ? [attachmentOption] : []} onToggle={value => setAttachmentOption(current => current === value ? '' : value)} />
-              <button type="button" className="memo-change-template" onClick={() => { setTemplateId(null); setTemplateMode(false); setTemplateOptions([]); setTemplateCustomOption(''); setAttachmentOption('') }}>← 更換範本</button>
+              <Field label="語氣">
+                <select value={memoTone} onChange={event => setMemoTone(event.target.value)}>
+                  <option value="">正式客觀</option>
+                  {MEMO_TONES.filter(tone => tone.text).map(tone => <option key={tone.label} value={tone.text}>{tone.label}</option>)}
+                </select>
+              </Field>
+              <Field label="合約條款">
+                <select value={contractClause} onChange={event => setContractClause(event.target.value)}>
+                  {MEMO_CONTRACT_CLAUSES.map(clause => <option key={clause.label} value={clause.text}>{clause.label}</option>)}
+                </select>
+              </Field>
+              <button type="button" className="memo-change-template" onClick={() => { setTemplateId(null); setTemplateMode(false); setTemplateOptions([]); setTemplateCustomOption(''); setAttachmentOption(''); setMemoTone(''); setContractClause('') }}>← 更換範本</button>
             </div>}
           </div>
           <div className="memo-action-row">
