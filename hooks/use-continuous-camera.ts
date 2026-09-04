@@ -6,7 +6,6 @@ export function useContinuousCamera() {
   const [continuousCamera, setContinuousCamera] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [captureBusy, setCaptureBusy] = useState(false)
-  const [captureMessage, setCaptureMessage] = useState('')
   const [flashEnabled, setFlashEnabled] = useState(false)
   const [zoomLevel, setZoomLevel] = useState(1)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -57,11 +56,9 @@ export function useContinuousCamera() {
   const capturePhoto = useCallback(async (onCapture: (file: File) => Promise<void>) => {
     if (captureBusy || !videoRef.current) return
     setCaptureBusy(true)
-    setCaptureMessage('正在處理相片…')
     const video = videoRef.current
     if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
       setCameraError('鏡頭尚未準備好，請稍候再按快門')
-      setCaptureMessage('')
       setCaptureBusy(false)
       return
     }
@@ -73,16 +70,13 @@ export function useContinuousCamera() {
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
       await onCapture(new File([blob], 'camera.jpg', { type: 'image/jpeg' }))
       setCameraError('')
-      setCaptureMessage('已拍攝並儲存，可繼續拍攝')
-      window.setTimeout(() => setCaptureMessage(''), 1800)
     } catch (error) {
       console.error('[v0] capture failed:', error)
       setCameraError('拍攝失敗，請稍候再試')
-      setCaptureMessage('')
     } finally {
       setCaptureBusy(false)
     }
   }, [captureBusy])
 
-  return { continuousCamera, cameraError, captureBusy, captureMessage, flashEnabled, zoomLevel, videoRef, startContinuousCamera, stopContinuousCamera, toggleFlash, changeZoom, capturePhoto, setCameraError, setCaptureMessage }
+  return { continuousCamera, cameraError, captureBusy, flashEnabled, zoomLevel, videoRef, startContinuousCamera, stopContinuousCamera, toggleFlash, changeZoom, capturePhoto, setCameraError }
 }
