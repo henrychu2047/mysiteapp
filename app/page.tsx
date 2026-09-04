@@ -303,7 +303,7 @@ export default function Page() {
   }
   const sharedMediaOverlays = <>
     {photoPickerRequest && <PhotoPicker photos={projectPhotos} onConfirm={photoIds => { photoPickerRequest(photoIds); setPhotoPickerRequest(null) }} onClose={() => setPhotoPickerRequest(null)} />}
-    {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo.id) }} onClose={() => { setCameraRequest(null); setCameraAutoStart(false) }} onOpenPhotoSettings={() => { setAppMode('photo'); setTab('home'); setActive(cameraInitialCategory || currentProject.settings?.lastCameraCategory || categories[0]?.name || null) }} />}
+    {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo.id) }} onClose={() => { setCameraRequest(null); setCameraAutoStart(false) }} />}
   </>
   const addProject = () => {
     const name = newProjectName.trim()

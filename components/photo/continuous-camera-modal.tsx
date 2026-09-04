@@ -8,13 +8,13 @@ type Props = {
   initialCategory?: string
   onCapture: (file: File, category: string) => Promise<void>
   onClose: () => void
-  onOpenPhotoSettings?: () => void
   autoStart?: boolean
   onCategorySelected?: (category: string) => void
 }
 
-export function ContinuousCameraModal({ categories, initialCategory, onCapture, onClose, onOpenPhotoSettings, autoStart = false, onCategorySelected }: Props) {
-  const [category, setCategory] = useState(initialCategory && categories.includes(initialCategory) ? initialCategory : '')
+export function ContinuousCameraModal({ categories, initialCategory, onCapture, onClose, autoStart = false, onCategorySelected }: Props) {
+  const [category, setCategory] = useState(initialCategory && categories.includes(initialCategory) ? initialCategory : (autoStart ? categories[0] || '' : ''))
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false)
   const autoStartRequested = useRef(false)
   const { continuousCamera, cameraError, captureBusy, captureMessage, flashEnabled, zoomLevel, videoRef, startContinuousCamera, stopContinuousCamera, toggleFlash, changeZoom, capturePhoto } = useContinuousCamera()
 
@@ -27,8 +27,11 @@ export function ContinuousCameraModal({ categories, initialCategory, onCapture, 
   }, [autoStart, category, onCategorySelected, startContinuousCamera])
 
   const close = () => { stopContinuousCamera(); onClose() }
-  const openPhotoSettings = () => { stopContinuousCamera(); onClose(); onOpenPhotoSettings?.() }
   const start = () => { if (category) { onCategorySelected?.(category); void startContinuousCamera() } }
+
+  if (!continuousCamera && autoStart) return (
+    <div className="overlay dark-overlay camera-overlay"><div className="camera-starting" role="status">正在開啟相機…{cameraError && <><p className="camera-error">{cameraError}</p><button className="camera-control" onClick={close}>×</button></>}</div></div>
+  )
 
   if (!continuousCamera) return (
     <div className="overlay photo-picker-overlay" onClick={close}>
@@ -49,7 +52,8 @@ export function ContinuousCameraModal({ categories, initialCategory, onCapture, 
       {captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}
       <div className="camera-frame"><video ref={videoRef} autoPlay playsInline muted /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /><div className="zoom-controls" aria-label="縮放倍率">{[.5, 1, 2, 5].map(level => <button key={level} onClick={() => void changeZoom(level)} className={zoomLevel === level ? 'selected' : ''}>{level === 1 ? '1×' : level}</button>)}</div></div>
       {cameraError && <p className="camera-error">{cameraError}</p>}
-      <div className="camera-toolbar"><button className="camera-control" onClick={close} aria-label="取消拍攝">×</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={() => void capturePhoto(file => onCapture(file, category))} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button>{onOpenPhotoSettings ? <button className="camera-control camera-settings" onClick={openPhotoSettings} aria-label="拍照記錄設定">⚙</button> : <span>連續拍攝</span>}</div>
+      <div className="camera-toolbar"><button className="camera-control" onClick={close} aria-label="取消拍攝">×</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={() => void capturePhoto(file => onCapture(file, category))} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button>{autoStart ? <button className="camera-control camera-settings" onClick={() => setShowCategoryPicker(true)} aria-label="選擇工程類別">⚙</button> : <span>連續拍攝</span>}</div>
+      {showCategoryPicker && <div className="camera-category-popup" role="dialog" aria-label="選擇工程類別"><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">PHOTO CATEGORY</p><h3>選擇工程類別</h3></div><button className="close" onClick={() => setShowCategoryPicker(false)} aria-label="關閉">×</button></div><div className="camera-category-list">{categories.map(item => <button type="button" key={item} className={category === item ? 'selected' : ''} onClick={() => { setCategory(item); onCategorySelected?.(item); setShowCategoryPicker(false) }}>{item}<span>{category === item ? '✓' : ''}</span></button>)}</div></div>}
     </div></div>
   )
 }
