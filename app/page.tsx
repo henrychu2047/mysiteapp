@@ -11,6 +11,7 @@ import { Notebook } from '@/components/notebook/notebook'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { ProjectPicker, RenameProjectDialog } from '@/components/project/project-dialogs'
 import { FirstProjectSetup } from '@/components/project/first-project-setup'
+import { useAppStatus } from '@/hooks/use-app-status'
 import { loadAllMemos, saveAllMemos } from '@/components/site-memo/memo-data'
 import { buildFloorNames, createRoomHandover, loadAllHandover, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
 import {
@@ -103,40 +104,10 @@ export default function Page() {
   const [folderConnected, setFolderConnected] = useState(false)
   const backupRef = useRef<HTMLInputElement>(null)
   const [backupBusy, setBackupBusy] = useState(false)
-  const [updateAvailable, setUpdateAvailable] = useState(false)
-  const [storageUsage, setStorageUsage] = useState<{ usage: number; quota: number } | null>(null)
-
-  const [isOffline, setIsOffline] = useState(false)
-  const [storageStatus, setStorageStatus] = useState('本機保存中')
+  const { isOffline, storageStatus, storageUsage, updateAvailable, updateApp } = useAppStatus()
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [saveToast, setSaveToast] = useState('')
-  useEffect(() => {
-    navigator.storage?.persist?.().then((persisted) => setStorageStatus(persisted ? '本機持久保存' : '本機保存中')).catch(() => undefined)
-    const refreshStorage = () => navigator.storage?.estimate?.().then(result => {
-      if (typeof result.usage === 'number' && typeof result.quota === 'number') setStorageUsage({ usage: result.usage, quota: result.quota })
-    }).catch(() => undefined)
-    refreshStorage()
-    const timer = window.setInterval(refreshStorage, 30000)
-    return () => window.clearInterval(timer)
-  }, [])
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=22', { updateViaCache: 'none' }).then((registration) => {
-        const markUpdate = () => setUpdateAvailable(true)
-        if (registration.waiting) markUpdate()
-        registration.addEventListener('updatefound', () => {
-          const worker = registration.installing
-          if (worker) worker.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) markUpdate() })
-        })
-      }).catch(() => undefined)
-    }
-    const updateOnlineState = () => setIsOffline(!navigator.onLine)
-    updateOnlineState()
-    window.addEventListener('online', updateOnlineState)
-    window.addEventListener('offline', updateOnlineState)
-    return () => { window.removeEventListener('online', updateOnlineState); window.removeEventListener('offline', updateOnlineState) }
-  }, [])
   useEffect(() => {
     loadStoredPhotos().then((stored) => {
       const migrated = stored.map((photo) => hydratePhoto({ ...photo, category: normalizeCategoryName(photo.category), projectId: photo.projectId || DEFAULT_PROJECT.id }))
@@ -559,23 +530,6 @@ export default function Page() {
       setBackupBusy(false)
     }
   }
-  const updateApp = async () => {
-    try {
-      const registration = await navigator.serviceWorker?.getRegistration('/sw.js')
-      if (!registration) { alert('程式已更新'); window.location.reload(); return }
-      registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
-      if (registration.waiting) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => { alert('程式已更新'); window.location.reload() }, { once: true })
-      } else {
-        await registration.update()
-        alert('程式已更新')
-        window.location.reload()
-      }
-    } catch (error) {
-      alert(`更新失敗：${error instanceof Error ? error.message : '請稍後再試'}`)
-    }
-  }
-
   const importLocalBackup = async (file: File | undefined) => {
     if (!file) return
     try {
