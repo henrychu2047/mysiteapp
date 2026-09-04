@@ -8,15 +8,17 @@ type Props = {
   initialCategory?: string
   onCapture: (file: File, category: string) => Promise<void>
   onClose: () => void
+  onOpenPhotoSettings?: () => void
 }
 
-export function ContinuousCameraModal({ categories, initialCategory, onCapture, onClose }: Props) {
+export function ContinuousCameraModal({ categories, initialCategory, onCapture, onClose, onOpenPhotoSettings }: Props) {
   const [category, setCategory] = useState(initialCategory && categories.includes(initialCategory) ? initialCategory : '')
   const { continuousCamera, cameraError, captureBusy, captureMessage, flashEnabled, zoomLevel, videoRef, startContinuousCamera, stopContinuousCamera, toggleFlash, changeZoom, capturePhoto } = useContinuousCamera()
 
   useEffect(() => () => stopContinuousCamera(), [stopContinuousCamera])
 
   const close = () => { stopContinuousCamera(); onClose() }
+  const openPhotoSettings = () => { stopContinuousCamera(); onClose(); onOpenPhotoSettings?.() }
   const start = () => { if (category) void startContinuousCamera() }
 
   if (!continuousCamera) return (
@@ -38,7 +40,7 @@ export function ContinuousCameraModal({ categories, initialCategory, onCapture, 
       {captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}
       <div className="camera-frame"><video ref={videoRef} autoPlay playsInline muted /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /><div className="zoom-controls" aria-label="縮放倍率">{[.5, 1, 2, 5].map(level => <button key={level} onClick={() => void changeZoom(level)} className={zoomLevel === level ? 'selected' : ''}>{level === 1 ? '1×' : level}</button>)}</div></div>
       {cameraError && <p className="camera-error">{cameraError}</p>}
-      <div className="camera-toolbar"><button className="camera-control" onClick={close} aria-label="取消拍攝">×</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={() => void capturePhoto(file => onCapture(file, category))} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button><span>連續拍攝</span></div>
+      <div className="camera-toolbar"><button className="camera-control" onClick={close} aria-label="取消拍攝">×</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={() => void capturePhoto(file => onCapture(file, category))} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button>{onOpenPhotoSettings ? <button className="camera-control camera-settings" onClick={openPhotoSettings} aria-label="拍照記錄設定">⚙</button> : <span>連續拍攝</span>}</div>
     </div></div>
   )
 }
