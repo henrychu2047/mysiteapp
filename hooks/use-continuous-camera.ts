@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export function useContinuousCamera() {
   const [continuousCamera, setContinuousCamera] = useState(false)
@@ -12,11 +12,11 @@ export function useContinuousCamera() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
-  const stopContinuousCamera = () => {
+  const stopContinuousCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
     setContinuousCamera(false)
-  }
+  }, [])
 
   useEffect(() => () => { streamRef.current?.getTracks().forEach(track => track.stop()) }, [])
 
@@ -28,7 +28,7 @@ export function useContinuousCamera() {
     return () => { video.pause(); video.srcObject = null }
   }, [continuousCamera])
 
-  const startContinuousCamera = async () => {
+  const startContinuousCamera = useCallback(async () => {
     if (!window.isSecureContext) { setCameraError('連續拍攝需要 HTTPS；目前網址不安全，請改用立即拍照或設定 HTTPS'); return }
     if (!navigator.mediaDevices?.getUserMedia) { setCameraError('此瀏覽器不支援連續相機，請使用立即拍照'); return }
     try {
@@ -39,9 +39,9 @@ export function useContinuousCamera() {
       console.error('[v0] camera start failed:', error)
       setCameraError('無法開啟鏡頭，請允許相機權限或改用立即拍照')
     }
-  }
+  }, [])
 
-  const applyCameraSettings = async (nextFlash: boolean, nextZoom: number) => {
+  const applyCameraSettings = useCallback(async (nextFlash: boolean, nextZoom: number) => {
     const track = streamRef.current?.getVideoTracks()[0]
     if (!track) return
     const capabilities = track.getCapabilities() as MediaTrackCapabilities & { torch?: boolean; zoom?: { min: number; max: number } }
@@ -49,12 +49,12 @@ export function useContinuousCamera() {
     if (typeof capabilities.torch === 'boolean') constraints.torch = nextFlash
     if (capabilities.zoom) constraints.zoom = Math.min(capabilities.zoom.max, Math.max(capabilities.zoom.min, nextZoom))
     try { await track.applyConstraints({ advanced: [constraints] }) } catch (error) { console.error('[v0] camera settings failed:', error) }
-  }
+  }, [])
 
-  const toggleFlash = async () => { const next = !flashEnabled; setFlashEnabled(next); await applyCameraSettings(next, zoomLevel) }
-  const changeZoom = async (next: number) => { setZoomLevel(next); await applyCameraSettings(flashEnabled, next) }
+  const toggleFlash = useCallback(async () => { const next = !flashEnabled; setFlashEnabled(next); await applyCameraSettings(next, zoomLevel) }, [applyCameraSettings, flashEnabled, zoomLevel])
+  const changeZoom = useCallback(async (next: number) => { setZoomLevel(next); await applyCameraSettings(flashEnabled, next) }, [applyCameraSettings, flashEnabled])
 
-  const capturePhoto = async (onCapture: (file: File) => Promise<void>) => {
+  const capturePhoto = useCallback(async (onCapture: (file: File) => Promise<void>) => {
     if (captureBusy || !videoRef.current) return
     setCaptureBusy(true)
     setCaptureMessage('正在處理相片…')
@@ -82,7 +82,7 @@ export function useContinuousCamera() {
     } finally {
       setCaptureBusy(false)
     }
-  }
+  }, [captureBusy])
 
   return { continuousCamera, cameraError, captureBusy, captureMessage, flashEnabled, zoomLevel, videoRef, startContinuousCamera, stopContinuousCamera, toggleFlash, changeZoom, capturePhoto, setCameraError, setCaptureMessage }
 }
