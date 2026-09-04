@@ -31,6 +31,7 @@ import {
 import { stampImage } from '@/lib/photo-image'
 import {
   createId,
+  describePhotoStorageError,
   hydratePhoto,
   loadStoredPhotos,
   releasePhotoUrls,
@@ -46,6 +47,7 @@ export default function Page() {
   const [categories, setCategories] = useState(defaultCategories)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [photosReady, setPhotosReady] = useState(false)
+  const [photoStorageLoadFailed, setPhotoStorageLoadFailed] = useState(false)
   const [projects, setProjects] = useState<Project[]>([{ ...DEFAULT_PROJECT, settings: createProjectSettings() }])
   const [currentProjectId, setCurrentProjectId] = useState(DEFAULT_PROJECT.id)
   const [projectPanel, setProjectPanel] = useState(false)
@@ -106,7 +108,13 @@ export default function Page() {
       const migrated = stored.map((photo) => hydratePhoto({ ...photo, category: normalizeCategoryName(photo.category), projectId: photo.projectId || DEFAULT_PROJECT.id }))
       setPhotos(migrated)
       setPhotosReady(true)
-    }).catch(() => { setPhotos([]); setPhotosReady(true) })
+    }).catch(error => {
+      console.error('本機相簿讀取失敗:', error)
+      setPhotoStorageLoadFailed(true)
+      setSaveState('error')
+      setSaveToast(describePhotoStorageError(error))
+      setPhotosReady(true)
+    })
     try {
       const savedProjects = localStorage.getItem(PROJECTS_KEY)
       const savedCurrent = localStorage.getItem(CURRENT_PROJECT_KEY)
@@ -138,10 +146,10 @@ export default function Page() {
     setSettingsReady(true)
   }, [])
   useEffect(() => {
-    if (!settingsReady || !photosReady || !projectsLoaded) return
+    if (!settingsReady || !photosReady || !projectsLoaded || photoStorageLoadFailed) return
     setSaveState('saving')
     const save = async () => {
-      await saveStoredPhotos(photos, currentProjectId)
+      await saveStoredPhotos(photos)
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects))
       localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId)
     }
@@ -154,10 +162,10 @@ export default function Page() {
     }).catch(error => {
       console.error('資料保存失敗:', error)
       setSaveState('error')
-      setSaveToast('資料保存失敗，請檢查裝置儲存空間')
+      setSaveToast(describePhotoStorageError(error))
       window.setTimeout(() => setSaveToast(''), 4000)
     })
-  }, [settingsReady, photos, projects, currentProjectId])
+  }, [settingsReady, photos, projects, currentProjectId, photoStorageLoadFailed])
   useEffect(() => {
     if (!settingsReady || loadedProjectRef.current === currentProjectId) return
     const projectSettings = projects.find(project => project.id === currentProjectId)?.settings || createProjectSettings()
@@ -295,7 +303,7 @@ export default function Page() {
   }
   const createProjectPhoto = async (file: File, category: string): Promise<Photo> => {
     const result = await stampImage(file, category, tags, note, currentProject.name)
-    const photo: Photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+    const photo: Photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, category, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
     saveQueueRef.current = saveQueueRef.current.catch(error => {
       console.error('上一個資料保存任務失敗:', error)
     }).then(() => saveStoredPhoto(photo))

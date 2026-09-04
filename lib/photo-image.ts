@@ -24,7 +24,7 @@ export function imageAsJpeg(dataUrl: string) {
 }
 
 export function stampImage(file: File, category: string, tags: Record<string, string> = {}, note = '', projectName = '') {
-  return new Promise<{ stamped: string; clean: string; originalBlob: Blob; thumbnailBlob: Blob; stampedBlob: Blob }>((resolve, reject) => {
+  return new Promise<{ stamped: string; clean: string; originalBlob: Blob; thumbnailBlob: Blob }>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
       const image = new Image()
@@ -43,12 +43,6 @@ export function stampImage(file: File, category: string, tags: Record<string, st
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
         const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.82)
         const originalBlob = dataUrlToBlob(canvas.toDataURL('image/jpeg', 0.78))
-        const thumbnailCanvas = document.createElement('canvas')
-        const thumbnailWidth = Math.min(960, image.width)
-        thumbnailCanvas.width = thumbnailWidth
-        thumbnailCanvas.height = Math.max(1, Math.round(image.height * thumbnailWidth / image.width))
-        thumbnailCanvas.getContext('2d')?.drawImage(image, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
-        const thumbnailBlob = dataUrlToBlob(thumbnailCanvas.toDataURL('image/webp', 0.72))
         const detailLines = Object.entries(tags).filter(([, value]) => value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`)
         if (note.trim()) detailLines.push(`文字備註: ${note.trim()}`)
         const lines = [`${projectName ? `${projectName} | ` : ''}${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`, ...detailLines]
@@ -63,8 +57,13 @@ export function stampImage(file: File, category: string, tags: Record<string, st
         ctx.textBaseline = 'top'
         lines.forEach((line, index) => ctx.fillText(line, image.width - width + size * 0.7, image.height - height + size * 0.4 + index * lineHeight, width - size))
         const stamped = canvas.toDataURL('image/jpeg', 0.78)
-        const stampedBlob = dataUrlToBlob(stamped)
-        resolve({ stamped, clean: cleanDataUrl, originalBlob, thumbnailBlob, stampedBlob })
+        const thumbnailCanvas = document.createElement('canvas')
+        const thumbnailWidth = Math.min(960, canvas.width)
+        thumbnailCanvas.width = thumbnailWidth
+        thumbnailCanvas.height = Math.max(1, Math.round(canvas.height * thumbnailWidth / canvas.width))
+        thumbnailCanvas.getContext('2d')?.drawImage(canvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
+        const thumbnailBlob = dataUrlToBlob(thumbnailCanvas.toDataURL('image/webp', 0.72))
+        resolve({ stamped, clean: cleanDataUrl, originalBlob, thumbnailBlob })
       }
       image.onerror = () => reject(new Error('無法讀取相片'))
       image.src = reader.result as string
