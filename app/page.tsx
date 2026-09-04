@@ -11,203 +11,31 @@ import { Notebook } from '@/components/notebook/notebook'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { loadAllMemos, saveAllMemos } from '@/components/site-memo/memo-data'
 import { buildFloorNames, createRoomHandover, loadAllHandover, ROOM_NAME_SUGGESTIONS, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
-
-type PhotoAnnotation = { kind: 'text' | 'marker' | 'draw'; x: number; y: number; text?: string; points?: Array<{ x: number; y: number }> }
-type Photo = { id: string; src: string; cleanSrc: string; originalBlob?: Blob; thumbnailBlob?: Blob; stampedBlob?: Blob; category: string; tags: Record<string, string>; note: string; createdAt: string; projectId: string; annotations?: PhotoAnnotation[] }
-type Category = { name: string; icon: string }
-type ProjectSettings = { categories: Category[]; tags: Record<string, string>; note: string; settingsOptions: Record<string, string[]>; noteHistory: string[]; visibleTags: string[] }
-type Project = { id: string; name: string; settings?: ProjectSettings }
-
-const DEFAULT_PROJECT: Project = { id: 'default-project', name: '我的 Project' }
-const PROJECTS_KEY = 'site-photo-projects'
-const CURRENT_PROJECT_KEY = 'site-photo-current-project'
-
-const defaultCategories: Category[] = [
-  { name: '電器', icon: '⌁' },
-  { name: '冷氣', icon: '◇' },
-  { name: '消防', icon: '△' },
-  { name: '安全', icon: '◈' },
-  { name: '制櫃/發電機', icon: '▤' },
-  { name: '建築', icon: '▥' },
-  { name: '物料', icon: '▦' },
-  { name: '機房移交', icon: '☑' },
-]
-const normalizeCategoryName = (name: string) => {
-  if (name === '發電機') return '安全'
-  if (name === '制櫃') return '制櫃/發電機'
-  return name
-}
-const ensureDefaultCategories = (categories: Category[] | undefined) => {
-  const existing = (categories || [])
-    .filter(category => category.name !== '建築物料')
-    .map(category => ({ ...category, name: normalizeCategoryName(category.name) }))
-    .filter((category, index, all) => all.findIndex(item => item.name === category.name) === index)
-  return [...existing, ...defaultCategories.filter(category => !existing.some(item => item.name === category.name))]
-}
-const tagOptions: Record<string, string[]> = {
-  樓層: ['B02', 'B01', 'L00', 'L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L08', 'L09', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16', 'L17', 'L18', 'L19', 'MR/F', 'UR1/F', 'UR2/F'],
-  位置: ['電制房', '總制房', '發電機房', 'AHU房', 'ELV房', 'TR房'],
-  事項: ['Defect', '未做喉', '未做糟', '未補明喉', '未穿線', '未裝燈', '未裝膠器', '未起鐵架', '未封板', '未開吼', '未塞吼', '未裝門', '進度慢', '被破壞', '受其它行頭阻礙', '受建築阻礙', '建築漏水', '其它行頭無跟CSD做'],
-  安全: ['無圍欄', '不正規高空工作', '無安全帶', '無帶安全帽', '無安全繩', '地坑無鐵板', '吸煙'],
-  收貨相關: ['已收待驗', '已入貨倉', '已交判頭', '來貨有問題', '來貨破爛'],
-  座數: [],
-}
-const mergeTagOptions = (saved?: Record<string, string[]>) => Object.fromEntries(Object.entries(tagOptions).map(([key, defaults]) => [key, saved && Object.prototype.hasOwnProperty.call(saved, key) ? [...new Set(saved[key] || [])] : [...defaults]]))
-
-const SMART_TAG_KEYS = ['座數', '樓層', '位置', '安全', '收貨相關', '事項']
-const createProjectSettings = (): ProjectSettings => ({
-  categories: defaultCategories,
-  tags: {},
-  note: '',
-  settingsOptions: tagOptions,
-  noteHistory: [],
-  visibleTags: [...SMART_TAG_KEYS],
-})
-
-const PHOTO_DB = 'site-photo-db'
-const PHOTO_STORE = 'photos'
-
-function openPhotoDb() {
-  return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(PHOTO_DB, 1)
-    request.onupgradeneeded = () => request.result.createObjectStore(PHOTO_STORE, { keyPath: 'id' })
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-function loadStoredPhotos() {
-  return openPhotoDb().then(db => new Promise<Photo[]>((resolve, reject) => {
-    const request = db.transaction(PHOTO_STORE, 'readonly').objectStore(PHOTO_STORE).getAll()
-    request.onsuccess = () => resolve(request.result as Photo[])
-    request.onerror = () => reject(request.error)
-  }))
-}
-
-function hydratePhoto(photo: Photo): Photo {
-  const rawTags = photo.tags && typeof photo.tags === 'object' ? photo.tags : {}
-  const tags = Object.fromEntries(Object.entries(rawTags).filter(([key, value]) => typeof key === 'string').map(([key, value]) => [key, typeof value === 'string' ? value : value == null ? '' : String(value)]))
-  const annotations = Array.isArray(photo.annotations)
-    ? photo.annotations.filter(annotation => annotation && (annotation.kind === 'text' || annotation.kind === 'marker' || annotation.kind === 'draw')).map(annotation => ({
-      kind: annotation.kind,
-      x: Number.isFinite(annotation.x) ? Math.max(0, Math.min(1, annotation.x)) : 0.5,
-      y: Number.isFinite(annotation.y) ? Math.max(0, Math.min(1, annotation.y)) : 0.5,
-      text: typeof annotation.text === 'string' ? annotation.text : undefined,
-      points: Array.isArray(annotation.points) ? annotation.points.filter(point => point && Number.isFinite(point.x) && Number.isFinite(point.y)).map(point => ({ x: Math.max(0, Math.min(1, point.x)), y: Math.max(0, Math.min(1, point.y)) })) : undefined,
-    })).filter(annotation => annotation.kind !== 'text' || Boolean(annotation.text)) : []
-  photo = { ...photo, category: typeof photo.category === 'string' ? photo.category : '其它', tags, note: typeof photo.note === 'string' ? photo.note : '', annotations }
-  if (!photo.originalBlob && !photo.thumbnailBlob) return photo
-  const stampedUrl = photo.stampedBlob ? URL.createObjectURL(photo.stampedBlob) : photo.src
-    const originalUrl = photo.originalBlob ? URL.createObjectURL(photo.originalBlob) : photo.cleanSrc
-    const thumbnailUrl = photo.thumbnailBlob ? URL.createObjectURL(photo.thumbnailBlob) : stampedUrl
-    return { ...photo, src: thumbnailUrl, cleanSrc: originalUrl }
-}
-
-function releasePhotoUrls(photos: Photo[]) {
-  photos.forEach(photo => {
-    if (photo.src.startsWith('blob:')) URL.revokeObjectURL(photo.src)
-    if (photo.cleanSrc.startsWith('blob:') && photo.cleanSrc !== photo.src) URL.revokeObjectURL(photo.cleanSrc)
-  })
-}
-
-function saveStoredPhotos(photos: Photo[], projectId: string) {
-  return openPhotoDb().then(db => new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(PHOTO_STORE, 'readwrite')
-    const store = transaction.objectStore(PHOTO_STORE)
-    const currentIds = new Set(photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === projectId).map(photo => photo.id))
-    const existingRequest = store.getAll()
-    existingRequest.onsuccess = () => {
-      ;(existingRequest.result as Photo[]).forEach(photo => {
-        if ((photo.projectId || DEFAULT_PROJECT.id) === projectId && !currentIds.has(photo.id)) store.delete(photo.id)
-      })
-      photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === projectId).forEach(photo => store.put(photo.originalBlob || photo.stampedBlob ? { ...photo, src: '', cleanSrc: '' } : photo))
-    }
-    existingRequest.onerror = () => { reject(existingRequest.error); try { transaction.abort() } catch {} }
-    transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
-  }))
-}
-
-function createId() {
-  if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID()
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
-}
-
-function dataUrlToBlob(dataUrl: string) {
-  const [header, encoded] = dataUrl.split(',')
-  const binary = atob(encoded)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
-  return new Blob([bytes], { type: header.match(/data:([^;]+)/)?.[1] || 'image/jpeg' })
-}
-
-function imageAsJpeg(dataUrl: string) {
-  return new Promise<string>((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = image.naturalWidth || image.width
-      canvas.height = image.naturalHeight || image.height
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return reject(new Error('無法建立圖片轉換器'))
-      ctx.drawImage(image, 0, 0)
-      resolve(canvas.toDataURL('image/jpeg', 0.92))
-    }
-    image.onerror = () => reject(new Error('無法轉換原圖'))
-    image.src = dataUrl
-  })
-}
-
-function stampImage(file: File, category: string, tags: Record<string, string> = {}, note = '', projectName = '') {
-  return new Promise<{ stamped: string; clean: string; originalBlob: Blob; thumbnailBlob: Blob; stampedBlob: Blob }>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const image = new Image()
-      image.onload = () => {
-        const canvas = document.createElement('canvas')
-        const sourceWidth = image.naturalWidth || image.width
-        const sourceHeight = image.naturalHeight || image.height
-        const scale = Math.min(1, 4096 / Math.max(sourceWidth, sourceHeight))
-        canvas.width = Math.max(1, Math.round(sourceWidth * scale))
-        canvas.height = Math.max(1, Math.round(sourceHeight * scale))
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('無法建立圖片處理器'))
-          return
-        }
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-        const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.82)
-        const originalBlob = dataUrlToBlob(canvas.toDataURL('image/jpeg', 0.78))
-        const thumbnailCanvas = document.createElement('canvas')
-        const thumbnailWidth = Math.min(960, image.width)
-        thumbnailCanvas.width = thumbnailWidth
-        thumbnailCanvas.height = Math.max(1, Math.round(image.height * thumbnailWidth / image.width))
-        thumbnailCanvas.getContext('2d')?.drawImage(image, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
-        const thumbnailBlob = dataUrlToBlob(thumbnailCanvas.toDataURL('image/webp', 0.72))
-        const detailLines = Object.entries(tags).filter(([, value]) => value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`)
-        if (note.trim()) detailLines.push(`文字備註: ${note.trim()}`)
-        const lines = [`${projectName ? `${projectName} | ` : ''}${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`, ...detailLines]
-        const size = Math.max(18, Math.round(image.width / 48))
-        const lineHeight = size * 1.35
-        ctx.font = `600 ${size}px Arial, sans-serif`
-        const width = Math.min(image.width * 0.92, Math.max(...lines.map(line => ctx.measureText(line).width)) + size * 1.4)
-        const height = lineHeight * lines.length + size * 0.8
-        ctx.fillStyle = 'rgba(10, 17, 24, .78)'
-        ctx.fillRect(image.width - width, image.height - height, width, height)
-        ctx.fillStyle = '#fff'
-        ctx.textBaseline = 'top'
-        lines.forEach((line, index) => ctx.fillText(line, image.width - width + size * 0.7, image.height - height + size * 0.4 + index * lineHeight, width - size))
-        const stamped = canvas.toDataURL('image/jpeg', 0.78)
-        const stampedBlob = dataUrlToBlob(stamped)
-        resolve({ stamped, clean: cleanDataUrl, originalBlob, thumbnailBlob, stampedBlob })
-      }
-      image.onerror = () => reject(new Error('無法讀取相片'))
-      image.src = reader.result as string
-    }
-    reader.onerror = () => reject(reader.error || new Error('無法讀取檔案'))
-    reader.readAsDataURL(file)
-  })
-}
+import {
+  CURRENT_PROJECT_KEY,
+  DEFAULT_PROJECT,
+  PROJECTS_KEY,
+  SMART_TAG_KEYS,
+  createProjectSettings,
+  defaultCategories,
+  ensureDefaultCategories,
+  mergeTagOptions,
+  normalizeCategoryName,
+  tagOptions,
+  type Category,
+  type Project,
+  type ProjectSettings,
+} from '@/lib/project-settings'
+import { imageAsJpeg, stampImage } from '@/lib/photo-image'
+import {
+  createId,
+  hydratePhoto,
+  loadStoredPhotos,
+  releasePhotoUrls,
+  saveStoredPhotos,
+  type Photo,
+  type PhotoAnnotation,
+} from '@/lib/photo-storage'
 
 export default function Page() {
   const [categories, setCategories] = useState(defaultCategories)
