@@ -214,7 +214,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     const template = SITE_MEMO_TEMPLATES.find(item => item.id === id)
     if (!template) return
     setTemplateId(id)
-    setTemplateMode(true)
     setTemplateOptions([])
     setTemplateCustomOption('')
     setAttachmentOption('')

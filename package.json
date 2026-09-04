@@ -8,11 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "@base-ui/react": "^1.5.0",
     "@vercel/analytics": "1.6.1",
     "ai": "^7.0.84",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
@@ -22,8 +19,7 @@
     "next": "16.3.3",
     "pdfjs-dist": "^6.2.108",
     "react": "^19",
-    "react-dom": "^19",
-    "tailwind-merge": "^3.3.1"
+    "react-dom": "^19"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
