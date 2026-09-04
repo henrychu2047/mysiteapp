@@ -303,7 +303,7 @@ export default function Page() {
   }
   const sharedMediaOverlays = <>
     {photoPickerRequest && <PhotoPicker photos={projectPhotos} onConfirm={photoIds => { photoPickerRequest(photoIds); setPhotoPickerRequest(null) }} onClose={() => setPhotoPickerRequest(null)} />}
-    {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo.id) }} onClose={() => { setCameraRequest(null); setCameraAutoStart(false) }} />}
+    {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} tags={tags} visibleTags={visibleTags} note={note} noteHistory={noteHistory} selectedNotes={selectedNotes} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onSelectTag={label => setPicker(label)} onNoteChange={setNote} onRememberNote={rememberNote} onToggleRecentNote={item => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo.id) }} onClose={() => { setCameraRequest(null); setCameraAutoStart(false) }} />}
   </>
   const addProject = () => {
     const name = newProjectName.trim()

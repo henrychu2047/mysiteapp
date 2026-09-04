@@ -6,13 +6,22 @@ import { useContinuousCamera } from '@/hooks/use-continuous-camera'
 type Props = {
   categories: string[]
   initialCategory?: string
+  tags: Record<string, string>
+  visibleTags: string[]
+  note: string
+  noteHistory: string[]
+  selectedNotes: string[]
   onCapture: (file: File, category: string) => Promise<void>
   onClose: () => void
   autoStart?: boolean
   onCategorySelected?: (category: string) => void
+  onSelectTag: (label: string) => void
+  onNoteChange: (note: string) => void
+  onRememberNote: () => void
+  onToggleRecentNote: (note: string) => void
 }
 
-export function ContinuousCameraModal({ categories, initialCategory, onCapture, onClose, autoStart = false, onCategorySelected }: Props) {
+export function ContinuousCameraModal({ categories, initialCategory, tags, visibleTags, note, noteHistory, selectedNotes, onCapture, onClose, autoStart = false, onCategorySelected, onSelectTag, onNoteChange, onRememberNote, onToggleRecentNote }: Props) {
   const [category, setCategory] = useState(initialCategory && categories.includes(initialCategory) ? initialCategory : (autoStart ? categories[0] || '' : ''))
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
   const autoStartRequested = useRef(false)
@@ -52,8 +61,8 @@ export function ContinuousCameraModal({ categories, initialCategory, onCapture, 
       {captureMessage && <p className="capture-message" role="status">{captureMessage}</p>}
       <div className="camera-frame"><video ref={videoRef} autoPlay playsInline muted /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /><div className="zoom-controls" aria-label="縮放倍率">{[.5, 1, 2, 5].map(level => <button key={level} onClick={() => void changeZoom(level)} className={zoomLevel === level ? 'selected' : ''}>{level === 1 ? '1×' : level}</button>)}</div></div>
       {cameraError && <p className="camera-error">{cameraError}</p>}
-      <div className="camera-toolbar"><button className="camera-control" onClick={close} aria-label="取消拍攝">×</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={() => void capturePhoto(file => onCapture(file, category))} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button>{autoStart ? <button className="camera-control camera-settings" onClick={() => setShowCategoryPicker(true)} aria-label="選擇工程類別">⚙</button> : <span>連續拍攝</span>}</div>
-      {showCategoryPicker && <div className="camera-category-popup" role="dialog" aria-label="選擇工程類別"><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">PHOTO CATEGORY</p><h3>選擇工程類別</h3></div><button className="close" onClick={() => setShowCategoryPicker(false)} aria-label="關閉">×</button></div><div className="camera-category-list">{categories.map(item => <button type="button" key={item} className={category === item ? 'selected' : ''} onClick={() => { setCategory(item); onCategorySelected?.(item); setShowCategoryPicker(false) }}>{item}<span>{category === item ? '✓' : ''}</span></button>)}</div></div>}
+      <div className="camera-toolbar"><button className="camera-control" onClick={close} aria-label="取消拍攝">×</button><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={() => void capturePhoto(file => onCapture(file, category))} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button>{autoStart ? <button className="camera-control camera-settings" onClick={() => setShowCategoryPicker(true)} aria-label="開啟相片標記設定">⚙</button> : <span>連續拍攝</span>}</div>
+      {showCategoryPicker && <div className="camera-category-popup" role="dialog" aria-modal="true" aria-label="相片標記設定"><div className="sheet-handle" /><div className="section-heading compact"><div><p className="eyebrow">PHOTO SETTINGS</p><h3>相片標記設定</h3></div><button className="close" onClick={() => setShowCategoryPicker(false)} aria-label="關閉">×</button></div><label className="photo-category-select"><span>工程類別</span><select value={category} onChange={event => { const nextCategory = event.target.value; setCategory(nextCategory); onCategorySelected?.(nextCategory) }}>{categories.map(item => <option key={item} value={item}>{item}</option>)}</select></label><div className="tag-panel"><div className="section-heading compact"><div><p className="eyebrow">SMART TAGS</p><h3>拍攝資訊</h3></div><span className="memory-dot">● 已記憶</span></div><div className="tag-grid">{visibleTags.map(label => { const disabled = label === '位置' && !tags['樓層']; return <button type="button" className={`tag-chip ${tags[label] ? 'chosen' : ''}`} key={label} disabled={disabled} onClick={() => onSelectTag(label)}><span>{label}</span><b>{disabled ? '請先選樓層' : (tags[label] || '選擇')}</b></button> })}</div><label className="note-field"><span>文字備註</span><input value={note} onChange={event => onNoteChange(event.target.value)} onBlur={onRememberNote} onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229) { onRememberNote(); event.currentTarget.blur() } }} placeholder="輸入本次拍攝的補充說明..." /></label>{noteHistory.length > 0 && <div className="note-history"><small>最近使用</small><div>{noteHistory.map(item => <button type="button" key={item} onClick={() => onToggleRecentNote(item)} className={selectedNotes.includes(item) ? 'selected' : ''} aria-pressed={selectedNotes.includes(item)}>{item}</button>)}</div></div>}</div></div>}
     </div></div>
   )
 }
