@@ -67,3 +67,17 @@ export const createProjectSettings = (): ProjectSettings => ({
   noteHistory: [],
   visibleTags: [...SMART_TAG_KEYS],
 })
+
+export const normalizeProject = (project: Project): Project => ({
+  ...project,
+  settings: {
+    ...createProjectSettings(),
+    ...(project.settings || {}),
+    categories: ensureDefaultCategories(project.settings?.categories),
+    tags: project.settings?.tags || {},
+    note: project.settings?.note || '',
+    settingsOptions: mergeTagOptions(project.settings?.settingsOptions),
+    noteHistory: project.settings?.noteHistory || [],
+    visibleTags: project.settings?.visibleTags?.filter(tag => SMART_TAG_KEYS.includes(tag)) || [...SMART_TAG_KEYS],
+  },
+})

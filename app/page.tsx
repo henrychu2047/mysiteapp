@@ -20,6 +20,7 @@ import {
   defaultCategories,
   ensureDefaultCategories,
   mergeTagOptions,
+  normalizeProject,
   normalizeCategoryName,
   tagOptions,
   type Category,
@@ -145,7 +146,7 @@ export default function Page() {
       const savedCurrent = localStorage.getItem(CURRENT_PROJECT_KEY)
       if (savedProjects) {
         const parsed = JSON.parse(savedProjects) as Project[]
-        if (Array.isArray(parsed) && parsed.length) setProjects(parsed.map(project => ({ ...project, settings: { ...createProjectSettings(), ...(project.settings || {}), categories: ensureDefaultCategories(project.settings?.categories), tags: project.settings?.tags || {}, note: project.settings?.note || '', settingsOptions: mergeTagOptions(project.settings?.settingsOptions), noteHistory: project.settings?.noteHistory || [], visibleTags: project.settings?.visibleTags?.filter(tag => SMART_TAG_KEYS.includes(tag)) || [...SMART_TAG_KEYS] } })))
+        if (Array.isArray(parsed) && parsed.length) setProjects(parsed.map(normalizeProject))
       }
       if (savedCurrent) setCurrentProjectId(savedCurrent)
       localStorage.removeItem('site-photo-records')
@@ -586,7 +587,7 @@ export default function Page() {
         if (!value || typeof value !== 'object') throw new Error(`Project ${index + 1} 格式不正確`)
         const project = value as Partial<Project>
         if (typeof project.id !== 'string' || !project.id.trim() || typeof project.name !== 'string' || !project.name.trim()) throw new Error(`Project ${index + 1} 缺少有效名稱或 ID`)
-        return { ...project, id: project.id.trim(), name: project.name.trim(), settings: { ...createProjectSettings(), ...(project.settings || {}), categories: ensureDefaultCategories(project.settings?.categories), tags: project.settings?.tags || {}, note: project.settings?.note || '', settingsOptions: mergeTagOptions(project.settings?.settingsOptions), noteHistory: project.settings?.noteHistory || [], visibleTags: project.settings?.visibleTags?.filter(tag => SMART_TAG_KEYS.includes(tag)) || [...SMART_TAG_KEYS] } } as Project
+        return normalizeProject({ ...project, id: project.id.trim(), name: project.name.trim() } as Project)
       })
       const selectedProjectId = typeof raw.currentProjectId === 'string' && projectsToRestore.some(project => project.id === raw.currentProjectId) ? raw.currentProjectId : projectsToRestore[0].id
       const photoCount = Object.values(zip.files).filter(entry => !entry.dir && /\/photos\/[^/]+\.jpg$/i.test(entry.name)).length
