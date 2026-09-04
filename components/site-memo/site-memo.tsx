@@ -87,7 +87,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [addingEquipment, setAddingEquipment] = useState(false)
   const [equipmentOptions, setEquipmentOptions] = useState(['電器設備', '冷氣設備', '消防設備'])
   const [templateOptions, setTemplateOptions] = useState<string[]>([])
-  const [templateMode, setTemplateMode] = useState(false)
   const [attachmentOption, setAttachmentOption] = useState('')
   const [templateCustomOption, setTemplateCustomOption] = useState('')
   const [memoTone, setMemoTone] = useState('')
@@ -196,7 +195,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const clearMemoInput = () => {
     update({ roughInput: '', items: [] })
     setTemplateId(null)
-    setTemplateMode(false)
     setTemplateOptions([])
     setTemplateCustomOption('')
     setAttachmentOption('')

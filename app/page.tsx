@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import ExcelJS from 'exceljs'
 import JSZip from 'jszip'
-import { Camera, PenLine, ClipboardList, Building2, Info, Home, Images, Database as DatabaseIcon, BookOpen, ShieldCheck, Settings2 } from 'lucide-react'
+import { Camera, PenLine, ClipboardList, Database as DatabaseIcon, BookOpen, ShieldCheck, Settings2 } from 'lucide-react'
 import { SiteMemo } from '@/components/site-memo/site-memo'
 import { Database } from '@/components/database/database'
 import { Handover } from '@/components/handover/handover'
@@ -126,18 +126,6 @@ function saveStoredPhotos(photos: Photo[], projectId: string) {
     transaction.oncomplete = () => resolve()
     transaction.onerror = () => reject(transaction.error)
   }))
-}
-
-function loadBrowserLibrary(src: string, globalName: string) {
-  return new Promise<any>((resolve, reject) => {
-    if ((window as any)[globalName]) return resolve((window as any)[globalName])
-    const script = document.createElement('script')
-    script.src = src
-    script.async = true
-    script.onload = () => resolve((window as any)[globalName] || null)
-    script.onerror = () => reject(new Error('匯出套件載入失敗'))
-    document.head.appendChild(script)
-  })
 }
 
 function createId() {
