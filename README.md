@@ -61,12 +61,23 @@
 ## 專案結構
 ```text
 app/
-  page.tsx                 # 主頁、相片、Project、備份及導航
+  page.tsx                 # 畫面組合、Project 狀態及跨功能協調
   layout.tsx               # Layout 及 metadata
   api/memo-polish/route.ts # Memo 文字潤飾 API
 components/
   handover/                # 制房移交 UI、資料模型及 IndexedDB
+  project/                 # Project 選擇、改名及首次設定 UI
   site-memo/               # Site Memo UI、文件及資料模型
+hooks/
+  use-app-status.ts        # 離線、PWA 更新及儲存空間狀態
+  use-continuous-camera.ts # 連續相機串流、閃光燈、縮放及擷取
+  use-photo-annotations.ts # 相片文字、標記及手寫註記互動
+lib/
+  backup.ts                # ZIP 備份、驗證及還原
+  photo-image.ts           # 相片壓印、JPEG 轉換及縮圖
+  photo-reports.ts         # Excel 與 PDF 報表匯出
+  photo-storage.ts         # IndexedDB 相片保存及 Blob URL hydration
+  project-settings.ts      # Project schema、預設值及舊資料正規化
 public/
   sw.js                    # Service Worker 及快取策略
   manifest.webmanifest     # PWA manifest
@@ -106,6 +117,11 @@ pnpm start
 - 建議定期到「資料」頁匯出完整 ZIP 備份。
 - 大量相片或 PDF 生成時，請確保裝置有足夠記憶體及儲存空間。
 - 備份 ZIP 包含工程相片及現場資料，請妥善保管。
+
+## 資料相容性
+- Project 設定會保留於 localStorage 的 `site-photo-projects` 與 `site-photo-current-project`；載入及 ZIP 還原時會經過正規化，以相容舊設定。
+- 相片會保留於 IndexedDB 的 `site-photo-db`／`photos`，資料以 Blob 為主、舊 Data URL 為相容讀取格式。
+- 不要手動修改 ZIP 內的 `projects.json`、相片資料夾名稱或資料庫名稱，否則可能無法還原既有資料。
 
 ## 相關連結
 - [Next.js Documentation](https://nextjs.org/docs)
