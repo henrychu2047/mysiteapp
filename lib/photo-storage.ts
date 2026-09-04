@@ -41,10 +41,12 @@ function openPhotoDb() {
 
 function photoForStorage(photo: Photo): Photo {
   if (!photo.originalBlob && !photo.thumbnailBlob && !photo.stampedBlob) return photo
-  const { src: _src, cleanSrc: _cleanSrc, stampedBlob, ...storedPhoto } = photo
   return {
-    ...storedPhoto,
-    thumbnailBlob: photo.thumbnailBlob || stampedBlob,
+    ...photo,
+    src: '',
+    cleanSrc: '',
+    stampedBlob: undefined,
+    thumbnailBlob: photo.thumbnailBlob || photo.stampedBlob,
   }
 }
 
