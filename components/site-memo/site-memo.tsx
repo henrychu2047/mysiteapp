@@ -235,20 +235,14 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     const date = formatTemplateDate(templateDate) || '[事發／巡查日期]'
     const deadline = formatTemplateDate(templateDeadline) || '[要求限期／時間]'
     const custom = templateCustomOption.trim()
-    const optionText = templateOptions.length ? templateOptions.join(templateId === 'design-conflict' || templateId === 'completion-handover' ? '、' : templateId === 'damage-backcharge' ? '，' : '') : ''
+    const normalizedOptions = templateOptions.map(option => option.replace(/^且+/, ''))
+    const optionText = normalizedOptions.length ? normalizedOptions.join(templateId === 'design-conflict' || templateId === 'completion-handover' ? '、' : templateId === 'damage-backcharge' ? '，' : '') : ''
     let body = template.body.replace(/\[地點[\/／]樓層\]/g, templateLocation.trim() || '[地點／樓層]').replace(/\[事發[\/／]巡查日期\]/g, date).replace(/\[要求限期[\/／]時間\]/g, deadline).replace(/\[(?:涉及)?設備[\/／]系統\]/g, equipment || '[設備／系統]')
     if (templateId === 'handover-delay') body = body.replace('[現場狀況]', optionText || custom || '[現場狀況]')
     if (templateId === 'damage-backcharge') body = body.replace('[損壞情況]', optionText || custom || '[損壞情況]')
     if (templateId === 'design-conflict') body = body.replace('[衝突情況]', optionText || custom || '[衝突情況]')
     if (templateId === 'completion-handover') body = body.replace('[驗收項目]', optionText || custom || '[驗收項目]')
-    const attachmentText = attachmentOption || (memo.pdfAttachments.length > 0 && memo.photos.length > 0
-      ? '4. 隨函附上相關記錄及相片以供備案。'
-      : memo.pdfAttachments.length > 0
-        ? '4. 隨函附上相關記錄以供備案。'
-        : memo.photos.length > 0
-          ? '4. 隨函附上相關相片以供備案。'
-          : '')
-    body = body.replace('[附件段落]', attachmentText)
+    body = body.replace('[附件段落]', attachmentOption)
     return [body, memoTone, contractClause].filter(Boolean).join('\n\n')
   }
 
@@ -264,7 +258,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   useEffect(() => {
     if (templateId) update({ roughInput: buildTemplateBody(), items: [] })
-  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, templateCustomOption, attachmentOption, memoTone, contractClause, memo.photos.length, memo.pdfAttachments.length])
+  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, templateCustomOption, attachmentOption, memoTone, contractClause])
 
   function localPolish(input: string) {
     const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
@@ -508,6 +502,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 2 && (
         <MemoModal title="內容與事件" className="memo-quick-generator" onClose={() => setModal(null)}>
+          <button type="button" className="memo-change-template" onClick={() => { setTemplateId(null); setTemplateMode(false); setTemplateOptions([]); setTemplateCustomOption(''); setAttachmentOption(''); setMemoTone(''); setContractClause('') }}>更換範本</button>
           <Field label="Site Memo 內容">
             <textarea className="memo-rough-input" rows={8} placeholder="選擇下方 Site Memo 範本後，內容會即時顯示於此；亦可直接編輯文字" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
