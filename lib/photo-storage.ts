@@ -70,8 +70,11 @@ export function loadStoredPhotos() {
       return
     }
     const request = transaction.objectStore(PHOTO_STORE).getAll()
-    request.onsuccess = () => { db.close(); resolve(request.result as Photo[]) }
-    request.onerror = () => { db.close(); reject(request.error) }
+    let storedPhotos: Photo[] = []
+    request.onsuccess = () => { storedPhotos = request.result as Photo[] }
+    request.onerror = () => transaction.abort()
+    transaction.oncomplete = () => { db.close(); resolve(storedPhotos) }
+    transaction.onerror = () => { db.close(); reject(transaction.error || request.error) }
     transaction.onabort = () => { db.close(); reject(transaction.error || request.error) }
   }))
 }
@@ -88,11 +91,11 @@ export function hydratePhoto(photo: Photo): Photo {
       points: Array.isArray(annotation.points) ? annotation.points.filter(point => point && Number.isFinite(point.x) && Number.isFinite(point.y)).map(point => ({ x: Math.max(0, Math.min(1, point.x)), y: Math.max(0, Math.min(1, point.y)) })) : undefined,
     })).filter(annotation => annotation.kind !== 'text' || Boolean(annotation.text)) : []
   photo = { ...photo, category: typeof photo.category === 'string' ? photo.category : '其它', tags, note: typeof photo.note === 'string' ? photo.note : '', annotations }
-  if (!photo.originalBlob && !photo.thumbnailBlob) return photo
-  const stampedUrl = photo.stampedBlob ? URL.createObjectURL(photo.stampedBlob) : photo.src
-  const originalUrl = photo.originalBlob ? URL.createObjectURL(photo.originalBlob) : photo.cleanSrc
-  const thumbnailUrl = photo.thumbnailBlob ? URL.createObjectURL(photo.thumbnailBlob) : stampedUrl
-  return { ...photo, src: thumbnailUrl, cleanSrc: originalUrl }
+  const previewBlob = photo.thumbnailBlob || photo.stampedBlob || photo.originalBlob
+  if (!previewBlob && !photo.originalBlob) return photo
+  const previewUrl = previewBlob ? URL.createObjectURL(previewBlob) : photo.src
+  const originalUrl = photo.originalBlob ? URL.createObjectURL(photo.originalBlob) : photo.cleanSrc || previewUrl
+  return { ...photo, src: previewUrl, cleanSrc: originalUrl }
 }
 
 export function releasePhotoUrls(photos: Photo[]) {
