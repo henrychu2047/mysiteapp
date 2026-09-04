@@ -23,17 +23,24 @@
 - 內容按 Project 分開保存。
 - 支援備註歷史、常用選項及文件預覽。
 - 可透過 API 輔助潤飾 Memo 文字。
+- 巡查照片可從目前 Project 相簿選取，或透過連續相機直接加入相簿後引用。
 
 ### 制房移交
 - 按座（Tower）、樓層及機房分層管理。
 - 支援未收、已收、已收（有 Defect）、拒絕簽收（有 Defect）及已完成狀態。
 - 有 Defect 或自訂描述時，只能選擇兩種有 Defect 狀態。
 - 支援 Defect、機房相片及操作歷史。
+- 機房相片可從目前 Project 相簿選取，或透過連續相機直接加入相簿後引用。
 - 歷史包括狀態、日期、Defect、相片的新增／修改／刪除及前後內容。
 - 批量產生資料會標準化名稱，避免大小寫、空格造成重複。
 
 ### Project 資料隔離
 每個 Project 都有獨立的相片、Site Memo、制房移交資料、類別、標籤選項及設定備註。切換 Project 後只顯示目前工程資料。
+
+### 共用相簿與記事簿
+- Project 相簿是唯一的相片來源；Site Memo、機房移交與記事簿的新附件只保存 `photoId` 引用，不會複製影像資料。
+- 三個功能的「從相簿選取」只會顯示目前 Project 的相片；「連續拍攝」會先選擇相簿分類，再把新相片存入 Project 相簿。
+- 如原相片從 Project 相簿刪除，引用位置會顯示「相片已從相簿移除」，但既有舊版內嵌 Data URL 相片仍可讀取。
 
 ### 完整備份及還原
 「資料」頁可備份所有 Project、設定、相片、Site Memo、制房移交資料及操作歷史。匯入時會驗證 ZIP／JSON／版本、顯示摘要，並先建立目前資料的 recovery backup，確認後才還原。
@@ -65,7 +72,9 @@ app/
   layout.tsx               # Layout 及 metadata
   api/memo-polish/route.ts # Memo 文字潤飾 API
 components/
+  photo/                   # 共用 Project 相簿選取器與連續相機 UI
   handover/                # 制房移交 UI、資料模型及 IndexedDB
+  notebook/                # Project scoped 記事簿 UI
   project/                 # Project 選擇、改名及首次設定 UI
   site-memo/               # Site Memo UI、文件及資料模型
 hooks/
@@ -77,6 +86,7 @@ lib/
   photo-image.ts           # 相片壓印、JPEG 轉換及縮圖
   photo-reports.ts         # Excel 與 PDF 報表匯出
   photo-storage.ts         # IndexedDB 相片保存及 Blob URL hydration
+  photo-attachments.ts     # 相簿附件引用與舊資料相容解析
   project-settings.ts      # Project schema、預設值及舊資料正規化
 public/
   sw.js                    # Service Worker 及快取策略

@@ -1,4 +1,4 @@
-export type MemoPhoto = { id: string; name: string; tag: string; time: string; customNote: string; previewUrl: string }
+export type MemoPhoto = { id: string; name: string; tag: string; time: string; customNote: string; previewUrl?: string; photoId?: string }
 export type MemoLetterhead = { id: string; name: string; dataUrl: string }
 export type MemoPdfPage = { pageNumber: number; imageUrl: string }
 export type MemoPdfAttachment = { id: string; title: string; fileName: string; dwgNo: string; size: string; dataUrl: string; pages: MemoPdfPage[]; totalPages: number; note: string }
@@ -120,9 +120,13 @@ function writeMemoKey(key: string, value: unknown) {
 
 const projectKey = (projectId: string, type: 'current' | 'history' | 'letterheads') => `${type}:${projectId || DEFAULT_PROJECT_ID}`
 
-export const loadMemo = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<Memo>(projectKey(projectId, 'current')).then(stored => stored || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<Memo>('current') : null))
+function normalizeMemo(memo: Memo): Memo {
+  return { ...memo, photos: Array.isArray(memo.photos) ? memo.photos.map(photo => ({ ...photo, previewUrl: typeof photo.previewUrl === 'string' ? photo.previewUrl : undefined, photoId: typeof photo.photoId === 'string' ? photo.photoId : undefined })) : [] }
+}
+
+export const loadMemo = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<Memo>(projectKey(projectId, 'current')).then(stored => stored || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<Memo>('current') : null)).then(stored => stored ? normalizeMemo(stored) : null)
 export const saveMemo = (projectId: string, memo: Memo) => writeMemoKey(projectKey(projectId, 'current'), memo)
-export const loadHistory = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<HistoryRecord[]>(projectKey(projectId, 'history')).then(records => records || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<HistoryRecord[]>('history') : null)).then(records => records || [])
+export const loadHistory = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<HistoryRecord[]>(projectKey(projectId, 'history')).then(records => records || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<HistoryRecord[]>('history') : null)).then(records => (records || []).map(record => ({ ...record, memo: normalizeMemo(record.memo) })))
 export const saveHistory = (projectId: string, records: HistoryRecord[]) => writeMemoKey(projectKey(projectId, 'history'), records)
 export const loadLetterheads = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<MemoLetterhead[]>(projectKey(projectId, 'letterheads')).then(records => records || [])
 export const saveLetterheads = (projectId: string, records: MemoLetterhead[]) => writeMemoKey(projectKey(projectId, 'letterheads'), records)

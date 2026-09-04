@@ -13,7 +13,7 @@ export const ROOM_STATUS_COLOR: Record<RoomStatus, string> = {
   已完成: '#2f9e56',
 }
 
-export type HandoverPhoto = { id: string; src: string; createdAt: string }
+export type HandoverPhoto = { id: string; src?: string; photoId?: string; createdAt: string }
 
 export type ResponsiblePerson = {
   name: string
@@ -72,7 +72,7 @@ function normalizeTowers(towers: Tower[]): Tower[] {
       ...floor,
       rooms: floor.rooms.map(room => ({
         ...room,
-        handover: { ...createRoomHandover(), ...room.handover, status: normalizeRoomStatus(room.handover.status), history: Array.isArray(room.handover.history) ? room.handover.history : [] },
+        handover: { ...createRoomHandover(), ...room.handover, photos: Array.isArray(room.handover.photos) ? room.handover.photos.map(photo => ({ ...photo, src: typeof photo.src === 'string' ? photo.src : undefined, photoId: typeof photo.photoId === 'string' ? photo.photoId : undefined })) : [], status: normalizeRoomStatus(room.handover.status), history: Array.isArray(room.handover.history) ? room.handover.history : [] },
       })),
     })),
   }))
@@ -264,49 +264,6 @@ export function clearAllHandover(): Promise<void> {
 
 export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
-}
-
-// ---------- 相片浮水印 ----------
-// 在相片右下角蓋上 Project／座 > 樓層 > 機房／日期時間等資訊。
-export function stampHandoverImage(file: File, lines: string[]): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const image = new Image()
-      image.onload = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = image.width
-        canvas.height = image.height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('無法建立圖片處理器'))
-          return
-        }
-        ctx.drawImage(image, 0, 0)
-        const textLines = lines.filter(Boolean)
-        const size = Math.max(18, Math.round(image.width / 48))
-        const lineHeight = size * 1.35
-        ctx.font = `600 ${size}px Arial, sans-serif`
-        const width = Math.min(
-          image.width * 0.94,
-          Math.max(...textLines.map(line => ctx.measureText(line).width)) + size * 1.4,
-        )
-        const height = lineHeight * textLines.length + size * 0.8
-        ctx.fillStyle = 'rgba(10, 17, 24, .78)'
-        ctx.fillRect(image.width - width, image.height - height, width, height)
-        ctx.fillStyle = '#fff'
-        ctx.textBaseline = 'top'
-        textLines.forEach((line, index) =>
-          ctx.fillText(line, image.width - width + size * 0.7, image.height - height + size * 0.4 + index * lineHeight, width - size),
-        )
-        resolve(canvas.toDataURL('image/jpeg', 0.88))
-      }
-      image.onerror = () => reject(new Error('無法讀取相片'))
-      image.src = reader.result as string
-    }
-    reader.onerror = () => reject(reader.error || new Error('無法讀取檔案'))
-    reader.readAsDataURL(file)
-  })
 }
 
 export function nowIso() {

@@ -1,7 +1,8 @@
 import type { Memo } from './memo-data'
+import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 
 // A4 portrait document shared by live preview, PDF export and history preview.
-export function MemoDocument({ memo, letterhead, onZoomImage }: { memo: Memo; letterhead?: { name: string; dataUrl: string }; onZoomImage?: (url: string) => void }) {
+export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage }: { memo: Memo; letterhead?: { name: string; dataUrl: string }; photoSources?: Record<string, PhotoSource>; onZoomImage?: (url: string) => void }) {
   const attachmentCount = memo.pdfAttachments.reduce((total, a) => total + Math.max(a.totalPages, a.pages.length), 0)
 
   return (
@@ -91,10 +92,11 @@ export function MemoDocument({ memo, letterhead, onZoomImage }: { memo: Memo; le
             巡查照片記錄 (Photo Record)
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {memo.photos.map(photo => (
-              <div key={photo.id} style={{ border: '1px solid #ddd', padding: '6px' }}>
+            {memo.photos.map(photo => {
+              const source = resolveAttachmentPhoto(photo.photoId, photo.previewUrl, photoSources)
+              return <div key={photo.id} style={{ border: '1px solid #ddd', padding: '6px' }}>
                 <div style={{ position: 'relative' }}>
-                  <img src={photo.previewUrl || '/placeholder.svg'} alt={photo.tag || photo.name} style={{ width: '100%', display: 'block' }} />
+                  {source ? <img src={source} alt={photo.tag || photo.name} style={{ width: '100%', display: 'block' }} /> : <div style={{ minHeight: '96px', display: 'grid', placeItems: 'center', background: '#eee', color: '#666', fontSize: '11px' }}>相片已從相簿移除</div>}
                   <span
                     style={{
                       position: 'absolute',
@@ -113,7 +115,7 @@ export function MemoDocument({ memo, letterhead, onZoomImage }: { memo: Memo; le
                 <div style={{ fontSize: '11.5px', marginTop: '5px', fontWeight: 700 }}>{photo.tag}</div>
                 {photo.customNote ? <div style={{ fontSize: '11px', color: '#444' }}>{photo.customNote}</div> : null}
               </div>
-            ))}
+            })}
           </div>
         </section>
       )}

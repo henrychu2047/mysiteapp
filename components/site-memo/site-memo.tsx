@@ -40,6 +40,7 @@ import {
   renderPdfToPages,
 } from './memo-data'
 import { MemoDocument } from './memo-document'
+import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 
 type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
 type MemoTemplateId = 'handover-delay' | 'damage-backcharge' | 'design-conflict' | 'progress-warning' | 'completion-handover'
@@ -70,7 +71,7 @@ const MEMO_CONTRACT_CLAUSES = [
   { label: '責任及費用一併保留', text: '本司保留按照合約申請工期延長（EOT）及追討相關費用、損失之全部權利。' },
 ]
 
-export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered, generalPhotoTags }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean; generalPhotoTags: string[] }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered, generalPhotoTags, photoSources, onSelectAlbumPhotos, onOpenCamera }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean; generalPhotoTags: string[]; photoSources: Record<string, PhotoSource>; onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void; onOpenCamera: (onCapture: (photoId: string) => void) => void }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [letterheads, setLetterheads] = useState<MemoLetterhead[]>([])
   const [letterheadName, setLetterheadName] = useState('')
@@ -295,13 +296,11 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     }
   }
 
-  async function addPhotos(files: FileList | null) {
-    if (!files) return
-    const additions: MemoPhoto[] = []
-    for (const file of Array.from(files)) {
-      const previewUrl = await readFileAsDataUrl(file)
-      additions.push({ id: `P-${Date.now()}-${additions.length}`, name: file.name, tag: '', time: nowStamp(), customNote: '', previewUrl })
-    }
+  const addPhotoReferences = (photoIds: string[]) => {
+    const additions: MemoPhoto[] = photoIds.map((photoId, index) => {
+      const source = photoSources[photoId]
+      return { id: `P-${Date.now()}-${index}`, name: source ? `${source.category} 相片` : '相簿相片', tag: '', time: nowStamp(), customNote: '', photoId }
+    })
     setMemo(current => ({ ...current, photos: [...current.photos, ...additions] }))
   }
 
@@ -531,14 +530,10 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 3 && (
         <MemoModal title="巡查照片" onClose={() => setModal(null)}>
-          <label className="memo-upload">
-            <Upload size={18} />
-            上載相片
-            <input type="file" accept="image/*" multiple hidden onChange={e => addPhotos(e.target.files)} />
-          </label>
+          <div className="memo-media-actions"><button className="memo-upload" type="button" onClick={() => onSelectAlbumPhotos(addPhotoReferences)}><Upload size={18} />從相簿選取</button><button className="memo-upload" type="button" onClick={() => onOpenCamera(photoId => addPhotoReferences([photoId]))}><Camera size={18} />連續拍攝</button></div>
           {memo.photos.map(photo => (
             <div className="memo-photo-edit" key={photo.id}>
-              <img src={photo.previewUrl || '/placeholder.svg'} alt={photo.name} />
+              {resolveAttachmentPhoto(photo.photoId, photo.previewUrl, photoSources) ? <img src={resolveAttachmentPhoto(photo.photoId, photo.previewUrl, photoSources)} alt={photo.name} /> : <div className="attachment-unavailable">相片已從相簿移除</div>}
               <div className="memo-photo-tags">
                 {generalPhotoTags.map(tag => (
                   <button
@@ -748,7 +743,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             </button>
           </div>
           <div className="memo-preview-scroll">
-            <MemoDocument memo={memo} letterhead={selectedLetterhead} onZoomImage={setZoomImage} />
+            <MemoDocument memo={memo} letterhead={selectedLetterhead} photoSources={photoSources} onZoomImage={setZoomImage} />
           </div>
         </div>
       )}
@@ -765,7 +760,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             </button>
           </div>
           <div className="memo-preview-scroll">
-            <MemoDocument memo={previewingHistory.memo} letterhead={letterheads.find(item => item.id === previewingHistory.memo.letterheadId)} onZoomImage={setZoomImage} />
+            <MemoDocument memo={previewingHistory.memo} letterhead={letterheads.find(item => item.id === previewingHistory.memo.letterheadId)} photoSources={photoSources} onZoomImage={setZoomImage} />
           </div>
         </div>
       )}
@@ -777,7 +772,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       )}
 
       <div className="memo-export-target" aria-hidden>
-        <div ref={exportRef}>{pendingExport && <MemoDocument memo={pendingExport.memo} letterhead={letterheads.find(item => item.id === pendingExport.memo.letterheadId)} />}</div>
+        <div ref={exportRef}>{pendingExport && <MemoDocument memo={pendingExport.memo} letterhead={letterheads.find(item => item.id === pendingExport.memo.letterheadId)} photoSources={photoSources} />}</div>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import {
   Camera,
@@ -35,7 +35,6 @@ import {
   loadHandover,
   saveHandover,
   clearAllHandover,
-  stampHandoverImage,
   nowIso,
   countRooms,
   countCompleted,
@@ -48,6 +47,7 @@ import {
   type RoomHandover,
   type ResponsiblePerson,
 } from './handover-data'
+import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 
 type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
 
@@ -63,6 +63,9 @@ type Props = {
   onResponsibleEmailChange?: (email: string) => void
   isRegistered?: boolean
   onUpdateApp?: () => void
+  photoSources: Record<string, PhotoSource>
+  onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void
+  onOpenCamera: (onCapture: (photoId: string) => void) => void
 }
 
 type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
@@ -88,7 +91,7 @@ const expandRoomSuffixRange = (start: string, end: string) => {
   })
 }
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -141,8 +144,6 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [defectModal, setDefectModal] = useState<{ id: string | null; description: string } | null>(null)
   const [defectDraft, setDefectDraft] = useState<string[]>([])
   const [zoom, setZoom] = useState<string | null>(null)
-
-  const roomPhotoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setStandaloneMemoryLoaded(false)
@@ -479,12 +480,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     onResponsibleEmailChange?.(responsibleDraft.email)
     flash('負責人資料已儲存')
   }
-  const addRoomPhotos = async (files: FileList | null) => {
-    if (!files || !files.length || !tower || !floor || !room || !selTower || !selFloor || !selRoom) return
-    const lines = [projectName, `${tower.name} ＞ ${floor.name} ＞ ${room.name}`, new Date().toLocaleString('zh-HK', { hour12: false })]
-    const added = await Promise.all(
-      Array.from(files).map(async file => ({ id: uid(), src: await stampHandoverImage(file, lines), createdAt: nowIso() })),
-    )
+  const addRoomPhotoReferences = (photoIds: string[]) => {
+    if (!photoIds.length || !selTower || !selFloor || !selRoom) return
+    const added = photoIds.map(photoId => ({ id: uid(), photoId, createdAt: nowIso() }))
     updateRoom(selTower, selFloor, selRoom, r => ({ ...r, handover: { ...r.handover, photos: [...r.handover.photos, ...added], history: [...(r.handover.history || []), { id: uid(), at: nowIso(), action: '新增相片', detail: `新增 ${added.length} 張相片` }].slice(-100), updatedAt: nowIso() } }))
     flash('已加入相片')
   }
@@ -1090,24 +1088,20 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             <div className="ho-section">
               <div className="ho-section-head">
                 <strong>機房相片</strong>
-                <button className="ho-add-photo" onClick={() => roomPhotoRef.current?.click()}>
-                  <Camera size={16} />加入相片
-                </button>
-                <input ref={roomPhotoRef} hidden type="file" accept="image/*" multiple onChange={e => { addRoomPhotos(e.target.files); e.target.value = '' }} />
+                <div className="ho-media-actions"><button className="ho-add-photo" onClick={() => onSelectAlbumPhotos(addRoomPhotoReferences)}><Camera size={16} />相簿</button><button className="ho-add-photo" onClick={() => onOpenCamera(photoId => addRoomPhotoReferences([photoId]))}><Camera size={16} />連續拍攝</button></div>
               </div>
               {!room.handover.photos.length && <p className="ho-empty small">未有相片。</p>}
               <div className="ho-thumbs">
-                {room.handover.photos.map(p => (
-                  <div className="ho-thumb" key={p.id}>
-                    <button onClick={() => setZoom(p.src)}>
-                      <img src={p.src || '/placeholder.svg'} alt={`${room.name} 相片`} />
-                    </button>
+                {room.handover.photos.map(p => {
+                  const source = resolveAttachmentPhoto(p.photoId, p.src, photoSources)
+                  return <div className="ho-thumb" key={p.id}>
+                    {source ? <button onClick={() => setZoom(source)}><img src={source} alt={`${room.name} 相片`} /></button> : <div className="attachment-unavailable">相片已從相簿移除</div>}
                     <small>{new Date(p.createdAt).toLocaleString('zh-HK', { hour12: false })}</small>
                     <button className="ho-thumb-del" aria-label="刪除相片" onClick={() => deleteRoomPhoto(p.id)}>
                       <X size={14} />
                     </button>
                   </div>
-                ))}
+                })}
               </div>
             </div>
 
