@@ -521,17 +521,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               {templateId === 'design-conflict' && <TemplateOption label="衝突情況" options={['結構開窿位置／尺寸偏差', '缺乏足夠維修空間', '與其他工種管道空間衝突']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} customValue={templateCustomOption} onCustomChange={setTemplateCustomOption} />}
               {templateId === 'completion-handover' && <TemplateOption label="驗收項目" options={['水壓／氣密測試', '試通電測試', '運作調試']} selected={templateOptions} onToggle={value => setTemplateOptions(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])} customValue={templateCustomOption} onCustomChange={setTemplateCustomOption} />}
               <TemplateOption label="附件段落" options={['4. 隨函附上相關記錄以供備案。', '4. 隨函附上相關相片以供備案。', '4. 隨函附上相關記錄及相片以供備案。']} selected={attachmentOption ? [attachmentOption] : []} onToggle={value => setAttachmentOption(current => current === value ? '' : value)} />
-              <Field label="語氣">
-                <select value={memoTone} onChange={event => setMemoTone(event.target.value)}>
-                  <option value="">正式客觀</option>
-                  {MEMO_TONES.filter(tone => tone.text).map(tone => <option key={tone.label} value={tone.text}>{tone.label}</option>)}
-                </select>
-              </Field>
-              <Field label="合約條款">
-                <select value={contractClause} onChange={event => setContractClause(event.target.value)}>
-                  {MEMO_CONTRACT_CLAUSES.map(clause => <option key={clause.label} value={clause.text}>{clause.label}</option>)}
-                </select>
-              </Field>
+              <TemplateOption label="語氣" options={MEMO_TONES.map(tone => tone.label)} selected={[memoTone ? MEMO_TONES.find(tone => tone.text === memoTone)?.label || '正式客觀' : '正式客觀']} onToggle={value => setMemoTone(current => { const tone = MEMO_TONES.find(item => item.label === value); return current === tone?.text ? '' : tone?.text || '' })} />
+              <TemplateOption label="合約條款" options={MEMO_CONTRACT_CLAUSES.map(clause => clause.label)} selected={[contractClause ? MEMO_CONTRACT_CLAUSES.find(clause => clause.text === contractClause)?.label || '不加入條款' : '不加入條款']} onToggle={value => setContractClause(current => { const clause = MEMO_CONTRACT_CLAUSES.find(item => item.label === value); return current === clause?.text ? '' : clause?.text || '' })} />
             </div>}
           </div>
           <div className="memo-action-row">
