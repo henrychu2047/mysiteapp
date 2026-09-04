@@ -299,7 +299,7 @@ export default function Page() {
     return photo
   }
   const openPhotoPicker = (onSelect: (photoIds: string[]) => void) => setPhotoPickerRequest(() => onSelect)
-  const rememberCameraCategory = (category: string) => setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, settings: { ...project.settings, lastCameraCategory: category } } : project))
+  const rememberCameraCategory = (category: string) => setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, settings: { ...createProjectSettings(), ...project.settings, lastCameraCategory: category } } : project))
   const openSharedCamera = (onCapture: (photoId: string) => void, initialCategory?: string, autoStart = false) => {
     setCameraInitialCategory(initialCategory)
     setCameraAutoStart(autoStart)
