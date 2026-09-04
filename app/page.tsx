@@ -10,6 +10,7 @@ import { BottomNav } from '@/components/ui/bottom-nav'
 import { ProjectPicker, RenameProjectDialog } from '@/components/project/project-dialogs'
 import { FirstProjectSetup } from '@/components/project/first-project-setup'
 import { useAppStatus } from '@/hooks/use-app-status'
+import { useContinuousCamera } from '@/hooks/use-continuous-camera'
 import { buildFloorNames, createRoomHandover, loadAllHandover, saveAllHandover, type Tower } from '@/components/handover/handover-data'
 import { exportLocalBackup as createLocalBackup, importLocalBackup as restoreLocalBackup } from '@/lib/backup'
 import { exportPhotoExcel, openPhotoPdfPreview } from '@/lib/photo-reports'
@@ -87,15 +88,7 @@ export default function Page() {
   const photoEditPageRef = useRef<HTMLDivElement | null>(null)
   const [newCategory, setNewCategory] = useState(false)
   const [handoverView, setHandoverView] = useState<'home' | 'settings' | 'manage'>('home')
-  const [continuousCamera, setContinuousCamera] = useState(false)
-  const [cameraError, setCameraError] = useState('')
-  const [captureBusy, setCaptureBusy] = useState(false)
-  const [captureMessage, setCaptureMessage] = useState('')
-  const [flashEnabled, setFlashEnabled] = useState(false)
-  const [zoomLevel, setZoomLevel] = useState(1)
   const cameraRef = useRef<HTMLInputElement>(null); const albumRef = useRef<HTMLInputElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
   const loadedProjectRef = useRef('')
   const saveQueueRef = useRef(Promise.resolve())
   const switchingProjectRef = useRef(false)
@@ -104,6 +97,7 @@ export default function Page() {
   const backupRef = useRef<HTMLInputElement>(null)
   const [backupBusy, setBackupBusy] = useState(false)
   const { isOffline, storageStatus, storageUsage, updateAvailable, updateApp } = useAppStatus()
+  const { continuousCamera, cameraError, captureBusy, captureMessage, flashEnabled, zoomLevel, videoRef, startContinuousCamera, stopContinuousCamera, toggleFlash, changeZoom, capturePhoto, setCameraError, setCaptureMessage } = useContinuousCamera()
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [saveToast, setSaveToast] = useState('')
@@ -272,7 +266,6 @@ export default function Page() {
   }, [currentProjectId, handleStructureChange])
   const projectPhotos = useMemo(() => photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === currentProject.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [currentProject.id, photos])
   const currentPhotos = useMemo(() => active ? projectPhotos.filter(p => p.category === active) : projectPhotos, [active, projectPhotos])
-  useEffect(() => () => { streamRef.current?.getTracks().forEach(track => track.stop()) }, [])
   const connectProjectFolder = async () => {
     const picker = (window as any).showDirectoryPicker
     if (!picker) { setProjectPanel(true); return }
@@ -296,64 +289,14 @@ export default function Page() {
       const settingsWritable = await settings.createWritable(); await settingsWritable.write(JSON.stringify({ project: currentProject, categories, settingsOptions, tags, note }, null, 2)); await settingsWritable.close()
     } catch (error) { console.error('[v0] folder save failed:', error) }
   }
-  const startContinuousCamera = async () => {
-    if (!window.isSecureContext) {
-      setCameraError('連續拍攝需要 HTTPS；目前網址不安全，請改用立即拍照或設定 HTTPS')
-      return
-    }
-    if (!navigator.mediaDevices?.getUserMedia) { setCameraError('此瀏覽器不支援連續相機，請使用立即拍照'); return }
-    try {
-      setCameraError('')
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
-      streamRef.current = stream
-      setContinuousCamera(true)
-    } catch (error) { console.error('[v0] camera start failed:', error); setCameraError('無法開啟鏡頭，請允許相機權限或改用立即拍照') }
-  }
-  useEffect(() => {
-    if (!continuousCamera || !videoRef.current || !streamRef.current) return
-    const video = videoRef.current
-    video.srcObject = streamRef.current
-    video.play().catch(error => console.error('[v0] video play failed:', error))
-    return () => { video.pause(); video.srcObject = null }
-  }, [continuousCamera])
-  const applyCameraSettings = async (nextFlash: boolean, nextZoom: number) => {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track) return
-    const capabilities = track.getCapabilities() as MediaTrackCapabilities & { torch?: boolean; focusMode?: string[]; zoom?: { min: number; max: number } }
-    const constraints: MediaTrackConstraintSet & { torch?: boolean; focusMode?: string; zoom?: number } = {}
-    if (typeof capabilities.torch === 'boolean') constraints.torch = nextFlash
-    if (capabilities.zoom) constraints.zoom = Math.min(capabilities.zoom.max, Math.max(capabilities.zoom.min, nextZoom))
-    try { await track.applyConstraints({ advanced: [constraints] }) } catch (error) { console.error('[v0] camera settings failed:', error) }
-  }
-  const toggleFlash = async () => { const next = !flashEnabled; setFlashEnabled(next); await applyCameraSettings(next, zoomLevel) }
-  const changeZoom = async (next: number) => { setZoomLevel(next); await applyCameraSettings(flashEnabled, next) }
-  const stopContinuousCamera = () => { streamRef.current?.getTracks().forEach(track => track.stop()); streamRef.current = null; setContinuousCamera(false) }
   const captureContinuousPhoto = async () => {
-    if (captureBusy || !videoRef.current || !active) return
-    setCaptureBusy(true)
-    setCaptureMessage('正在處理相片…')
-    const video = videoRef.current
-    if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-      setCameraError('鏡頭尚未準備好，請稍候再按快門')
-      setCaptureMessage('')
-      setCaptureBusy(false)
-      return
-    }
-    try {
-      const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight
-      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('無法建立畫布')
-      ctx.drawImage(video, 0, 0)
-      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
-      const result = await stampImage(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), active, tags, note, currentProject.name)
+    if (!active) return
+    await capturePhoto(async file => {
+      const result = await stampImage(file, active, tags, note, currentProject.name)
       const photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category: active, tags, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
       setPhotos(p => [photo, ...p])
       await saveToProjectFolder(photo)
-      setCameraError('')
-      setCaptureMessage('已拍攝並儲存，可繼續拍攝')
-      window.setTimeout(() => setCaptureMessage(''), 1800)
-    } catch (error) { console.error('[v0] capture failed:', error); setCameraError('拍攝失敗，請稍候再試'); setCaptureMessage('') }
-    finally { setCaptureBusy(false) }
+    })
   }
   const importFiles = async (files: FileList | null) => {
     if (!files || !active) return
