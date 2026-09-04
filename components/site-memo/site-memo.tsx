@@ -533,7 +533,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
                   {MEMO_CONTRACT_CLAUSES.map(clause => <option key={clause.label} value={clause.text}>{clause.label}</option>)}
                 </select>
               </Field>
-              <button type="button" className="memo-change-template" onClick={() => { setTemplateId(null); setTemplateMode(false); setTemplateOptions([]); setTemplateCustomOption(''); setAttachmentOption(''); setMemoTone(''); setContractClause('') }}>← 更換範本</button>
             </div>}
           </div>
           <div className="memo-action-row">
