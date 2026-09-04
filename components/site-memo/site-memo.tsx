@@ -501,7 +501,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       )}
 
       {modal === 2 && (
-        <MemoModal title="內容與事件" className="memo-quick-generator" onClose={() => setModal(null)} backLabel="更換範本" onBack={() => { setTemplateId(null); setTemplateMode(false); setTemplateOptions([]); setTemplateCustomOption(''); setAttachmentOption(''); setMemoTone(''); setContractClause('') }}>
+        <MemoModal title="內容與事件" className="memo-quick-generator" onClose={() => setModal(null)} backLabel="← 更換範本" onBack={() => { setTemplateId(null); setTemplateMode(false); setTemplateOptions([]); setTemplateCustomOption(''); setAttachmentOption(''); setMemoTone(''); setContractClause('') }}>
           <Field label="Site Memo 內容">
             <textarea className="memo-rough-input" rows={8} placeholder="選擇下方 Site Memo 範本後，內容會即時顯示於此；亦可直接編輯文字" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
@@ -814,7 +814,7 @@ function MemoModal({ title, onClose, className = '', backLabel = '返回', onBac
     <div className="memo-modal-layer">
       <div className={`memo-modal ${className}`}>
         <div className="memo-modal-bar">
-          <button onClick={onBack || onClose}>{backLabel}</button>
+          <button className="memo-modal-back-btn" onClick={onBack || onClose}>{backLabel}</button>
           <strong>{title}</strong>
           <button onClick={onClose} aria-label="關閉">
             <X size={22} />
