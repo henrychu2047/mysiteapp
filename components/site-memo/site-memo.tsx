@@ -26,7 +26,6 @@ import {
   type MemoPhoto,
   type MemoPdfAttachment,
   type MemoLetterhead,
-  PHOTO_QUICK_TAGS,
   createDefaultMemo,
   loadMemo,
   saveMemo,
@@ -71,7 +70,7 @@ const MEMO_CONTRACT_CLAUSES = [
   { label: '責任及費用一併保留', text: '本司保留按照合約申請工期延長（EOT）及追討相關費用、損失之全部權利。' },
 ]
 
-export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered, generalPhotoTags }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean; generalPhotoTags: string[] }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [letterheads, setLetterheads] = useState<MemoLetterhead[]>([])
   const [letterheadName, setLetterheadName] = useState('')
@@ -544,7 +543,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
             <div className="memo-photo-edit" key={photo.id}>
               <img src={photo.previewUrl || '/placeholder.svg'} alt={photo.name} />
               <div className="memo-photo-tags">
-                {PHOTO_QUICK_TAGS.map(tag => (
+                {generalPhotoTags.map(tag => (
                   <button
                     key={tag}
                     className={photo.tag === tag ? 'active' : ''}

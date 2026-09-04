@@ -33,18 +33,6 @@ export type HistoryRecord = { recordId: string; savedAt: string; action: string;
 
 const DEFAULT_PROJECT_ID = 'default-project'
 
-export const PHOTO_QUICK_TAGS = [
-  '天台石屎座防水層未做',
-  '外牆未完成批盪',
-  '雨水乾濕井土建未完',
-  '周界圍牆結構未完成',
-  '阻礙纖維水缸送貨吊運',
-  '阻礙外牆打喉碼/VG接駁',
-  '尚未有正式交場日期',
-  '現場積水及雜物阻塞通道',
-  '結構鋼筋裸露未灌漿',
-]
-
 export function createDefaultMemo(): Memo {
   return {
     id: 'MEMO-1635-011',
