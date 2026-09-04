@@ -235,13 +235,20 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     const date = formatTemplateDate(templateDate) || '[事發／巡查日期]'
     const deadline = formatTemplateDate(templateDeadline) || '[要求限期／時間]'
     const custom = templateCustomOption.trim()
-    const optionText = templateOptions.length ? templateOptions.join(templateId === 'design-conflict' || templateId === 'completion-handover' ? '、' : templateId === 'handover-delay' || templateId === 'damage-backcharge' ? '，且' : '') : ''
+    const optionText = templateOptions.length ? templateOptions.join(templateId === 'design-conflict' || templateId === 'completion-handover' ? '、' : templateId === 'damage-backcharge' ? '，' : '') : ''
     let body = template.body.replace(/\[地點[\/／]樓層\]/g, templateLocation.trim() || '[地點／樓層]').replace(/\[事發[\/／]巡查日期\]/g, date).replace(/\[要求限期[\/／]時間\]/g, deadline).replace(/\[(?:涉及)?設備[\/／]系統\]/g, equipment || '[設備／系統]')
     if (templateId === 'handover-delay') body = body.replace('[現場狀況]', optionText || custom || '[現場狀況]')
     if (templateId === 'damage-backcharge') body = body.replace('[損壞情況]', optionText || custom || '[損壞情況]')
     if (templateId === 'design-conflict') body = body.replace('[衝突情況]', optionText || custom || '[衝突情況]')
     if (templateId === 'completion-handover') body = body.replace('[驗收項目]', optionText || custom || '[驗收項目]')
-    body = body.replace('[附件段落]', attachmentOption)
+    const attachmentText = attachmentOption || (memo.pdfAttachments.length > 0 && memo.photos.length > 0
+      ? '4. 隨函附上相關記錄及相片以供備案。'
+      : memo.pdfAttachments.length > 0
+        ? '4. 隨函附上相關記錄以供備案。'
+        : memo.photos.length > 0
+          ? '4. 隨函附上相關相片以供備案。'
+          : '')
+    body = body.replace('[附件段落]', attachmentText)
     return [body, memoTone, contractClause].filter(Boolean).join('\n\n')
   }
 
@@ -257,7 +264,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   useEffect(() => {
     if (templateId) update({ roughInput: buildTemplateBody(), items: [] })
-  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, templateCustomOption, attachmentOption, memoTone, contractClause])
+  }, [templateId, templateLocation, templateDate, templateDeadline, templateEquipment, customEquipment, templateOptions, templateCustomOption, attachmentOption, memoTone, contractClause, memo.photos.length, memo.pdfAttachments.length])
 
   function localPolish(input: string) {
     const lines = input.split(/\n+/).map(line => line.trim()).filter(Boolean)
