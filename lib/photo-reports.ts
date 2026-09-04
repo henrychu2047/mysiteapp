@@ -52,7 +52,7 @@ export function openPhotoPdfPreview(photos: Photo[], selectedIds: string[]) {
 
 async function exportPhotoPdf(chosen: Photo[]) {
   let html2canvas: typeof import('html2canvas').default
-  let JsPDF: (typeof import('jspdf')).jsPDF
+  let JsPDF: typeof import('jspdf').jsPDF
   try {
     const [canvasModule, pdfModule] = await Promise.all([import('html2canvas'), import('jspdf')])
     html2canvas = canvasModule.default
