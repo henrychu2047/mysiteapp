@@ -35,7 +35,6 @@ import {
   describePhotoStorageError,
   hydratePhoto,
   loadStoredPhotos,
-  releasePhotoUrls,
   saveStoredPhoto,
   saveStoredPhotos,
   type Photo,
@@ -107,7 +106,11 @@ export default function Page() {
   useEffect(() => {
     loadStoredPhotos().then((stored) => {
       const migrated = stored.map((photo) => hydratePhoto({ ...photo, category: normalizeCategoryName(photo.category), projectId: photo.projectId || DEFAULT_PROJECT.id }))
-      setPhotos(migrated)
+      setPhotos(current => {
+        if (!current.length) return migrated
+        const currentIds = new Set(current.map(photo => photo.id))
+        return [...current, ...migrated.filter(photo => !currentIds.has(photo.id))]
+      })
       setPhotosReady(true)
     }).catch(error => {
       console.error('本機相簿讀取失敗:', error)

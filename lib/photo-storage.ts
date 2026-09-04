@@ -28,15 +28,30 @@ const PHOTO_DB_VERSION = 2
 function openPhotoDb() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(PHOTO_DB, PHOTO_DB_VERSION)
+    let blocked = false
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(PHOTO_STORE)) {
         request.result.createObjectStore(PHOTO_STORE, { keyPath: 'id' })
       }
     }
-    request.onsuccess = () => resolve(request.result)
+    request.onsuccess = () => {
+      if (blocked) {
+        request.result.close()
+        return
+      }
+      request.result.onversionchange = () => request.result.close()
+      resolve(request.result)
+    }
     request.onerror = () => reject(request.error)
-    request.onblocked = () => reject(new DOMException('本機資料庫正被舊版本使用，請關閉其他 App 分頁後重試', 'InvalidStateError'))
+    request.onblocked = () => {
+      blocked = true
+      reject(new DOMException('本機資料庫正被舊版本使用，請關閉其他 App 分頁後重試', 'InvalidStateError'))
+    }
   })
+}
+
+function transactionFailure(transaction: IDBTransaction, requestError?: DOMException | null) {
+  return requestError || transaction.error || new DOMException('本機資料庫交易被中止', 'AbortError')
 }
 
 function photoForStorage(photo: Photo): Photo {
@@ -72,10 +87,9 @@ export function loadStoredPhotos() {
     const request = transaction.objectStore(PHOTO_STORE).getAll()
     let storedPhotos: Photo[] = []
     request.onsuccess = () => { storedPhotos = request.result as Photo[] }
-    request.onerror = () => transaction.abort()
     transaction.oncomplete = () => { db.close(); resolve(storedPhotos) }
-    transaction.onerror = () => { db.close(); reject(transaction.error || request.error) }
-    transaction.onabort = () => { db.close(); reject(transaction.error || request.error) }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
   }))
 }
 
@@ -118,33 +132,41 @@ export function saveStoredPhotos(photos: Photo[]) {
     const store = transaction.objectStore(PHOTO_STORE)
     const currentIds = new Set(photos.map(photo => photo.id))
     const existingRequest = store.getAllKeys()
+    let operationError: DOMException | null = null
     existingRequest.onsuccess = () => {
       ;(existingRequest.result as IDBValidKey[]).forEach(id => {
-        if (typeof id === 'string' && !currentIds.has(id)) store.delete(id)
+        if (typeof id === 'string' && !currentIds.has(id)) {
+          const request = store.delete(id)
+          request.onerror = () => { operationError = request.error }
+        }
       })
-      photos.forEach(photo => store.put(photoForStorage(photo)))
+      photos.forEach(photo => {
+        const request = store.put(photoForStorage(photo))
+        request.onerror = () => { operationError = request.error }
+      })
     }
-    existingRequest.onerror = () => transaction.abort()
+    existingRequest.onerror = () => { operationError = existingRequest.error }
     transaction.oncomplete = () => { db.close(); resolve() }
-    transaction.onerror = () => { db.close(); reject(transaction.error || existingRequest.error) }
-    transaction.onabort = () => { db.close(); reject(transaction.error || existingRequest.error) }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, operationError || existingRequest.error)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, operationError || existingRequest.error)) }
   }))
 }
 
 export function saveStoredPhoto(photo: Photo) {
   return openPhotoDb().then(db => new Promise<void>((resolve, reject) => {
     let transaction: IDBTransaction
+    let request: IDBRequest<IDBValidKey>
     try {
       transaction = db.transaction(PHOTO_STORE, 'readwrite')
-      transaction.objectStore(PHOTO_STORE).put(photoForStorage(photo))
+      request = transaction.objectStore(PHOTO_STORE).put(photoForStorage(photo))
     } catch (error) {
       db.close()
       reject(error)
       return
     }
     transaction.oncomplete = () => { db.close(); resolve() }
-    transaction.onerror = () => { db.close(); reject(transaction.error) }
-    transaction.onabort = () => { db.close(); reject(transaction.error) }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
   }))
 }
 
@@ -152,18 +174,22 @@ export function deleteStoredPhotos(ids: string[]) {
   if (!ids.length) return Promise.resolve()
   return openPhotoDb().then(db => new Promise<void>((resolve, reject) => {
     let transaction: IDBTransaction
+    let operationError: DOMException | null = null
     try {
       transaction = db.transaction(PHOTO_STORE, 'readwrite')
       const store = transaction.objectStore(PHOTO_STORE)
-      ids.forEach(id => store.delete(id))
+      ids.forEach(id => {
+        const request = store.delete(id)
+        request.onerror = () => { operationError = request.error }
+      })
     } catch (error) {
       db.close()
       reject(error)
       return
     }
     transaction.oncomplete = () => { db.close(); resolve() }
-    transaction.onerror = () => { db.close(); reject(transaction.error) }
-    transaction.onabort = () => { db.close(); reject(transaction.error) }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, operationError)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, operationError)) }
   }))
 }
 

@@ -46,16 +46,16 @@ export function stampImage(file: File, category: string, tags: Record<string, st
         const detailLines = Object.entries(tags).filter(([, value]) => value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`)
         if (note.trim()) detailLines.push(`文字備註: ${note.trim()}`)
         const lines = [`${projectName ? `${projectName} | ` : ''}${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`, ...detailLines]
-        const size = Math.max(18, Math.round(image.width / 48))
+        const size = Math.max(18, Math.round(canvas.width / 48))
         const lineHeight = size * 1.35
         ctx.font = `600 ${size}px Arial, sans-serif`
-        const width = Math.min(image.width * 0.92, Math.max(...lines.map(line => ctx.measureText(line).width)) + size * 1.4)
+        const width = Math.min(canvas.width * 0.92, Math.max(...lines.map(line => ctx.measureText(line).width)) + size * 1.4)
         const height = lineHeight * lines.length + size * 0.8
         ctx.fillStyle = 'rgba(10, 17, 24, .78)'
-        ctx.fillRect(image.width - width, image.height - height, width, height)
+        ctx.fillRect(canvas.width - width, canvas.height - height, width, height)
         ctx.fillStyle = '#fff'
         ctx.textBaseline = 'top'
-        lines.forEach((line, index) => ctx.fillText(line, image.width - width + size * 0.7, image.height - height + size * 0.4 + index * lineHeight, width - size))
+        lines.forEach((line, index) => ctx.fillText(line, canvas.width - width + size * 0.7, canvas.height - height + size * 0.4 + index * lineHeight, width - size))
         const stamped = canvas.toDataURL('image/jpeg', 0.78)
         const thumbnailCanvas = document.createElement('canvas')
         const thumbnailWidth = Math.min(960, canvas.width)

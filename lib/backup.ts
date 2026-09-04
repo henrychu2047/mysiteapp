@@ -85,7 +85,7 @@ export async function importLocalBackup(file: File, createRecoveryBackup: () => 
       for (const entry of entries) {
         const blob = await entry.async('blob')
         const src = await dataUrlFromBlob(blob)
-        photos.push({ id: entry.name.split('/').pop()!.replace(/\.jpg$/, ''), src, cleanSrc: src, category: normalizeCategoryName(project.settings?.categories?.[0]?.name || '其它'), tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id })
+        photos.push({ id: entry.name.split('/').pop()!.replace(/\.jpg$/, ''), src, cleanSrc: src, originalBlob: blob, category: normalizeCategoryName(project.settings?.categories?.[0]?.name || '其它'), tags: {}, note: '', createdAt: new Date().toISOString(), projectId: project.id })
       }
     }
     if (handoverFile) {
