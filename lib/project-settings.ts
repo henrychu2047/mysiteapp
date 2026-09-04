@@ -2,6 +2,7 @@ export type Category = { name: string; icon: string }
 
 export type ProjectSettings = {
   categories: Category[]
+  lastCameraCategory?: string
   tags: Record<string, string>
   note: string
   settingsOptions: Record<string, string[]>
@@ -61,6 +62,7 @@ export const SMART_TAG_KEYS = ['座數', '樓層', '位置', '安全', '收貨�
 
 export const createProjectSettings = (): ProjectSettings => ({
   categories: defaultCategories,
+  lastCameraCategory: defaultCategories[0].name,
   tags: {},
   note: '',
   settingsOptions: tagOptions,
@@ -74,6 +76,7 @@ export const normalizeProject = (project: Project): Project => ({
     ...createProjectSettings(),
     ...(project.settings || {}),
     categories: ensureDefaultCategories(project.settings?.categories),
+    lastCameraCategory: project.settings?.lastCameraCategory,
     tags: project.settings?.tags || {},
     note: project.settings?.note || '',
     settingsOptions: mergeTagOptions(project.settings?.settingsOptions),

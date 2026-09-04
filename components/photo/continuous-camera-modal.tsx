@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useContinuousCamera } from '@/hooks/use-continuous-camera'
 
 type Props = {
@@ -9,17 +9,26 @@ type Props = {
   onCapture: (file: File, category: string) => Promise<void>
   onClose: () => void
   onOpenPhotoSettings?: () => void
+  autoStart?: boolean
+  onCategorySelected?: (category: string) => void
 }
 
-export function ContinuousCameraModal({ categories, initialCategory, onCapture, onClose, onOpenPhotoSettings }: Props) {
+export function ContinuousCameraModal({ categories, initialCategory, onCapture, onClose, onOpenPhotoSettings, autoStart = false, onCategorySelected }: Props) {
   const [category, setCategory] = useState(initialCategory && categories.includes(initialCategory) ? initialCategory : '')
+  const autoStartRequested = useRef(false)
   const { continuousCamera, cameraError, captureBusy, captureMessage, flashEnabled, zoomLevel, videoRef, startContinuousCamera, stopContinuousCamera, toggleFlash, changeZoom, capturePhoto } = useContinuousCamera()
 
   useEffect(() => () => stopContinuousCamera(), [stopContinuousCamera])
+  useEffect(() => {
+    if (!autoStart || !category || autoStartRequested.current) return
+    autoStartRequested.current = true
+    onCategorySelected?.(category)
+    void startContinuousCamera()
+  }, [autoStart, category, onCategorySelected, startContinuousCamera])
 
   const close = () => { stopContinuousCamera(); onClose() }
   const openPhotoSettings = () => { stopContinuousCamera(); onClose(); onOpenPhotoSettings?.() }
-  const start = () => { if (category) void startContinuousCamera() }
+  const start = () => { if (category) { onCategorySelected?.(category); void startContinuousCamera() } }
 
   if (!continuousCamera) return (
     <div className="overlay photo-picker-overlay" onClick={close}>
