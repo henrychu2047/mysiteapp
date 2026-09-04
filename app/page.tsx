@@ -140,11 +140,14 @@ export default function Page() {
   useEffect(() => {
     if (!settingsReady || !photosReady || !projectsLoaded) return
     setSaveState('saving')
-    saveQueueRef.current = saveQueueRef.current.then(async () => {
+    const save = async () => {
       await saveStoredPhotos(photos, currentProjectId)
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects))
       localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId)
-    }).then(() => {
+    }
+    saveQueueRef.current = saveQueueRef.current.catch(error => {
+      console.error('上一個資料保存任務失敗:', error)
+    }).then(save).then(() => {
       const savedAt = new Date()
       setSaveState('saved')
       setLastSavedAt(savedAt.toISOString())
@@ -293,8 +296,10 @@ export default function Page() {
   const createProjectPhoto = async (file: File, category: string): Promise<Photo> => {
     const result = await stampImage(file, category, tags, note, currentProject.name)
     const photo: Photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+    saveQueueRef.current = saveQueueRef.current.catch(error => {
+      console.error('上一個資料保存任務失敗:', error)
+    }).then(() => saveStoredPhoto(photo))
     await saveQueueRef.current
-    await saveStoredPhoto(photo)
     setPhotos(current => [photo, ...current])
     await saveToProjectFolder(photo)
     return photo
