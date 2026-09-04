@@ -31,6 +31,7 @@ import {
 import { stampImage } from '@/lib/photo-image'
 import {
   createId,
+  deleteStoredPhotos,
   describePhotoStorageError,
   hydratePhoto,
   loadStoredPhotos,
@@ -147,25 +148,19 @@ export default function Page() {
   }, [])
   useEffect(() => {
     if (!settingsReady || !photosReady || !projectsLoaded || photoStorageLoadFailed) return
-    setSaveState('saving')
-    const save = async () => {
-      await saveStoredPhotos(photos)
+    try {
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects))
       localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId)
-    }
-    saveQueueRef.current = saveQueueRef.current.catch(error => {
-      console.error('上一個資料保存任務失敗:', error)
-    }).then(save).then(() => {
       const savedAt = new Date()
       setSaveState('saved')
       setLastSavedAt(savedAt.toISOString())
-    }).catch(error => {
-      console.error('資料保存失敗:', error)
+    } catch (error) {
+      console.error('Project 設定保存失敗:', error)
       setSaveState('error')
       setSaveToast(describePhotoStorageError(error))
       window.setTimeout(() => setSaveToast(''), 4000)
-    })
-  }, [settingsReady, photos, projects, currentProjectId, photoStorageLoadFailed])
+    }
+  }, [settingsReady, photosReady, projectsLoaded, projects, currentProjectId, photoStorageLoadFailed])
   useEffect(() => {
     if (!settingsReady || loadedProjectRef.current === currentProjectId) return
     const projectSettings = projects.find(project => project.id === currentProjectId)?.settings || createProjectSettings()
@@ -342,14 +337,38 @@ export default function Page() {
     setActive(null)
     setSelected([])
   }
-  const savePhotoEdit = () => { if (!detail) return; setPhotos(current => current.map(photo => photo.id === detail.id ? detail : photo)); resetEditor(); setSaveToast('相片註記已保存'); window.setTimeout(() => setSaveToast(''), 2500) }
+  const savePhotoEdit = () => {
+    if (!detail) return
+    const photo = detail
+    saveQueueRef.current = saveQueueRef.current.catch(error => {
+      console.error('上一個資料保存任務失敗:', error)
+    }).then(() => saveStoredPhoto(photo))
+    void saveQueueRef.current.then(() => {
+      setPhotos(current => current.map(item => item.id === photo.id ? photo : item))
+      resetEditor()
+      setSaveToast('相片註記已保存')
+      window.setTimeout(() => setSaveToast(''), 2500)
+    }).catch(error => {
+      console.error('相片註記保存失敗:', error)
+      setSaveToast(describePhotoStorageError(error))
+    })
+  }
   const closePhotoDetail = () => { setDetail(null); resetEditor() }
   const deleteSelectedPhotos = () => {
     if (!selected.length) return
     if (!confirm(`確定刪除已選的 ${selected.length} 張相片？此操作無法復原。`)) return
-    setPhotos(current => current.filter(photo => !selected.includes(photo.id)))
-    setSelected([])
-    setDetail(null)
+    const ids = [...selected]
+    saveQueueRef.current = saveQueueRef.current.catch(error => {
+      console.error('上一個資料保存任務失敗:', error)
+    }).then(() => deleteStoredPhotos(ids))
+    void saveQueueRef.current.then(() => {
+      setPhotos(current => current.filter(photo => !ids.includes(photo.id)))
+      setSelected([])
+      setDetail(null)
+    }).catch(error => {
+      console.error('相片刪除失敗:', error)
+      setSaveToast(describePhotoStorageError(error))
+    })
   }
   const exportExcel = async () => {
     await exportPhotoExcel(photos, selected)
@@ -371,7 +390,16 @@ export default function Page() {
     if (!file) return
     const restored = await restoreLocalBackup(file, exportLocalBackup)
     if (!restored) return
-    setProjects(restored.projects); setCurrentProjectId(restored.currentProjectId); setPhotos(restored.photos); alert('ZIP 備份已還原')
+    saveQueueRef.current = saveQueueRef.current.catch(error => {
+      console.error('上一個資料保存任務失敗:', error)
+    }).then(() => saveStoredPhotos(restored.photos))
+    try {
+      await saveQueueRef.current
+      setProjects(restored.projects); setCurrentProjectId(restored.currentProjectId); setPhotos(restored.photos); alert('ZIP 備份已還原')
+    } catch (error) {
+      console.error('ZIP 備份保存失敗:', error)
+      setSaveToast(describePhotoStorageError(error))
+    }
   }
 
   if (appMode === 'notebook') return <><Notebook projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(onCapture)} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />{sharedMediaOverlays}</>

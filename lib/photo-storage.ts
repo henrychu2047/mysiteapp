@@ -148,6 +148,25 @@ export function saveStoredPhoto(photo: Photo) {
   }))
 }
 
+export function deleteStoredPhotos(ids: string[]) {
+  if (!ids.length) return Promise.resolve()
+  return openPhotoDb().then(db => new Promise<void>((resolve, reject) => {
+    let transaction: IDBTransaction
+    try {
+      transaction = db.transaction(PHOTO_STORE, 'readwrite')
+      const store = transaction.objectStore(PHOTO_STORE)
+      ids.forEach(id => store.delete(id))
+    } catch (error) {
+      db.close()
+      reject(error)
+      return
+    }
+    transaction.oncomplete = () => { db.close(); resolve() }
+    transaction.onerror = () => { db.close(); reject(transaction.error) }
+    transaction.onabort = () => { db.close(); reject(transaction.error) }
+  }))
+}
+
 export function createId() {
   if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID()
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
