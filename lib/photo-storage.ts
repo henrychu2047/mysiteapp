@@ -87,6 +87,15 @@ export function saveStoredPhotos(photos: Photo[], projectId: string) {
   }))
 }
 
+export function saveStoredPhoto(photo: Photo) {
+  return openPhotoDb().then(db => new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(PHOTO_STORE, 'readwrite')
+    transaction.objectStore(PHOTO_STORE).put(photo.originalBlob || photo.stampedBlob ? { ...photo, src: '', cleanSrc: '' } : photo)
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+  }))
+}
+
 export function createId() {
   if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID()
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`

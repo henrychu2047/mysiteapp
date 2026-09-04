@@ -34,6 +34,7 @@ import {
   hydratePhoto,
   loadStoredPhotos,
   releasePhotoUrls,
+  saveStoredPhoto,
   saveStoredPhotos,
   type Photo,
 } from '@/lib/photo-storage'
@@ -292,6 +293,8 @@ export default function Page() {
   const createProjectPhoto = async (file: File, category: string): Promise<Photo> => {
     const result = await stampImage(file, category, tags, note, currentProject.name)
     const photo: Photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, stampedBlob: result.stampedBlob, category, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+    await saveQueueRef.current
+    await saveStoredPhoto(photo)
     setPhotos(current => [photo, ...current])
     await saveToProjectFolder(photo)
     return photo
