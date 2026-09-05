@@ -58,7 +58,7 @@ export function createDefaultMemo(): Memo {
       signerName: 'Henry Chu',
       signerRole: 'Project Manager',
     },
-    subject: '有關建築未完成位置阻礙水喉系統安裝',
+    subject: '',
     roughInput:
       '1. Block 1天台石屎座防水未做，上唔到水缸。\n2. Block 1 & 2 外牆未批盪，天台VG駁唔到。\n3. 雨水乾濕井未搞好，潛水泵進唔到場。\n4. 周界牆未完成，無得打喉碼。\n5. Block 1 外牆未批盪，駁唔到250L水缸。',
     items: [

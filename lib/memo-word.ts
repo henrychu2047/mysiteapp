@@ -22,6 +22,15 @@ const paragraph = (text = '', options: { bold?: boolean; size?: number; align?: 
 
 const pageBreak = () => '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
 
+const recipientTable = (memo: Memo) => {
+  const address = [
+    paragraph(memo.recipient.company, { bold: true, size: 24, after: 40 }),
+    ...memo.recipient.addressLines.map(line => paragraph(line, { size: 21, after: 20 })),
+  ].join('')
+  const delivery = paragraph(memo.delivery, { bold: true, size: 38, align: 'center', after: 0 })
+  return `<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="pct"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="5700"/><w:gridCol w:w="3300"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="5700" w:type="dxa"/><w:tcMar><w:left w:w="0" w:type="dxa"/><w:right w:w="160" w:type="dxa"/></w:tcMar></w:tcPr>${address}</w:tc><w:tc><w:tcPr><w:tcW w:w="3300" w:type="dxa"/><w:vAlign w:val="top"/><w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar><w:tcBorders><w:top w:val="single" w:sz="16" w:color="111111"/><w:left w:val="single" w:sz="16" w:color="111111"/><w:bottom w:val="single" w:sz="16" w:color="111111"/><w:right w:val="single" w:sz="16" w:color="111111"/></w:tcBorders></w:tcPr>${delivery}</w:tc></w:tr></w:tbl>`
+}
+
 const drawing = (image: WordImage, width: number, height: number, description: string) => {
   const cx = Math.round(width * 9525)
   const cy = Math.round(height * 9525)
@@ -66,9 +75,7 @@ export async function exportMemoWord(memo: Memo, letterhead: MemoLetterhead | un
   }
   body.push(paragraph(`Date: ${memo.date}`, { size: 20, after: 20 }))
   body.push(paragraph(`Our Ref: ${memo.refNo}`, { size: 20, after: 20 }))
-  body.push(paragraph(memo.delivery, { bold: true, size: 19, align: 'right', after: 120 }))
-  body.push(paragraph(memo.recipient.company, { bold: true, size: 24, after: 40 }))
-  memo.recipient.addressLines.forEach(line => body.push(paragraph(line, { size: 21, after: 20 })))
+  body.push(recipientTable(memo))
   body.push(paragraph(`Attn: ${memo.recipient.attn}`, { size: 21, after: 120 }))
   body.push(paragraph('Dear Sir/Madam,', { size: 22, after: 80 }))
   ;[memo.sender.contractNo, memo.sender.projectTitle, memo.sender.substationTitle].filter(Boolean).forEach(value => body.push(paragraph(value, { bold: true, size: 21, after: 20 })))

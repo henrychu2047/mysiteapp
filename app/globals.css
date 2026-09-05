@@ -219,13 +219,15 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .memo-document-header-letterhead { min-height: 30mm; padding: 0; border-bottom: 0; }
 .memo-document-sender-name { margin-top: 2px; font-size: 15px; line-height: 1.3; font-weight: 750; letter-spacing: .02em; }
 .memo-document-sender-contact { margin-top: 4px; color: #333; font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere; }
-.memo-document-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-top: 12px; }
+.memo-document-meta { margin-top: 12px; }
 .memo-document-reference { display: grid; gap: 2px; font-size: 12px; line-height: 1.35; }
 .memo-document-reference > div { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 5px; }
 .memo-document-reference span::after { content: ':'; }
 .memo-document-reference strong { font-weight: 600; overflow-wrap: anywhere; }
-.memo-document-delivery { max-width: 45%; padding: 3px 9px; border: 1px solid #111; font-size: 11px; line-height: 1.3; font-weight: 750; text-align: center; letter-spacing: .02em; overflow-wrap: anywhere; }
 .memo-document-recipient { margin-top: 11px; line-height: 1.38; }
+.memo-document-recipient-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+.memo-document-recipient-address { min-width: 0; }
+.memo-document-delivery { flex: 0 1 48%; max-width: 48%; padding: 6px 12px; border: 2px solid #111; font-size: 22px; line-height: 1.3; font-weight: 800; text-align: center; letter-spacing: .02em; overflow-wrap: anywhere; }
 .memo-document-recipient-company { font-size: 14px; font-weight: 750; }
 .memo-document-recipient-line { font-size: 12.5px; }
 .memo-document-attention { margin-top: 4px; font-size: 12.5px; }

@@ -29,16 +29,20 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
             <div><span>Date</span><strong>{memo.date}</strong></div>
             <div><span>Our Ref</span><strong>{memo.refNo}</strong></div>
           </div>
-          <div className="memo-document-delivery">{memo.delivery}</div>
         </div>
 
         <div className="memo-document-recipient">
-          <div className="memo-document-recipient-company">{memo.recipient.company}</div>
-          {memo.recipient.addressLines.map((line, index) => (
-            <div key={index} className="memo-document-recipient-line">
-              {line}
+          <div className="memo-document-recipient-row">
+            <div className="memo-document-recipient-address">
+              <div className="memo-document-recipient-company">{memo.recipient.company}</div>
+              {memo.recipient.addressLines.map((line, index) => (
+                <div key={index} className="memo-document-recipient-line">
+                  {line}
+                </div>
+              ))}
             </div>
-          ))}
+            <div className="memo-document-delivery">{memo.delivery}</div>
+          </div>
           <div className="memo-document-attention"><span>Attn:</span> {memo.recipient.attn}</div>
           <div className="memo-document-salutation">Dear Sir/Madam,</div>
           <div className="memo-document-project-details">

@@ -243,7 +243,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setContractClause('')
     setAddingEquipment(false)
     setCustomEquipment('')
-    update({ roughInput: template.body })
+    update({ subject: template.title, roughInput: template.body })
   }
 
   const buildTemplateBody = () => {
@@ -573,6 +573,9 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 2 && (
         <MemoModal title="內容與事件" className="memo-quick-generator" onClose={() => setModal(null)}>
+          <Field label="Subject／主旨">
+            <input placeholder="輸入本文件主旨" value={memo.subject} onChange={e => update({ subject: e.target.value })} />
+          </Field>
           <Field label="Site Memo 內容">
             <textarea className="memo-rough-input" rows={8} placeholder="選擇下方 Site Memo 範本後，內容會即時顯示於此；亦可直接編輯文字" value={memo.roughInput} onChange={e => update({ roughInput: e.target.value })} />
           </Field>
