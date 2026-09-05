@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import {
   Camera,
