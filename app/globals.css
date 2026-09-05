@@ -211,21 +211,51 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .memo-zoom img { max-width: 100%; max-height: 100%; }
 .memo-export-target { position: fixed; left: -10000px; top: 0; width: 210mm; }
 .memo-doc { display: flex; flex-direction: column; gap: 16px; }
-.a4-portrait-page { position: relative; width: 210mm; max-width: 100%; min-height: 297mm; box-sizing: border-box; background: #fff; color: #111; padding: 12mm 16mm; font-family: -apple-system, 'PingFang TC', 'Noto Sans CJK TC', sans-serif; overflow: hidden; }
+.a4-portrait-page { position: relative; width: 210mm; max-width: 100%; min-height: 297mm; box-sizing: border-box; background: #fff; color: #111; padding: 12mm 16mm; font-family: Arial, -apple-system, 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC', sans-serif; font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; text-rendering: optimizeLegibility; overflow: hidden; }
 .a4-portrait-page.has-letterhead { padding-top: 42mm; }
 .memo-letterhead-page { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
 .a4-portrait-page.has-letterhead > *:not(.memo-letterhead-page) { position: relative; z-index: 1; }
+.memo-document-header { min-height: 0; padding: 2px 0 8px; text-align: center; border-bottom: 2px solid #111; }
+.memo-document-header-letterhead { min-height: 30mm; padding: 0; border-bottom: 0; }
+.memo-document-sender-name { margin-top: 2px; font-size: 15px; line-height: 1.3; font-weight: 750; letter-spacing: .02em; }
+.memo-document-sender-contact { margin-top: 4px; color: #333; font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.memo-document-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-top: 12px; }
+.memo-document-reference { display: grid; gap: 2px; font-size: 12px; line-height: 1.35; }
+.memo-document-reference > div { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 5px; }
+.memo-document-reference span::after { content: ':'; }
+.memo-document-reference strong { font-weight: 600; overflow-wrap: anywhere; }
+.memo-document-delivery { max-width: 45%; padding: 3px 9px; border: 1px solid #111; font-size: 11px; line-height: 1.3; font-weight: 750; text-align: center; letter-spacing: .02em; overflow-wrap: anywhere; }
+.memo-document-recipient { margin-top: 11px; line-height: 1.38; }
+.memo-document-recipient-company { font-size: 14px; font-weight: 750; }
+.memo-document-recipient-line { font-size: 12.5px; }
+.memo-document-attention { margin-top: 4px; font-size: 12.5px; }
+.memo-document-attention span { font-weight: 700; }
+.memo-document-salutation { margin-top: 7px; font-size: 13px; }
+.memo-document-project-details { display: grid; gap: 1px; margin-top: 5px; font-size: 12.5px; line-height: 1.35; font-weight: 700; overflow-wrap: anywhere; }
+.memo-document-subject { margin: 14px 0 9px; padding: 0 0 6px; border-bottom: 1px solid #777; color: #111; font-size: 15px; line-height: 1.38; font-weight: 800; letter-spacing: .01em; text-align: left; overflow-wrap: anywhere; }
+.memo-document-body { font-size: 13px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.memo-document-body p { margin: 0 0 .65em; }
+.memo-document-legal { margin-top: 10px; padding-top: 8px; border-top: 1px solid #bbb; color: #292929; font-size: 12px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.memo-document-signature { margin-top: 18px; font-size: 12.5px; line-height: 1.4; }
+.memo-document-signature-company { margin-top: 2px; font-weight: 700; }
+.memo-document-signature-image { display: flex; height: 45px; align-items: flex-end; }
+.memo-document-signature-line { width: 180px; height: 1px; border-bottom: 1px dashed #888; }
+.memo-document-signature-footer { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.memo-document-signer-name { font-weight: 700; }
+.memo-document-signer-role { color: #333; font-size: 12px; }
+.memo-document-attachment-count { flex: none; color: #333; font-size: 11.5px; white-space: nowrap; }
+.memo-attachment-page-heading { margin-bottom: 3mm; padding-bottom: 2mm; border-bottom: 1px solid #777; font-size: 12px; line-height: 1.3; font-weight: 750; letter-spacing: .02em; }
 .memo-photo-page { height: 297mm; display: flex; flex-direction: column; }
-.memo-photo-page-heading { flex: 0 0 auto; display: flex; justify-content: space-between; gap: 12px; margin-bottom: 4mm; padding-bottom: 2mm; border-bottom: 2px solid #111; font-size: 14px; font-weight: 800; }
-.memo-photo-page-heading span:last-child { font-size: 11px; white-space: nowrap; }
+.memo-photo-page-heading { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4mm; padding-bottom: 2mm; border-bottom: 2px solid #111; font-size: 14px; line-height: 1.35; font-weight: 800; letter-spacing: .01em; }
+.memo-photo-page-heading span:last-child { color: #333; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
 .memo-photo-page-grid { min-height: 0; flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 4mm; }
 .memo-photo-record { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid #ccc; padding: 2mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
 .memo-photo-record-image { position: relative; min-height: 0; flex: 1; display: grid; place-items: center; overflow: hidden; background: #f2f2f2; }
 .memo-photo-record-image img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .memo-photo-record-missing { display: grid; width: 100%; height: 100%; min-height: 30mm; place-items: center; color: #666; font-size: 11px; }
 .memo-photo-record-time { position: absolute; top: 4px; right: 4px; max-width: calc(100% - 8px); overflow: hidden; background: rgba(220,38,38,.92); color: #fff; font-size: 10px; line-height: 1.3; padding: 2px 5px; border-radius: 3px; white-space: nowrap; text-overflow: ellipsis; }
-.memo-photo-record-tag { flex: 0 0 auto; min-height: 14px; margin-top: 1.5mm; font-size: 11.5px; line-height: 1.25; font-weight: 700; overflow-wrap: anywhere; }
-.memo-photo-record-note { flex: 0 0 auto; max-height: 3.6em; margin-top: .5mm; overflow: hidden; color: #444; font-size: 11px; line-height: 1.2; overflow-wrap: anywhere; }
+.memo-photo-record-tag { flex: 0 0 auto; min-height: 14px; margin-top: 1.5mm; font-size: 11.5px; line-height: 1.35; font-weight: 700; overflow-wrap: anywhere; }
+.memo-photo-record-note { flex: 0 0 auto; max-height: 3.9em; margin-top: .5mm; overflow: hidden; color: #444; font-size: 10.5px; line-height: 1.3; overflow-wrap: anywhere; }
 .memo-export-target .a4-portrait-page { box-shadow: none; }
 .memo-preview-scroll .a4-portrait-page { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 @media print {

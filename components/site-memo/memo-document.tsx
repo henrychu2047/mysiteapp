@@ -15,61 +15,63 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
     <div className="memo-doc">
       <section className={`a4-portrait-page ${letterhead ? 'has-letterhead' : ''}`}>
         {letterhead && <img className="memo-letterhead-page" src={letterhead.dataUrl} alt={letterhead.name} />}
-        <header style={{ textAlign: 'center', borderBottom: letterhead ? '0' : '2px solid #111', paddingBottom: '8px', minHeight: letterhead ? '30mm' : undefined }}>
-          {!letterhead && <div style={{ fontSize: '14.5px', fontWeight: 700, marginTop: '2px' }}>{memo.sender.jvName}</div>}
-          {!letterhead && <div style={{ fontSize: '11.5px', color: '#333', marginTop: '3px', lineHeight: 1.35 }}>
+        <header className={`memo-document-header ${letterhead ? 'memo-document-header-letterhead' : ''}`}>
+          {!letterhead && <div className="memo-document-sender-name">{memo.sender.jvName}</div>}
+          {!letterhead && <div className="memo-document-sender-contact">
             {memo.sender.address}
             <br />
             Tel: {memo.sender.tel}　Fax: {memo.sender.fax}　Email: {memo.sender.email}
           </div>}
         </header>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '12px' }}>
-          <div style={{ fontSize: '12px', lineHeight: 1.28 }}>
-            <div>Date: {memo.date}</div>
-            <div>Our Ref: {memo.refNo}</div>
+        <div className="memo-document-meta">
+          <div className="memo-document-reference">
+            <div><span>Date</span><strong>{memo.date}</strong></div>
+            <div><span>Our Ref</span><strong>{memo.refNo}</strong></div>
           </div>
-          <div style={{ fontSize: '11px', border: '1px solid #111', padding: '3px 8px', fontWeight: 700 }}>{memo.delivery}</div>
+          <div className="memo-document-delivery">{memo.delivery}</div>
         </div>
 
-        <div style={{ marginTop: '10px', lineHeight: 1.28 }}>
-          <div style={{ fontSize: '14px', fontWeight: 700 }}>{memo.recipient.company}</div>
+        <div className="memo-document-recipient">
+          <div className="memo-document-recipient-company">{memo.recipient.company}</div>
           {memo.recipient.addressLines.map((line, index) => (
-            <div key={index} style={{ fontSize: '13px' }}>
+            <div key={index} className="memo-document-recipient-line">
               {line}
             </div>
           ))}
-          <div style={{ fontSize: '13px', marginTop: '4px' }}>Attn: {memo.recipient.attn}</div>
-          <div style={{ fontSize: '13px', marginTop: '6px' }}>Dear Sir/Madam,</div>
-          <div style={{ fontSize: '13px', marginTop: '4px', fontWeight: 700 }}>{memo.sender.contractNo}</div>
-          <div style={{ fontSize: '13px', fontWeight: 700 }}>{memo.sender.projectTitle}</div>
-          <div style={{ fontSize: '13px', fontWeight: 700 }}>{memo.sender.substationTitle}</div>
+          <div className="memo-document-attention"><span>Attn:</span> {memo.recipient.attn}</div>
+          <div className="memo-document-salutation">Dear Sir/Madam,</div>
+          <div className="memo-document-project-details">
+            <div>{memo.sender.contractNo}</div>
+            <div>{memo.sender.projectTitle}</div>
+            <div>{memo.sender.substationTitle}</div>
+          </div>
         </div>
 
-        <h2 style={{ textAlign: 'left', fontSize: '15.5px', fontWeight: 800, margin: '14px 0 8px', color: '#111' }}>{memo.subject}</h2>
+        <h2 className="memo-document-subject">{memo.subject}</h2>
 
-        <div style={{ fontSize: '13.5px', lineHeight: 1.4, whiteSpace: 'pre-line' }}>{memo.roughInput}</div>
+        <div className="memo-document-body">{memo.roughInput}</div>
 
         {memo.legalClause.trim() && (
-          <div style={{ fontSize: '12.5px', lineHeight: 1.4, marginTop: '10px', whiteSpace: 'pre-line' }}>{memo.legalClause}</div>
+          <div className="memo-document-legal">{memo.legalClause}</div>
         )}
 
-        <div style={{ fontSize: '13px', marginTop: '18px' }}>
+        <div className="memo-document-signature">
           <div>Yours faithfully,</div>
-          <div style={{ fontWeight: 700, marginTop: '2px' }}>{memo.sender.jvName}</div>
-          <div style={{ height: '45px', display: 'flex', alignItems: 'flex-end' }}>
+          <div className="memo-document-signature-company">{memo.sender.jvName}</div>
+          <div className="memo-document-signature-image">
             {memo.signature ? (
               <img src={memo.signature || '/placeholder.svg'} alt="簽名" style={{ maxHeight: '45px' }} />
             ) : (
-              <div style={{ width: '180px', borderBottom: '1px dashed #888', height: '1px' }} />
+              <div className="memo-document-signature-line" />
             )}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div className="memo-document-signature-footer">
             <div>
-              <div style={{ fontWeight: 700 }}>{memo.sender.signerName}</div>
-              <div>{memo.sender.signerRole}</div>
+              <div className="memo-document-signer-name">{memo.sender.signerName}</div>
+              <div className="memo-document-signer-role">{memo.sender.signerRole}</div>
             </div>
-            <div style={{ fontSize: '12px' }}>附件: {attachmentCount + (memo.photos.length ? 1 : 0)} 份</div>
+            <div className="memo-document-attachment-count">附件：{attachmentCount + (memo.photos.length ? 1 : 0)} 份</div>
           </div>
         </div>
       </section>
@@ -77,7 +79,7 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
       {memo.pdfAttachments.flatMap((attachment, attachmentIndex) =>
         attachment.pages.map(page => (
           <section className="a4-portrait-page" key={`${attachment.id}-${page.pageNumber}`}>
-            <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
+            <div className="memo-attachment-page-heading">
               附件 {attachmentIndex + 1}　第 {page.pageNumber}/{attachment.totalPages} 頁
             </div>
             <img
