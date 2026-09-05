@@ -428,10 +428,10 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     { id: 1 as const, icon: Users, title: '收件人', hint: memo.recipient.company },
     { id: 2 as const, icon: FileText, title: '內容與事件', hint: memo.roughInput ? '已輸入 Site Memo 內容' : '尚未輸入內容' },
     { id: 3 as const, icon: Camera, title: '巡查照片', hint: `${memo.photos.length} 張` },
-    { id: 4 as const, icon: Paperclip, title: '附件', hint: `${memo.pdfAttachments.length} 份圖紙` },
-    { id: 5 as const, icon: Boxes, title: '備用槽', hint: `EOT ${memo.spareModule.delayDays} 日` },
     { id: 6 as const, icon: PenLine, title: '發件人資料', hint: memo.signature ? '已簽名' : '未簽名' },
     { id: 7 as const, icon: FileText, title: '信紙', hint: isRegistered ? (letterheads.find(item => item.id === memo.letterheadId)?.name || '未選擇') : '註冊版專有功能' },
+    { id: 4 as const, icon: Paperclip, title: '附件', hint: `${memo.pdfAttachments.length} 份圖紙` },
+    { id: 5 as const, icon: Boxes, title: '備用槽', hint: `EOT ${memo.spareModule.delayDays} 日` },
   ]
 
   return (
