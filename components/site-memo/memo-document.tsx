@@ -10,7 +10,6 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
       <section className={`a4-portrait-page ${letterhead ? 'has-letterhead' : ''}`}>
         {letterhead && <img className="memo-letterhead-page" src={letterhead.dataUrl} alt={letterhead.name} />}
         <header style={{ textAlign: 'center', borderBottom: letterhead ? '0' : '2px solid #111', paddingBottom: '8px', minHeight: letterhead ? '30mm' : undefined }}>
-          {!letterhead && <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '.06em', color: '#111' }}>SOUTHA</div>}
           {!letterhead && <div style={{ fontSize: '14.5px', fontWeight: 700, marginTop: '2px' }}>{memo.sender.jvName}</div>}
           {!letterhead && <div style={{ fontSize: '11.5px', color: '#333', marginTop: '3px', lineHeight: 1.35 }}>
             {memo.sender.address}
