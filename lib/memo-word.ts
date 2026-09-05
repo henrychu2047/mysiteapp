@@ -11,13 +11,13 @@ const escapeXml = (value: string) => value
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&apos;')
 
-const paragraph = (text = '', options: { bold?: boolean; size?: number; align?: 'left' | 'center' | 'right'; after?: number; pageBreakBefore?: boolean } = {}) => {
+const paragraph = (text = '', options: { bold?: boolean; size?: number; align?: 'left' | 'center' | 'right'; after?: number; pageBreakBefore?: boolean; border?: boolean } = {}) => {
   const properties = [
     options.align ? `<w:jc w:val="${options.align}"/>` : '',
     `<w:spacing w:line="330" w:lineRule="auto" w:after="${options.after ?? 80}"/>`,
     options.pageBreakBefore ? '<w:pageBreakBefore/>' : '',
   ].join('')
-  return `<w:p><w:pPr>${properties}</w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Microsoft JhengHei"/>${options.bold ? '<w:b/>' : ''}<w:sz w:val="${options.size ?? 22}"/><w:szCs w:val="${options.size ?? 22}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text || ' ')}</w:t></w:r></w:p>`
+  return `<w:p><w:pPr>${properties}</w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Microsoft JhengHei"/>${options.bold ? '<w:b/>' : ''}${options.border ? '<w:bdr w:val="single" w:sz="16" w:space="1" w:color="111111"/>' : ''}<w:sz w:val="${options.size ?? 22}"/><w:szCs w:val="${options.size ?? 22}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text || ' ')}</w:t></w:r></w:p>`
 }
 
 const pageBreak = () => '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
@@ -27,8 +27,8 @@ const recipientTable = (memo: Memo) => {
     paragraph(memo.recipient.company, { bold: true, size: 24, after: 40 }),
     ...memo.recipient.addressLines.map(line => paragraph(line, { size: 21, after: 20 })),
   ].join('')
-  const delivery = paragraph(memo.delivery, { bold: true, size: 38, align: 'center', after: 0 })
-  return `<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="pct"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="5700"/><w:gridCol w:w="3300"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="5700" w:type="dxa"/><w:tcMar><w:left w:w="0" w:type="dxa"/><w:right w:w="160" w:type="dxa"/></w:tcMar></w:tcPr>${address}</w:tc><w:tc><w:tcPr><w:tcW w:w="3300" w:type="dxa"/><w:vAlign w:val="top"/><w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar><w:tcBorders><w:top w:val="single" w:sz="16" w:color="111111"/><w:left w:val="single" w:sz="16" w:color="111111"/><w:bottom w:val="single" w:sz="16" w:color="111111"/><w:right w:val="single" w:sz="16" w:color="111111"/></w:tcBorders></w:tcPr>${delivery}</w:tc></w:tr></w:tbl>`
+  const delivery = paragraph(memo.delivery, { bold: true, size: 38, align: 'right', after: 0, border: true })
+  return `<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="pct"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="5700"/><w:gridCol w:w="3300"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="5700" w:type="dxa"/><w:tcMar><w:left w:w="0" w:type="dxa"/><w:right w:w="160" w:type="dxa"/></w:tcMar></w:tcPr>${address}</w:tc><w:tc><w:tcPr><w:tcW w:w="3300" w:type="dxa"/><w:vAlign w:val="top"/><w:tcMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tcMar></w:tcPr>${delivery}</w:tc></w:tr></w:tbl>`
 }
 
 const drawing = (image: WordImage, width: number, height: number, description: string) => {
