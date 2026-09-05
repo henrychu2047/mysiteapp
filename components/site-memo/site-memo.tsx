@@ -38,7 +38,7 @@ import {
   renderPdfToPages,
 } from './memo-data'
 import { MemoDocument } from './memo-document'
-import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
+import { photoSourceDescription, resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 
 type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
 type MemoTemplateId = 'handover-delay' | 'damage-backcharge' | 'design-conflict' | 'progress-warning' | 'completion-handover'
@@ -305,7 +305,15 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const addPhotoReferences = (photoIds: string[]) => {
     const additions: MemoPhoto[] = photoIds.map((photoId, index) => {
       const source = photoSources[photoId]
-      return { id: `P-${Date.now()}-${index}`, name: source ? `${source.category} 相片` : '相簿相片', tag: '', time: nowStamp(), customNote: '', photoId }
+      const sourceMatter = source?.tags['事項']
+      return {
+        id: `P-${Date.now()}-${index}`,
+        name: source ? `${source.category} 相片` : '相簿相片',
+        tag: sourceMatter && sourceMatter !== 'N/A' && generalPhotoTags.includes(sourceMatter) ? sourceMatter : '',
+        time: source ? new Date(source.createdAt).toLocaleString('zh-HK', { hour12: false }) : nowStamp(),
+        customNote: source ? photoSourceDescription(source) : '',
+        photoId,
+      }
     })
     setMemo(current => ({ ...current, photos: [...current.photos, ...additions] }))
   }
