@@ -1,9 +1,15 @@
 import type { Memo } from './memo-data'
 import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 
+const PHOTOS_PER_PAGE = 4
+
 // A4 portrait document shared by live preview, PDF export and history preview.
 export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage }: { memo: Memo; letterhead?: { name: string; dataUrl: string }; photoSources?: Record<string, PhotoSource>; onZoomImage?: (url: string) => void }) {
   const attachmentCount = memo.pdfAttachments.reduce((total, a) => total + Math.max(a.totalPages, a.pages.length), 0)
+  const photoPages = Array.from(
+    { length: Math.ceil(memo.photos.length / PHOTOS_PER_PAGE) },
+    (_, pageIndex) => memo.photos.slice(pageIndex * PHOTOS_PER_PAGE, (pageIndex + 1) * PHOTOS_PER_PAGE),
+  )
 
   return (
     <div className="memo-doc">
@@ -85,39 +91,31 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
         )),
       )}
 
-      {memo.photos.length > 0 && (
-        <section className="a4-portrait-page">
-          <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '10px', borderBottom: '2px solid #111', paddingBottom: '6px' }}>
-            巡查照片記錄 (Photo Record)
+      {photoPages.map((photos, pageIndex) => (
+        <section className="a4-portrait-page memo-photo-page" key={`photo-page-${pageIndex}`}>
+          <div className="memo-photo-page-heading">
+            <span>巡查照片記錄 (Photo Record)</span>
+            <span>第 {pageIndex + 1}/{photoPages.length} 頁</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {memo.photos.map(photo => {
+          <div className="memo-photo-page-grid">
+            {photos.map(photo => {
               const source = resolveAttachmentPhoto(photo.photoId, photo.previewUrl, photoSources)
-              return <div key={photo.id} style={{ border: '1px solid #ddd', padding: '6px' }}>
-                <div style={{ position: 'relative' }}>
-                  {source ? <img src={source} alt={photo.tag || photo.name} style={{ width: '100%', display: 'block' }} /> : <div style={{ minHeight: '96px', display: 'grid', placeItems: 'center', background: '#eee', color: '#666', fontSize: '11px' }}>相片已從相簿移除</div>}
+              return <div className="memo-photo-record" key={photo.id}>
+                <div className="memo-photo-record-image">
+                  {source ? <img src={source} alt={photo.tag || photo.name} /> : <div className="memo-photo-record-missing">相片已從相簿移除</div>}
                   <span
-                    style={{
-                      position: 'absolute',
-                      top: '4px',
-                      right: '4px',
-                      background: 'rgba(220,38,38,.92)',
-                      color: '#fff',
-                      fontSize: '10px',
-                      padding: '2px 5px',
-                      borderRadius: '3px',
-                    }}
+                    className="memo-photo-record-time"
                   >
                     {photo.time}
                   </span>
                 </div>
-                <div style={{ fontSize: '11.5px', marginTop: '5px', fontWeight: 700 }}>{photo.tag}</div>
-                {photo.customNote ? <div style={{ fontSize: '11px', color: '#444' }}>{photo.customNote}</div> : null}
+                <div className="memo-photo-record-tag">{photo.tag}</div>
+                {photo.customNote ? <div className="memo-photo-record-note">{photo.customNote}</div> : null}
               </div>
             })}
           </div>
         </section>
-      )}
+      ))}
     </div>
   )
 }
