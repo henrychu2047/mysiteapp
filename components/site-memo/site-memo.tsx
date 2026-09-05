@@ -69,7 +69,7 @@ const MEMO_CONTRACT_CLAUSES = [
   { label: '責任及費用一併保留', text: '本司保留按照合約申請工期延長（EOT）及追討相關費用、損失之全部權利。' },
 ]
 
-export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered, generalPhotoTags, photoSources, onSelectAlbumPhotos, onOpenCamera }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean; generalPhotoTags: string[]; photoSources: Record<string, PhotoSource>; onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void; onOpenCamera: (onCapture: (photoId: string) => void) => void }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered, generalPhotoTags, photoSources, onSelectAlbumPhotos, onOpenCamera }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean; generalPhotoTags: string[]; photoSources: Record<string, PhotoSource>; onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void; onOpenCamera: (onCapture: (photo: PhotoSource) => void) => void }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [letterheads, setLetterheads] = useState<MemoLetterhead[]>([])
   const [letterheadName, setLetterheadName] = useState('')
@@ -302,9 +302,9 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     }
   }
 
-  const addPhotoReferences = (photoIds: string[]) => {
+  const addPhotoReferences = (photoIds: string[], capturedSources: Record<string, PhotoSource> = {}) => {
     const additions: MemoPhoto[] = photoIds.map((photoId, index) => {
-      const source = photoSources[photoId]
+      const source = capturedSources[photoId] || photoSources[photoId]
       const sourceMatter = source?.tags['事項']
       return {
         id: `P-${Date.now()}-${index}`,
@@ -544,7 +544,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
       {modal === 3 && (
         <MemoModal title="巡查照片" onClose={() => setModal(null)}>
-          <div className="memo-media-actions"><button className="memo-upload" type="button" onClick={() => onSelectAlbumPhotos(addPhotoReferences)}><Upload size={18} />從相簿選取</button><button className="memo-upload" type="button" onClick={() => onOpenCamera(photoId => addPhotoReferences([photoId]))}><Camera size={18} />連續拍攝</button></div>
+          <div className="memo-media-actions"><button className="memo-upload" type="button" onClick={() => onSelectAlbumPhotos(addPhotoReferences)}><Upload size={18} />從相簿選取</button><button className="memo-upload" type="button" onClick={() => onOpenCamera(photo => addPhotoReferences([photo.id], { [photo.id]: photo }))}><Camera size={18} />連續拍攝</button></div>
           {memo.photos.map(photo => (
             <div className="memo-photo-edit" key={photo.id}>
               {resolveAttachmentPhoto(photo.photoId, photo.previewUrl, photoSources) ? <img src={resolveAttachmentPhoto(photo.photoId, photo.previewUrl, photoSources)} alt={photo.name} /> : <div className="attachment-unavailable">相片已從相簿移除</div>}

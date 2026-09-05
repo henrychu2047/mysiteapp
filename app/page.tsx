@@ -40,7 +40,7 @@ import {
   saveStoredPhotos,
   type Photo,
 } from '@/lib/photo-storage'
-import { photoSourceMap } from '@/lib/photo-attachments'
+import { photoSourceMap, type PhotoSource } from '@/lib/photo-attachments'
 import { PhotoPicker } from '@/components/photo/photo-picker'
 import { ContinuousCameraModal } from '@/components/photo/continuous-camera-modal'
 
@@ -101,7 +101,7 @@ export default function Page() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [saveToast, setSaveToast] = useState('')
   const [photoPickerRequest, setPhotoPickerRequest] = useState<((photoIds: string[]) => void) | null>(null)
-  const [cameraRequest, setCameraRequest] = useState<((photoId: string) => void) | null>(null)
+  const [cameraRequest, setCameraRequest] = useState<((photo: PhotoSource) => void) | null>(null)
   const [cameraInitialCategory, setCameraInitialCategory] = useState<string | undefined>()
   const [cameraAutoStart, setCameraAutoStart] = useState(false)
   useEffect(() => {
@@ -314,14 +314,14 @@ export default function Page() {
   }
   const openPhotoPicker = (onSelect: (photoIds: string[]) => void) => setPhotoPickerRequest(() => onSelect)
   const rememberCameraCategory = (category: string) => setProjects(current => current.map(project => project.id === currentProjectId ? { ...project, settings: { ...createProjectSettings(), ...project.settings, lastCameraCategory: category } } : project))
-  const openSharedCamera = (onCapture: (photoId: string) => void, initialCategory?: string, autoStart = false) => {
+  const openSharedCamera = (onCapture: (photo: PhotoSource) => void, initialCategory?: string, autoStart = false) => {
     setCameraInitialCategory(initialCategory)
     setCameraAutoStart(autoStart)
     setCameraRequest(() => onCapture)
   }
   const sharedMediaOverlays = <>
     {photoPickerRequest && <PhotoPicker photos={projectPhotos} onConfirm={photoIds => { photoPickerRequest(photoIds); setPhotoPickerRequest(null) }} onClose={() => setPhotoPickerRequest(null)} />}
-    {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} tags={tags} visibleTags={visibleTags} tagOptions={{ ...effectiveSettingsOptions, ...structureOptions }} note={note} noteHistory={noteHistory} selectedNotes={selectedNotes} projectName={currentProject.name} photos={projectPhotos} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onSelectTag={(label, value) => setTags(current => ({ ...current, [label]: value }))} onNoteChange={setNote} onRememberNote={rememberNote} onToggleRecentNote={item => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} onToggleVisibleTag={label => setVisibleTags(current => current.includes(label) ? current.filter(item => item !== label) : [...current, label])} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo.id) }} onClose={() => { setPicker(null); setCategoryPickerRequest(null); setCameraRequest(null); setCameraAutoStart(false) }} />}
+    {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} tags={tags} visibleTags={visibleTags} tagOptions={{ ...effectiveSettingsOptions, ...structureOptions }} note={note} noteHistory={noteHistory} selectedNotes={selectedNotes} projectName={currentProject.name} photos={projectPhotos} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onSelectTag={(label, value) => setTags(current => ({ ...current, [label]: value }))} onNoteChange={setNote} onRememberNote={rememberNote} onToggleRecentNote={item => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} onToggleVisibleTag={label => setVisibleTags(current => current.includes(label) ? current.filter(item => item !== label) : [...current, label])} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo) }} onClose={() => { setPicker(null); setCategoryPickerRequest(null); setCameraRequest(null); setCameraAutoStart(false) }} />}
   </>
   const addProject = () => {
     const name = newProjectName.trim()
@@ -410,13 +410,13 @@ export default function Page() {
     }
   }
 
-  if (appMode === 'notebook') return <><Notebook projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(onCapture)} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />{sharedMediaOverlays}</>
+  if (appMode === 'notebook') return <><Notebook projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />{sharedMediaOverlays}</>
 
   if (appMode === 'database') return <Database projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />
 
   if (appMode === 'memo') return <><SiteMemo generalPhotoTags={effectiveSettingsOptions['事項'] || []} isRegistered={isRegistered} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => { const categoryNames = categories.map(category => category.name); const rememberedCategory = currentProject.settings?.lastCameraCategory; openSharedCamera(onCapture, rememberedCategory && categoryNames.includes(rememberedCategory) ? rememberedCategory : categoryNames[0], true) }} onBack={() => setAppMode('home')} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('settings'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('settings'); setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } }} />{sharedMediaOverlays}</>
 
-  if (appMode === 'handover') return <><Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(onCapture)} onBack={() => setAppMode('home')} onOpenPhotoSettings={label => { setSettingsLabel(label || null); setAppMode('photo'); setTab('settings'); setActive(null) }} onPhotoSettingsBack={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover') }} onStructureChange={handleStructureChange} onResponsibleEmailChange={setResponsibleEmail} isRegistered={isRegistered} onUpdateApp={updateApp} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') { setHandoverView('manage') } }} />{sharedMediaOverlays}</>
+  if (appMode === 'handover') return <><Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={() => setAppMode('home')} onOpenPhotoSettings={label => { setSettingsLabel(label || null); setAppMode('photo'); setTab('settings'); setActive(null) }} onPhotoSettingsBack={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover') }} onStructureChange={handleStructureChange} onResponsibleEmailChange={setResponsibleEmail} isRegistered={isRegistered} onUpdateApp={updateApp} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') { setHandoverView('manage') } }} />{sharedMediaOverlays}</>
 
   const navMode = appMode as string
 
