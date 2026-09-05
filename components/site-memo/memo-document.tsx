@@ -74,11 +74,11 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
         </div>
       </section>
 
-      {memo.pdfAttachments.flatMap(attachment =>
+      {memo.pdfAttachments.flatMap((attachment, attachmentIndex) =>
         attachment.pages.map(page => (
           <section className="a4-portrait-page" key={`${attachment.id}-${page.pageNumber}`}>
             <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
-              附件圖紙: {attachment.title || attachment.fileName}
+              附件 {attachmentIndex + 1}　{attachment.title || attachment.fileName}
               {attachment.dwgNo ? `　(DWG: ${attachment.dwgNo})` : ''}　第 {page.pageNumber}/{attachment.totalPages} 頁
             </div>
             <img
