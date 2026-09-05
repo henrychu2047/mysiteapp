@@ -8,7 +8,6 @@ import {
   FileText,
   Camera,
   Paperclip,
-  Boxes,
   PenLine,
   Eye,
   Download,
@@ -42,7 +41,7 @@ import { MemoDocument } from './memo-document'
 import { photoSourceDescription, resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 import { exportMemoWord } from '@/lib/memo-word'
 
-type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
+type ModalId = 1 | 2 | 3 | 4 | 6 | 7 | null
 type MemoTemplateId = 'handover-delay' | 'damage-backcharge' | 'design-conflict' | 'progress-warning' | 'completion-handover'
 
 type AppMode = 'home' | 'photo' | 'memo' | 'handover' | 'reserve' | 'about' | 'backup'
@@ -187,9 +186,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setMemo(current => ({ ...current, recipient: { ...current.recipient, ...partial } }))
   const updateSender = (partial: Partial<Memo['sender']>) =>
     setMemo(current => ({ ...current, sender: { ...current.sender, ...partial } }))
-  const updateSpare = (partial: Partial<Memo['spareModule']>) =>
-    setMemo(current => ({ ...current, spareModule: { ...current.spareModule, ...partial } }))
-
   async function addLetterhead(files: FileList | null) {
     if (!files?.[0] || !isRegistered) return
     setLetterheadBusy(true)
@@ -523,7 +519,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     { id: 6 as const, icon: PenLine, title: '發件人資料', hint: memo.signature ? '已簽名' : '未簽名' },
     { id: 7 as const, icon: FileText, title: '信紙', hint: isRegistered ? (letterheads.find(item => item.id === memo.letterheadId)?.name || '未選擇') : '註冊版專有功能' },
     { id: 4 as const, icon: Paperclip, title: '附件', hint: `${memo.pdfAttachments.length} 份圖紙` },
-    { id: 5 as const, icon: Boxes, title: '備用槽', hint: `EOT ${memo.spareModule.delayDays} 日` },
   ]
 
   return (
@@ -701,24 +696,6 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               </button>
             </div>
           ))}
-        </MemoModal>
-      )}
-
-      {modal === 5 && (
-        <MemoModal title={memo.spareModule.title} onClose={() => setModal(null)}>
-          <Field label="工期延誤天數 (EOT)">
-            <input
-              type="number"
-              value={memo.spareModule.delayDays}
-              onChange={e => updateSpare({ delayDays: Number(e.target.value) || 0 })}
-            />
-          </Field>
-          <Field label="關鍵路徑描述">
-            <textarea rows={3} value={memo.spareModule.criticalPath} onChange={e => updateSpare({ criticalPath: e.target.value })} />
-          </Field>
-          <Field label="備註">
-            <textarea rows={3} value={memo.spareModule.notes} onChange={e => updateSpare({ notes: e.target.value })} />
-          </Field>
         </MemoModal>
       )}
 

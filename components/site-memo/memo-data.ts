@@ -7,8 +7,6 @@ export type MemoSender = {
   jvName: string; address: string; tel: string; fax: string; email: string
   contractNo: string; projectTitle: string; substationTitle: string; signerName: string; signerRole: string
 }
-export type MemoSpare = { title: string; delayDays: number; criticalPath: string; notes: string }
-
 export type Memo = {
   id: string
   refNo: string
@@ -24,7 +22,6 @@ export type Memo = {
   photos: MemoPhoto[]
   pdfAttachments: MemoPdfAttachment[]
   letterheadId: string
-  spareModule: MemoSpare
   status: string
   signature: string | null
 }
@@ -72,12 +69,6 @@ export function createDefaultMemo(): Memo {
     photos: [],
     pdfAttachments: [],
     letterheadId: '',
-    spareModule: {
-      title: '備用槽 (遲啲再加功能)',
-      delayDays: 14,
-      criticalPath: '水缸吊運與水泵通水調試',
-      notes: '預留自訂擴充模組，現已內置工期延誤 (EOT) 預警評估。',
-    },
     status: '待大判回覆交場',
     signature: null,
   }
@@ -127,13 +118,16 @@ function writeMemoKey(key: string, value: unknown) {
 const projectKey = (projectId: string, type: 'current' | 'history' | 'letterheads') => `${type}:${projectId || DEFAULT_PROJECT_ID}`
 
 function normalizeMemo(memo: Memo): Memo {
-  return { ...memo, photos: Array.isArray(memo.photos) ? memo.photos.map(photo => ({ ...photo, previewUrl: typeof photo.previewUrl === 'string' ? photo.previewUrl : undefined, photoId: typeof photo.photoId === 'string' ? photo.photoId : undefined })) : [] }
+  const { spareModule: _spareModule, ...memoWithoutSpare } = memo as Memo & { spareModule?: unknown }
+  return { ...memoWithoutSpare, photos: Array.isArray(memo.photos) ? memo.photos.map(photo => ({ ...photo, previewUrl: typeof photo.previewUrl === 'string' ? photo.previewUrl : undefined, photoId: typeof photo.photoId === 'string' ? photo.photoId : undefined })) : [] }
 }
 
+const normalizeHistory = (records: HistoryRecord[]) => records.map(record => ({ ...record, memo: normalizeMemo(record.memo) }))
+
 export const loadMemo = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<Memo>(projectKey(projectId, 'current')).then(stored => stored || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<Memo>('current') : null)).then(stored => stored ? normalizeMemo(stored) : null)
-export const saveMemo = (projectId: string, memo: Memo) => writeMemoKey(projectKey(projectId, 'current'), memo)
-export const loadHistory = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<HistoryRecord[]>(projectKey(projectId, 'history')).then(records => records || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<HistoryRecord[]>('history') : null)).then(records => (records || []).map(record => ({ ...record, memo: normalizeMemo(record.memo) })))
-export const saveHistory = (projectId: string, records: HistoryRecord[]) => writeMemoKey(projectKey(projectId, 'history'), records)
+export const saveMemo = (projectId: string, memo: Memo) => writeMemoKey(projectKey(projectId, 'current'), normalizeMemo(memo))
+export const loadHistory = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<HistoryRecord[]>(projectKey(projectId, 'history')).then(records => records || (projectId === DEFAULT_PROJECT_ID ? readMemoKey<HistoryRecord[]>('history') : null)).then(records => normalizeHistory(records || []))
+export const saveHistory = (projectId: string, records: HistoryRecord[]) => writeMemoKey(projectKey(projectId, 'history'), normalizeHistory(records))
 export const loadLetterheads = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<MemoLetterhead[]>(projectKey(projectId, 'letterheads')).then(records => records || [])
 export const saveLetterheads = (projectId: string, records: MemoLetterhead[]) => writeMemoKey(projectKey(projectId, 'letterheads'), records)
 
@@ -142,8 +136,8 @@ export async function saveMemoState(projectId: string, memo: Memo, history: Hist
   return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(MEMO_STORE, 'readwrite')
     const store = transaction.objectStore(MEMO_STORE)
-    store.put({ key: projectKey(projectId, 'current'), value: memo })
-    store.put({ key: projectKey(projectId, 'history'), value: history })
+    store.put({ key: projectKey(projectId, 'current'), value: normalizeMemo(memo) })
+    store.put({ key: projectKey(projectId, 'history'), value: normalizeHistory(history) })
     store.put({ key: projectKey(projectId, 'letterheads'), value: letterheads })
     transaction.oncomplete = () => { db.close(); resolve() }
     transaction.onerror = () => { db.close(); reject(transaction.error) }
@@ -166,8 +160,8 @@ export async function loadAllMemos(): Promise<Record<string, MemoBackup>> {
         const type = match ? match[1] : legacyType as 'current' | 'history'
         const projectId = match ? match[2] : DEFAULT_PROJECT_ID
         result[projectId] ||= { memo: null, history: [], letterheads: [] }
-        if (type === 'current') result[projectId].memo = row.value as Memo
-        else if (type === 'history') result[projectId].history = Array.isArray(row.value) ? row.value as HistoryRecord[] : []
+        if (type === 'current') result[projectId].memo = normalizeMemo(row.value as Memo)
+        else if (type === 'history') result[projectId].history = Array.isArray(row.value) ? normalizeHistory(row.value as HistoryRecord[]) : []
         else result[projectId].letterheads = Array.isArray(row.value) ? row.value as MemoLetterhead[] : []
       }
       db.close()
@@ -184,8 +178,8 @@ export async function saveAllMemos(map: Record<string, { memo?: Memo | null; his
     const store = transaction.objectStore(MEMO_STORE)
     store.clear()
     for (const [projectId, value] of Object.entries(map)) {
-      if (value.memo) store.put({ key: projectKey(projectId, 'current'), value: value.memo })
-      store.put({ key: projectKey(projectId, 'history'), value: value.history || [] })
+      if (value.memo) store.put({ key: projectKey(projectId, 'current'), value: normalizeMemo(value.memo) })
+      store.put({ key: projectKey(projectId, 'history'), value: normalizeHistory(value.history || []) })
       store.put({ key: projectKey(projectId, 'letterheads'), value: value.letterheads || [] })
     }
     transaction.oncomplete = () => { db.close(); resolve() }
