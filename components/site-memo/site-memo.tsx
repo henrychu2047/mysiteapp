@@ -357,28 +357,58 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     }
   }
 
-  // Export any memo to PDF via html2pdf.js using the hidden render target.
+  // Capture each A4 sheet separately so document gaps never affect PDF pagination.
   useEffect(() => {
     if (!pendingExport || !exportRef.current) return
     const exportTarget = exportRef.current
     let cancelled = false
     const run = async () => {
-      const html2pdf = (await import('html2pdf.js')).default
-      await new Promise(resolve => setTimeout(resolve, 120))
-      if (cancelled) return
-      await html2pdf()
-        .set({
-          margin: 0,
-          filename: pendingExport.fileName,
-          image: { type: 'jpeg', quality: 0.96 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+      await document.fonts?.ready
+      const images = Array.from(exportTarget.querySelectorAll('img'))
+      await Promise.all(images.map(image => {
+        if (image.complete && image.naturalWidth > 0) return Promise.resolve()
+        return new Promise<void>(resolve => {
+          image.addEventListener('load', () => resolve(), { once: true })
+          image.addEventListener('error', () => resolve(), { once: true })
         })
-        .from(exportTarget)
-        .save()
+      }))
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      if (cancelled) return
+
+      const pages = Array.from(exportTarget.querySelectorAll<HTMLElement>('.a4-portrait-page'))
+      if (!pages.length) throw new Error('找不到可導出的 A4 頁面')
+
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+      for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+        if (cancelled) return
+        const page = pages[pageIndex]
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          width: page.offsetWidth,
+          height: page.offsetHeight,
+          windowWidth: page.offsetWidth,
+          windowHeight: page.offsetHeight,
+        })
+        if (pageIndex > 0) pdf.addPage('a4', 'portrait')
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, 210, 297, undefined, 'FAST')
+      }
+      pdf.save(pendingExport.fileName)
       if (!cancelled) setPendingExport(null)
     }
-    run()
+    run().catch(error => {
+      console.error('Site Memo PDF export failed:', error)
+      if (!cancelled) {
+        setPendingExport(null)
+        alert(`PDF 導出失敗：${error instanceof Error ? error.message : '請稍後再試'}`)
+      }
+    })
     return () => {
       cancelled = true
     }

@@ -256,7 +256,8 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .memo-photo-record-time { position: absolute; top: 4px; right: 4px; max-width: calc(100% - 8px); overflow: hidden; background: rgba(220,38,38,.92); color: #fff; font-size: 10px; line-height: 1.3; padding: 2px 5px; border-radius: 3px; white-space: nowrap; text-overflow: ellipsis; }
 .memo-photo-record-tag { flex: 0 0 auto; min-height: 14px; margin-top: 1.5mm; font-size: 11.5px; line-height: 1.35; font-weight: 700; overflow-wrap: anywhere; }
 .memo-photo-record-note { flex: 0 0 auto; max-height: 3.9em; margin-top: .5mm; overflow: hidden; color: #444; font-size: 10.5px; line-height: 1.3; overflow-wrap: anywhere; }
-.memo-export-target .a4-portrait-page { box-shadow: none; }
+.memo-export-target .memo-doc { gap: 0; }
+.memo-export-target .a4-portrait-page { width: 210mm; max-width: none; height: 297mm; min-height: 297mm; box-shadow: none; }
 .memo-preview-scroll .a4-portrait-page { box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 @media print {
   .memo-app > *:not(.memo-preview-overlay), .memo-topbar, .memo-actions, .memo-preview-bar { display: none !important; }
