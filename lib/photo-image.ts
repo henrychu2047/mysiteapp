@@ -1,3 +1,5 @@
+import { createPhotoStampContent, PHOTO_STAMP_STYLE } from '@/lib/photo-stamp'
+
 export function dataUrlToBlob(dataUrl: string) {
   const [header, encoded] = dataUrl.split(',')
   const binary = atob(encoded)
@@ -23,7 +25,7 @@ export function imageAsJpeg(dataUrl: string) {
   })
 }
 
-export function stampImage(file: File, category: string, tags: Record<string, string> = {}, note = '', projectName = '') {
+export function stampImage(file: File, category: string, tags: Record<string, string> = {}, note = '', projectName = '', visibleTags?: string[]) {
   return new Promise<{ stamped: string; clean: string; originalBlob: Blob; thumbnailBlob: Blob }>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -43,19 +45,30 @@ export function stampImage(file: File, category: string, tags: Record<string, st
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
         const cleanDataUrl = canvas.toDataURL('image/jpeg', 0.82)
         const originalBlob = dataUrlToBlob(canvas.toDataURL('image/jpeg', 0.78))
-        const detailLines = Object.entries(tags).filter(([, value]) => value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`)
-        if (note.trim()) detailLines.push(`文字備註: ${note.trim()}`)
-        const lines = [`${projectName ? `${projectName} | ` : ''}${category} | ${new Date().toLocaleString('zh-HK', { hour12: false })}`, ...detailLines]
+        const stamp = createPhotoStampContent({ category, tags, visibleTags, note, projectName })
+        const rows = [...stamp.rows, ...(stamp.note ? [{ label: '文字備註', value: stamp.note }] : [])]
+        const lines = [stamp.heading, ...rows.map(row => `${row.label}: ${row.value}`)]
         const size = Math.max(18, Math.round(canvas.width / 48))
         const lineHeight = size * 1.35
         ctx.font = `600 ${size}px Arial, sans-serif`
         const width = Math.min(canvas.width * 0.92, Math.max(...lines.map(line => ctx.measureText(line).width)) + size * 1.4)
         const height = lineHeight * lines.length + size * 0.8
-        ctx.fillStyle = 'rgba(10, 17, 24, .78)'
+        ctx.fillStyle = PHOTO_STAMP_STYLE.background
         ctx.fillRect(canvas.width - width, canvas.height - height, width, height)
-        ctx.fillStyle = '#fff'
         ctx.textBaseline = 'top'
-        lines.forEach((line, index) => ctx.fillText(line, canvas.width - width + size * 0.7, canvas.height - height + size * 0.4 + index * lineHeight, width - size))
+        const textX = canvas.width - width + size * 0.7
+        const textY = canvas.height - height + size * 0.4
+        ctx.fillStyle = PHOTO_STAMP_STYLE.text
+        ctx.fillText(stamp.heading, textX, textY, width - size)
+        rows.forEach((row, index) => {
+          const y = textY + (index + 1) * lineHeight
+          const label = `${row.label}: `
+          ctx.fillStyle = PHOTO_STAMP_STYLE.label
+          ctx.fillText(label, textX, y, width - size)
+          const labelWidth = ctx.measureText(label).width
+          ctx.fillStyle = PHOTO_STAMP_STYLE.text
+          ctx.fillText(row.value, textX + labelWidth, y, width - size - labelWidth)
+        })
         const stamped = canvas.toDataURL('image/jpeg', 0.78)
         const thumbnailCanvas = document.createElement('canvas')
         const thumbnailWidth = Math.min(960, canvas.width)
