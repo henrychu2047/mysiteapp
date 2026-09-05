@@ -388,6 +388,14 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
         if (cancelled) return
         const page = pages[pageIndex]
+        const pageRect = page.getBoundingClientRect()
+        const deliveryElement = pageIndex === 0 ? page.querySelector<HTMLElement>('.memo-document-delivery') : null
+        const deliveryRect = deliveryElement?.getBoundingClientRect()
+        const deliveryPosition = deliveryRect ? {
+          right: ((deliveryRect.right - pageRect.left) / pageRect.width) * 210,
+          top: ((deliveryRect.top - pageRect.top) / pageRect.height) * 297,
+          height: (deliveryRect.height / pageRect.height) * 297,
+        } : null
         const canvas = await html2canvas(page, {
           scale: 2,
           useCORS: true,
@@ -397,9 +405,31 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           height: page.offsetHeight,
           windowWidth: page.offsetWidth,
           windowHeight: page.offsetHeight,
+          onclone: clonedDocument => {
+            clonedDocument.querySelectorAll<HTMLElement>('.memo-document-delivery').forEach(element => {
+              element.style.visibility = 'hidden'
+            })
+          },
         })
         if (pageIndex > 0) pdf.addPage('a4', 'portrait')
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, 210, 297, undefined, 'FAST')
+        if (deliveryPosition && pendingExport.memo.delivery.trim()) {
+          const label = pendingExport.memo.delivery.trim()
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(16.5)
+          const horizontalPadding = 1.6
+          const frameWidth = pdf.getTextWidth(label) + horizontalPadding * 2
+          const frameLeft = deliveryPosition.right - frameWidth
+          pdf.setDrawColor(17, 17, 17)
+          pdf.setTextColor(17, 17, 17)
+          pdf.setLineWidth(0.53)
+          pdf.rect(frameLeft, deliveryPosition.top, frameWidth, deliveryPosition.height)
+          // Helvetica's visible bounds are asymmetric around jsPDF's nominal middle baseline.
+          pdf.text(label, frameLeft + frameWidth / 2 - 0.07, deliveryPosition.top + deliveryPosition.height / 2 - 0.55, {
+            align: 'center',
+            baseline: 'middle',
+          })
+        }
       }
       pdf.save(pendingExport.fileName)
       if (!cancelled) setPendingExport(null)
