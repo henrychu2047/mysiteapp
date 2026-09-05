@@ -7,6 +7,10 @@ import { SMART_TAG_KEYS } from '@/lib/project-settings'
 import { createPhotoStampContent, PHOTO_STAMP_STYLE } from '@/lib/photo-stamp'
 import type { Photo } from '@/lib/photo-storage'
 
+type CameraAspectRatio = 'rectangle' | 'square'
+
+const CAMERA_ASPECT_RATIO_KEY = 'site-camera-aspect-ratio'
+
 type Props = {
   categories: string[]
   initialCategory?: string
@@ -35,7 +39,7 @@ export function ContinuousCameraModal({ categories, initialCategory, tags, visib
   const [showSmartTagSettings, setShowSmartTagSettings] = useState(false)
   const [showAlbum, setShowAlbum] = useState(false)
   const [albumDetail, setAlbumDetail] = useState<Photo | null>(null)
-  const [aspectRatio, setAspectRatio] = useState<'rectangle' | 'square'>('rectangle')
+  const [aspectRatio, setAspectRatio] = useState<CameraAspectRatio>('rectangle')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [customTagOption, setCustomTagOption] = useState('')
   const autoStartRequested = useRef(false)
@@ -43,6 +47,10 @@ export function ContinuousCameraModal({ categories, initialCategory, tags, visib
   const stamp = createPhotoStampContent({ category, tags, visibleTags, note, projectName })
 
   useEffect(() => () => stopContinuousCamera(), [stopContinuousCamera])
+  useEffect(() => {
+    const savedAspectRatio = localStorage.getItem(CAMERA_ASPECT_RATIO_KEY)
+    if (savedAspectRatio === 'rectangle' || savedAspectRatio === 'square') setAspectRatio(savedAspectRatio)
+  }, [])
   useEffect(() => {
     if (!autoStart || !category || autoStartRequested.current) return
     autoStartRequested.current = true
@@ -52,6 +60,10 @@ export function ContinuousCameraModal({ categories, initialCategory, tags, visib
 
   const close = () => { stopContinuousCamera(); onClose() }
   const start = () => { if (category) { onCategorySelected?.(category); void startContinuousCamera() } }
+  const selectAspectRatio = (nextAspectRatio: CameraAspectRatio) => {
+    setAspectRatio(nextAspectRatio)
+    localStorage.setItem(CAMERA_ASPECT_RATIO_KEY, nextAspectRatio)
+  }
 
   if (!continuousCamera && autoStart) return (
     <div className="overlay dark-overlay camera-overlay"><div className="camera-starting" role="status">正在開啟相機…{cameraError && <><p className="camera-error">{cameraError}</p><button className="camera-control" onClick={close}>×</button></>}</div></div>
@@ -72,7 +84,7 @@ export function ContinuousCameraModal({ categories, initialCategory, tags, visib
 
   return (
     <div className="overlay dark-overlay camera-overlay"><div className="camera-sheet">
-      <div className="camera-topline camera-mode-toolbar" aria-label="相片尺寸工具列"><button type="button" className={`camera-control ${aspectRatio === 'rectangle' ? 'selected' : ''}`} onClick={() => setAspectRatio('rectangle')} aria-label="長方形拍攝" aria-pressed={aspectRatio === 'rectangle'}><i className="camera-mode-rectangle" aria-hidden="true" /></button><button type="button" className={`camera-control ${aspectRatio === 'square' ? 'selected' : ''}`} onClick={() => setAspectRatio('square')} aria-label="正方形拍攝" aria-pressed={aspectRatio === 'square'}><i className="camera-mode-square" aria-hidden="true" /></button><button type="button" className="camera-control" disabled aria-label="功能鍵，稍後提供"><i className="camera-mode-function" aria-hidden="true">⋯</i></button></div>
+      <div className="camera-topline camera-mode-toolbar" aria-label="相片尺寸工具列"><button type="button" className={`camera-control ${aspectRatio === 'rectangle' ? 'selected' : ''}`} onClick={() => selectAspectRatio('rectangle')} aria-label="長方形拍攝" aria-pressed={aspectRatio === 'rectangle'}><i className="camera-mode-rectangle" aria-hidden="true" /></button><button type="button" className={`camera-control ${aspectRatio === 'square' ? 'selected' : ''}`} onClick={() => selectAspectRatio('square')} aria-label="正方形拍攝" aria-pressed={aspectRatio === 'square'}><i className="camera-mode-square" aria-hidden="true" /></button><button type="button" className="camera-control" disabled aria-label="功能鍵，稍後提供"><i className="camera-mode-function" aria-hidden="true">⋯</i></button></div>
       <div className={`camera-frame ${aspectRatio === 'square' ? 'camera-frame-square' : ''}`}><video ref={videoRef} autoPlay playsInline muted /><span className="camera-capture-flash" aria-hidden="true" /><span className="frame-corner top-left" /><span className="frame-corner top-right" /><span className="frame-corner bottom-left" /><span className="frame-corner bottom-right" /><div className="camera-tag-summary" aria-label="相片標記預覽" style={{ background: PHOTO_STAMP_STYLE.background, color: PHOTO_STAMP_STYLE.text }}><small>{stamp.heading}</small>{stamp.rows.map(({ label, value }) => <span key={label}><b style={{ color: PHOTO_STAMP_STYLE.label }}>{label}:</b> {value}</span>)}{stamp.note && <span><b style={{ color: PHOTO_STAMP_STYLE.label }}>文字備註:</b> {stamp.note}</span>}</div><div className="zoom-controls" aria-label="縮放倍率">{[.5, 1, 2, 5].map(level => <button key={level} onClick={() => void changeZoom(level)} className={zoomLevel === level ? 'selected' : ''}>{level === 1 ? '1×' : level}</button>)}</div></div>
       {cameraError && <p className="camera-error">{cameraError}</p>}
       <div className="camera-toolbar"><div className="camera-toolbar-actions camera-toolbar-actions-left"><button className="camera-control" onClick={close} aria-label="取消拍攝">×</button>{autoStart && <button className="camera-control camera-album" onClick={() => setShowAlbum(true)} aria-label="開啟相簿"><Images size={22} strokeWidth={2.25} aria-hidden="true" /></button>}</div><button className={`shutter ${captureBusy ? 'is-busy' : ''}`} onClick={() => void capturePhoto(file => onCapture(file, category), aspectRatio)} disabled={captureBusy} aria-label="拍攝相片">{captureBusy ? '…' : ''}</button>{autoStart ? <div className="camera-toolbar-actions"><button className={`camera-control camera-toolbar-flash ${flashEnabled ? 'selected' : ''}`} onClick={() => void toggleFlash()} aria-label="切換閃光燈">ϟ<span>{flashEnabled ? 'ON' : 'A'}</span></button><button className="camera-control camera-settings" onClick={() => setShowCategoryPicker(true)} aria-label="開啟相片標記設定">⚙</button></div> : <span>連續拍攝</span>}</div>
