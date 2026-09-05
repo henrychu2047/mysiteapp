@@ -100,6 +100,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [saveToast, setSaveToast] = useState('')
   const exportRef = useRef<HTMLDivElement>(null)
+  const previewScrollRef = useRef<HTMLDivElement>(null)
+  const [previewScale, setPreviewScale] = useState(1)
   const loadedProjectRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -136,6 +138,17 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       cancelled = true
     }
   }, [projectId])
+
+  useEffect(() => {
+    if (overlay !== 'preview' && !previewingHistory) return
+    const preview = previewScrollRef.current
+    if (!preview) return
+    const resizePreview = () => setPreviewScale(Math.min(1, Math.max(0.1, (preview.clientWidth - 32) / (210 / 25.4 * 96))))
+    resizePreview()
+    const observer = new ResizeObserver(resizePreview)
+    observer.observe(preview)
+    return () => observer.disconnect()
+  }, [overlay, previewingHistory])
 
   useEffect(() => {
     if (!ready || loadedProjectRef.current !== projectId) return
@@ -756,8 +769,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               <Download size={18} />
             </button>
           </div>
-          <div className="memo-preview-scroll">
-            <MemoDocument memo={memo} letterhead={selectedLetterhead} photoSources={photoSources} onZoomImage={setZoomImage} />
+          <div className="memo-preview-scroll" ref={previewScrollRef}>
+            <div className="memo-preview-document" style={{ zoom: previewScale }}><MemoDocument memo={memo} letterhead={selectedLetterhead} photoSources={photoSources} onZoomImage={setZoomImage} /></div>
           </div>
         </div>
       )}
@@ -773,8 +786,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
               <Download size={18} />
             </button>
           </div>
-          <div className="memo-preview-scroll">
-            <MemoDocument memo={previewingHistory.memo} letterhead={letterheads.find(item => item.id === previewingHistory.memo.letterheadId)} photoSources={photoSources} onZoomImage={setZoomImage} />
+          <div className="memo-preview-scroll" ref={previewScrollRef}>
+            <div className="memo-preview-document" style={{ zoom: previewScale }}><MemoDocument memo={previewingHistory.memo} letterhead={letterheads.find(item => item.id === previewingHistory.memo.letterheadId)} photoSources={photoSources} onZoomImage={setZoomImage} /></div>
           </div>
         </div>
       )}
