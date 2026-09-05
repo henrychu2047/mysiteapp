@@ -94,7 +94,7 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
       {photoPages.map((photos, pageIndex) => (
         <section className="a4-portrait-page memo-photo-page" key={`photo-page-${pageIndex}`}>
           <div className="memo-photo-page-heading">
-            <span>巡查照片記錄 (Photo Record)</span>
+            <span>照片記錄 (Photo Record)</span>
             <span>第 {pageIndex + 1}/{photoPages.length} 頁</span>
           </div>
           <div className="memo-photo-page-grid">
