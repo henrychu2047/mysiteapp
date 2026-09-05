@@ -19,6 +19,7 @@ import {
   Copy,
   Upload,
   Pencil,
+  FileDown,
 } from 'lucide-react'
 import {
   type Memo,
@@ -39,6 +40,7 @@ import {
 } from './memo-data'
 import { MemoDocument } from './memo-document'
 import { photoSourceDescription, resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
+import { exportMemoWord } from '@/lib/memo-word'
 
 type ModalId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | null
 type MemoTemplateId = 'handover-delay' | 'damage-backcharge' | 'design-conflict' | 'progress-warning' | 'completion-handover'
@@ -421,6 +423,23 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
     setPendingExport({ memo: target, fileName: `Site_Memo_${target.refNo}.pdf` })
   }
 
+  const exportWord = async (target: Memo) => {
+    if (hasUnfilledPlaceholders(target)) return alert('請先填妥內容中的欄位佔位符，再導出公函。')
+    snapshot('下載 Word')
+    setOverlay(null)
+    try {
+      await exportMemoWord(
+        target,
+        letterheads.find(item => item.id === target.letterheadId),
+        photoSources,
+        `Site_Memo_${target.refNo}.docx`,
+      )
+    } catch (error) {
+      console.error('Site Memo Word export failed:', error)
+      alert(`Word 導出失敗：${error instanceof Error ? error.message : '請稍後再試'}`)
+    }
+  }
+
   const memoAsText = (target: Memo) => {
     const lines = [
       `${target.sender.jvName}`,
@@ -514,8 +533,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
           </button>
           <button className="memo-op-card" onClick={openExport}>
             <Download size={24} className="memo-card-icon" />
-            <strong>導出 PDF</strong>
-            <span>列印或複製</span>
+            <strong>導出文件</strong>
+            <span>PDF、Word 或列印</span>
           </button>
           <button className="memo-op-card" onClick={() => setOverlay('history')}>
             <History size={24} className="memo-card-icon" />
@@ -735,10 +754,14 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       )}
 
       {overlay === 'export' && (
-        <MemoModal title="導出 PDF" onClose={() => setOverlay(null)}>
+        <MemoModal title="導出文件" onClose={() => setOverlay(null)}>
           <button className="memo-menu-btn" onClick={() => exportPdf(memo)}>
             <Download size={18} />
             一鍵下載標準 A4 直身 PDF
+          </button>
+          <button className="memo-menu-btn" onClick={() => exportWord(memo)}>
+            <FileDown size={18} />
+            下載可編輯 Word 檔 (.docx)
           </button>
           <button className="memo-menu-btn" onClick={printMemo}>
             <Printer size={18} />
