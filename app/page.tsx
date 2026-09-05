@@ -35,6 +35,7 @@ import {
   describePhotoStorageError,
   hydratePhoto,
   loadStoredPhotos,
+  releasePhotoUrls,
   saveStoredPhoto,
   saveStoredPhotos,
   type Photo,
@@ -47,7 +48,6 @@ export default function Page() {
   const [categories, setCategories] = useState(defaultCategories)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [photosReady, setPhotosReady] = useState(false)
-  const [photoStorageLoadFailed, setPhotoStorageLoadFailed] = useState(false)
   const [projects, setProjects] = useState<Project[]>([{ ...DEFAULT_PROJECT, settings: createProjectSettings() }])
   const [currentProjectId, setCurrentProjectId] = useState(DEFAULT_PROJECT.id)
   const [projectPanel, setProjectPanel] = useState(false)
@@ -89,6 +89,7 @@ export default function Page() {
   const [handoverView, setHandoverView] = useState<'home' | 'settings' | 'manage'>('home')
   const loadedProjectRef = useRef('')
   const saveQueueRef = useRef(Promise.resolve())
+  const photosRef = useRef<Photo[]>([])
   const switchingProjectRef = useRef(false)
   const folderHandleRef = useRef<any>(null)
   const [folderConnected, setFolderConnected] = useState(false)
@@ -114,7 +115,6 @@ export default function Page() {
       setPhotosReady(true)
     }).catch(error => {
       console.error('本機相簿讀取失敗:', error)
-      setPhotoStorageLoadFailed(true)
       setSaveState('error')
       setSaveToast(describePhotoStorageError(error))
       setPhotosReady(true)
@@ -150,7 +150,7 @@ export default function Page() {
     setSettingsReady(true)
   }, [])
   useEffect(() => {
-    if (!settingsReady || !photosReady || !projectsLoaded || photoStorageLoadFailed) return
+    if (!settingsReady || !photosReady || !projectsLoaded) return
     try {
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects))
       localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId)
@@ -163,7 +163,9 @@ export default function Page() {
       setSaveToast(describePhotoStorageError(error))
       window.setTimeout(() => setSaveToast(''), 4000)
     }
-  }, [settingsReady, photosReady, projectsLoaded, projects, currentProjectId, photoStorageLoadFailed])
+  }, [settingsReady, photosReady, projectsLoaded, projects, currentProjectId])
+  useEffect(() => { photosRef.current = photos }, [photos])
+  useEffect(() => () => releasePhotoUrls(photosRef.current), [])
   useEffect(() => {
     if (!settingsReady || loadedProjectRef.current === currentProjectId) return
     const projectSettings = projects.find(project => project.id === currentProjectId)?.settings || createProjectSettings()
@@ -365,7 +367,10 @@ export default function Page() {
       console.error('上一個資料保存任務失敗:', error)
     }).then(() => deleteStoredPhotos(ids))
     void saveQueueRef.current.then(() => {
-      setPhotos(current => current.filter(photo => !ids.includes(photo.id)))
+      setPhotos(current => {
+        releasePhotoUrls(current.filter(photo => ids.includes(photo.id)))
+        return current.filter(photo => !ids.includes(photo.id))
+      })
       setSelected([])
       setDetail(null)
     }).catch(error => {
@@ -398,7 +403,7 @@ export default function Page() {
     }).then(() => saveStoredPhotos(restored.photos))
     try {
       await saveQueueRef.current
-      setProjects(restored.projects); setCurrentProjectId(restored.currentProjectId); setPhotos(restored.photos); alert('ZIP 備份已還原')
+      setProjects(restored.projects); setCurrentProjectId(restored.currentProjectId); setPhotos(current => { releasePhotoUrls(current); return restored.photos }); alert('ZIP 備份已還原')
     } catch (error) {
       console.error('ZIP 備份保存失敗:', error)
       setSaveToast(describePhotoStorageError(error))

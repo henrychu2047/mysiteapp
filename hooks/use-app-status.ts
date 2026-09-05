@@ -20,7 +20,7 @@ export function useAppStatus() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=22', { updateViaCache: 'none' }).then(registration => {
+      navigator.serviceWorker.register('/sw.js?v=23', { updateViaCache: 'none' }).then(registration => {
         const markUpdate = () => setUpdateAvailable(true)
         if (registration.waiting) markUpdate()
         registration.addEventListener('updatefound', () => {

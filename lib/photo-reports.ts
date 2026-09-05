@@ -6,6 +6,35 @@ const selectedPhotos = (photos: Photo[], selectedIds: string[]) => photos.filter
 const photoDetail = (photo: Photo, separator: string) => Object.entries(photo.tags).filter(([key, value]) => key !== '備註' && value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join(separator)
 const photoNote = (photo: Photo) => photo.note || (photo.tags['備註'] === 'N/A' ? '' : photo.tags['備註']) || ''
 
+function appendTextCell(parent: HTMLElement, text: string, style?: string) {
+  const cell = document.createElement('div')
+  if (style) cell.style.cssText = style
+  cell.textContent = text
+  parent.appendChild(cell)
+}
+
+function appendPhotoRow(parent: HTMLElement, photo: Photo, pdf = false) {
+  const capturedAt = new Date(photo.createdAt)
+  const article = document.createElement('article')
+  if (pdf) article.style.cssText = 'display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;align-items:center;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:150px'
+  const cellStyle = pdf ? 'padding:10px;overflow-wrap:anywhere;white-space:pre-wrap' : undefined
+  appendTextCell(article, capturedAt.toLocaleDateString('zh-HK'), pdf ? `${cellStyle};white-space:nowrap` : undefined)
+  appendTextCell(article, capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false }), pdf ? `${cellStyle};white-space:nowrap` : undefined)
+  appendTextCell(article, photo.category, cellStyle)
+  appendTextCell(article, photoDetail(photo, '\n') || '—', cellStyle)
+  appendTextCell(article, photoNote(photo) || '—', cellStyle)
+  const image = document.createElement('img')
+  image.src = photo.src
+  image.alt = `${photo.category}相片`
+  if (pdf) {
+    image.width = 165
+    image.height = 125
+    image.style.cssText = 'display:block;width:165px;height:125px;object-fit:cover'
+  }
+  article.appendChild(image)
+  parent.appendChild(article)
+}
+
 export async function exportPhotoExcel(photos: Photo[], selectedIds: string[]) {
   const chosen = selectedPhotos(photos, selectedIds)
   if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
@@ -43,7 +72,21 @@ export function openPhotoPdfPreview(photos: Photo[], selectedIds: string[]) {
   if (!chosen.length) { alert('請先勾選要匯出的相片'); return }
   const preview = document.createElement('div')
   preview.className = 'export-preview-overlay'
-  preview.innerHTML = `<div class="export-backdrop"></div><div class="export-report-preview"><h1>地盤相片記錄報表（A3 橫向排版）</h1><div class="export-report-head"><b>日期</b><b>時間</b><b>類別</b><b>細項說明</b><b>備註</b><b>照片</b></div>${chosen.map(photo => { const capturedAt = new Date(photo.createdAt); return `<article><div>${capturedAt.toLocaleDateString('zh-HK')}</div><div>${capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div>${photo.category}</div><div>${photoDetail(photo, '<br>') || '—'}</div><div>${photo.note || photo.tags['備註'] || '—'}</div><img src="${photo.src}" alt="${photo.category}相片"></article>` }).join('')}</div><div class="export-sheet"><div class="sheet-handle"></div><button class="export-back" id="close-report" aria-label="返回上一頁">‹</button><h2>地盤相片記錄報表預覽（A3 橫向）</h2><div class="export-sheet-actions"><button id="print-report">匯出報告</button><button class="export-close" id="close-report-2">關閉</button></div></div>`
+  const backdrop = document.createElement('div'); backdrop.className = 'export-backdrop'
+  const reportPreview = document.createElement('div'); reportPreview.className = 'export-report-preview'
+  const heading = document.createElement('h1'); heading.textContent = '地盤相片記錄報表（A3 橫向排版）'; reportPreview.appendChild(heading)
+  const head = document.createElement('div'); head.className = 'export-report-head'
+  for (const label of ['日期', '時間', '類別', '細項說明', '備註', '照片']) { const cell = document.createElement('b'); cell.textContent = label; head.appendChild(cell) }
+  reportPreview.appendChild(head)
+  chosen.forEach(photo => appendPhotoRow(reportPreview, photo))
+  const sheet = document.createElement('div'); sheet.className = 'export-sheet'
+  const handle = document.createElement('div'); handle.className = 'sheet-handle'
+  const back = document.createElement('button'); back.className = 'export-back'; back.id = 'close-report'; back.setAttribute('aria-label', '返回上一頁'); back.textContent = '‹'
+  const title = document.createElement('h2'); title.textContent = '地盤相片記錄報表預覽（A3 橫向）'
+  const actions = document.createElement('div'); actions.className = 'export-sheet-actions'
+  const print = document.createElement('button'); print.id = 'print-report'; print.textContent = '匯出報告'
+  const close = document.createElement('button'); close.className = 'export-close'; close.id = 'close-report-2'; close.textContent = '關閉'
+  actions.append(print, close); sheet.append(handle, back, title, actions); preview.append(backdrop, reportPreview, sheet)
   document.body.appendChild(preview)
   preview.querySelector('#close-report')?.addEventListener('click', () => preview.remove())
   preview.querySelector('#close-report-2')?.addEventListener('click', () => preview.remove())
@@ -65,7 +108,11 @@ async function exportPhotoPdf(chosen: Photo[]) {
   }
   const report = document.createElement('div')
   report.style.cssText = `position:absolute;left:0;top:0;width:1120px;min-height:${Math.max(520, chosen.length * 180 + 100)}px;display:block;visibility:visible;opacity:1;overflow:visible;background:#fff;color:#15212b;padding:24px;z-index:999999;pointer-events:none;`
-  report.innerHTML = `<div style="height:64px"></div><div style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;background:#e5e9ee;font-weight:700;padding:12px">${['日期','時間','類別','細項說明','備註','照片'].map(label => `<div style="padding:10px;border-right:1px solid #ccd4db">${label}</div>`).join('')}</div>` + chosen.map(photo => { const capturedAt = new Date(photo.createdAt); return `<article style="display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;align-items:center;border-top:1px solid #d8e0e5;padding:14px 0;break-inside:avoid;min-height:150px"><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleDateString('zh-HK')}</div><div style="padding:10px;white-space:nowrap">${capturedAt.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div style="padding:10px;overflow-wrap:anywhere">${photo.category}</div><div style="padding:10px;overflow-wrap:anywhere">${photoDetail(photo, '<br>') || '—'}</div><div style="padding:10px;overflow-wrap:anywhere">${photoNote(photo) || '—'}</div><img src="${photo.src}" width="165" height="125" style="display:block;width:165px;height:125px;object-fit:cover"/></article>` }).join('')
+  const spacer = document.createElement('div'); spacer.style.height = '64px'; report.appendChild(spacer)
+  const reportHead = document.createElement('div'); reportHead.style.cssText = 'display:grid;grid-template-columns:145px 125px 125px 220px 175px 190px;background:#e5e9ee;font-weight:700;padding:12px'
+  for (const label of ['日期', '時間', '類別', '細項說明', '備註', '照片']) appendTextCell(reportHead, label, 'padding:10px;border-right:1px solid #ccd4db')
+  report.appendChild(reportHead)
+  chosen.forEach(photo => appendPhotoRow(report, photo, true))
   document.body.appendChild(report)
   await Promise.all(Array.from(report.querySelectorAll('img')).map(image => image.complete ? Promise.resolve() : new Promise<void>(resolve => { image.onload = () => resolve(); image.onerror = () => resolve() })))
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))

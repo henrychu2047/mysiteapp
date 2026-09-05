@@ -96,6 +96,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [loaded, setLoaded] = useState(false)
+  const loadedProjectRef = useRef<string | null>(null)
   const [view, setView] = useState<View>(initialView)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<RoomStatus | null>(null)
   const [toast, setToast] = useState('')
@@ -146,7 +147,9 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [zoom, setZoom] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     setStandaloneMemoryLoaded(false)
+    loadedProjectRef.current = null
     try {
       const saved = localStorage.getItem(`handover-standalone-draft-${projectId}`)
       if (saved) {
@@ -174,24 +177,29 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     setLoaded(false)
     loadHandover(projectId)
       .then(data => {
+        if (cancelled) return
         setTowers(data.towers)
         setResponsiblePerson(data.responsiblePerson)
         setResponsibleDraft(data.responsiblePerson)
         onResponsibleEmailChange?.(data.responsiblePerson.email)
+        loadedProjectRef.current = projectId
         setLoaded(true)
       })
       .catch(() => {
+        if (cancelled) return
         setTowers([])
         const emptyResponsible = createResponsiblePerson()
         setResponsiblePerson(emptyResponsible)
         setResponsibleDraft(emptyResponsible)
         onResponsibleEmailChange?.('')
+        loadedProjectRef.current = projectId
         setLoaded(true)
       })
     setView(initialView)
     setSelTower(null)
     setSelFloor(null)
     setSelRoom(null)
+    return () => { cancelled = true }
   }, [projectId, initialView])
 
   useEffect(() => {
@@ -219,7 +227,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   }, [towers, onStructureChange])
 
   useEffect(() => {
-    if (!loaded) return
+    if (!loaded || loadedProjectRef.current !== projectId) return
     setSaveState('saving')
     saveHandover(projectId, { towers, responsiblePerson }).then(() => {
       setSaveState('saved')

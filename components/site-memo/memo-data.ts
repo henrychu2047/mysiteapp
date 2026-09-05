@@ -89,8 +89,13 @@ const MEMO_STORE = 'state'
 function openMemoDb() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(MEMO_DB, 1)
-    request.onupgradeneeded = () => request.result.createObjectStore(MEMO_STORE, { keyPath: 'key' })
-    request.onsuccess = () => resolve(request.result)
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(MEMO_STORE)) request.result.createObjectStore(MEMO_STORE, { keyPath: 'key' })
+    }
+    request.onsuccess = () => {
+      request.result.onversionchange = () => request.result.close()
+      resolve(request.result)
+    }
     request.onerror = () => reject(request.error)
   })
 }
@@ -100,8 +105,8 @@ function readMemoKey<T>(key: string): Promise<T | null> {
     db =>
       new Promise<T | null>((resolve, reject) => {
         const request = db.transaction(MEMO_STORE, 'readonly').objectStore(MEMO_STORE).get(key)
-        request.onsuccess = () => resolve(request.result ? (request.result.value as T) : null)
-        request.onerror = () => reject(request.error)
+        request.onsuccess = () => { db.close(); resolve(request.result ? (request.result.value as T) : null) }
+        request.onerror = () => { db.close(); reject(request.error) }
       }),
   )
 }
@@ -112,8 +117,9 @@ function writeMemoKey(key: string, value: unknown) {
       new Promise<void>((resolve, reject) => {
         const transaction = db.transaction(MEMO_STORE, 'readwrite')
         transaction.objectStore(MEMO_STORE).put({ key, value })
-        transaction.oncomplete = () => resolve()
-        transaction.onerror = () => reject(transaction.error)
+        transaction.oncomplete = () => { db.close(); resolve() }
+        transaction.onerror = () => { db.close(); reject(transaction.error) }
+        transaction.onabort = () => { db.close(); reject(transaction.error) }
       }),
   )
 }
@@ -131,29 +137,47 @@ export const saveHistory = (projectId: string, records: HistoryRecord[]) => writ
 export const loadLetterheads = (projectId = DEFAULT_PROJECT_ID) => readMemoKey<MemoLetterhead[]>(projectKey(projectId, 'letterheads')).then(records => records || [])
 export const saveLetterheads = (projectId: string, records: MemoLetterhead[]) => writeMemoKey(projectKey(projectId, 'letterheads'), records)
 
-export async function loadAllMemos(): Promise<Record<string, { memo: Memo | null; history: HistoryRecord[] }>> {
+export async function saveMemoState(projectId: string, memo: Memo, history: HistoryRecord[], letterheads: MemoLetterhead[]) {
+  const db = await openMemoDb()
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(MEMO_STORE, 'readwrite')
+    const store = transaction.objectStore(MEMO_STORE)
+    store.put({ key: projectKey(projectId, 'current'), value: memo })
+    store.put({ key: projectKey(projectId, 'history'), value: history })
+    store.put({ key: projectKey(projectId, 'letterheads'), value: letterheads })
+    transaction.oncomplete = () => { db.close(); resolve() }
+    transaction.onerror = () => { db.close(); reject(transaction.error) }
+    transaction.onabort = () => { db.close(); reject(transaction.error) }
+  })
+}
+
+export type MemoBackup = { memo: Memo | null; history: HistoryRecord[]; letterheads: MemoLetterhead[] }
+
+export async function loadAllMemos(): Promise<Record<string, MemoBackup>> {
   const db = await openMemoDb()
   return new Promise((resolve, reject) => {
     const request = db.transaction(MEMO_STORE, 'readonly').objectStore(MEMO_STORE).getAll()
     request.onsuccess = () => {
-      const result: Record<string, { memo: Memo | null; history: HistoryRecord[] }> = {}
+      const result: Record<string, MemoBackup> = {}
       for (const row of request.result as { key: string; value: unknown }[]) {
-        const match = /^(current|history):(.+)$/.exec(row.key)
+        const match = /^(current|history|letterheads):(.+)$/.exec(row.key)
         const legacyType = row.key === 'current' || row.key === 'history' ? row.key : null
         if (!match && !legacyType) continue
         const type = match ? match[1] : legacyType as 'current' | 'history'
         const projectId = match ? match[2] : DEFAULT_PROJECT_ID
-        result[projectId] ||= { memo: null, history: [] }
+        result[projectId] ||= { memo: null, history: [], letterheads: [] }
         if (type === 'current') result[projectId].memo = row.value as Memo
-        else result[projectId].history = Array.isArray(row.value) ? row.value as HistoryRecord[] : []
+        else if (type === 'history') result[projectId].history = Array.isArray(row.value) ? row.value as HistoryRecord[] : []
+        else result[projectId].letterheads = Array.isArray(row.value) ? row.value as MemoLetterhead[] : []
       }
+      db.close()
       resolve(result)
     }
-    request.onerror = () => reject(request.error)
+    request.onerror = () => { db.close(); reject(request.error) }
   })
 }
 
-export async function saveAllMemos(map: Record<string, { memo?: Memo | null; history?: HistoryRecord[] }>): Promise<void> {
+export async function saveAllMemos(map: Record<string, { memo?: Memo | null; history?: HistoryRecord[]; letterheads?: MemoLetterhead[] }>): Promise<void> {
   const db = await openMemoDb()
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(MEMO_STORE, 'readwrite')
@@ -162,9 +186,11 @@ export async function saveAllMemos(map: Record<string, { memo?: Memo | null; his
     for (const [projectId, value] of Object.entries(map)) {
       if (value.memo) store.put({ key: projectKey(projectId, 'current'), value: value.memo })
       store.put({ key: projectKey(projectId, 'history'), value: value.history || [] })
+      store.put({ key: projectKey(projectId, 'letterheads'), value: value.letterheads || [] })
     }
-    transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
+    transaction.oncomplete = () => { db.close(); resolve() }
+    transaction.onerror = () => { db.close(); reject(transaction.error) }
+    transaction.onabort = () => { db.close(); reject(transaction.error) }
   })
 }
 

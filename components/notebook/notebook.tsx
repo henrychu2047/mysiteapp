@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
+import { loadNotebook, saveNotebook, type NotebookEntry } from '@/lib/notebook-storage'
 
-type NotebookEntry = { id: string; text: string; category: string; done: boolean; pinned: boolean; createdAt: string; photo?: string; photoId?: string }
 type Props = {
   projectId: string
   projectName: string
@@ -16,7 +16,6 @@ type Props = {
 }
 
 const categories = ['待辦', '問題', '進度', '交辦']
-const keyFor = (projectId: string) => `site-notebook:${projectId || 'default-project'}`
 
 export function Notebook({ projectId, projectName, onBack, onNavigate, photoSources, onSelectAlbumPhotos, onOpenCamera }: Props) {
   const [entries, setEntries] = useState<NotebookEntry[]>([])
@@ -26,18 +25,26 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const [query, setQuery] = useState('')
   const [photoId, setPhotoId] = useState('')
   const [showCompose, setShowCompose] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const loadedProjectRef = useRef<string | null>(null)
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(keyFor(projectId)) || '[]')
-      setEntries(Array.isArray(saved) ? saved.map((entry: NotebookEntry) => ({ ...entry, photoId: typeof entry.photoId === 'string' ? entry.photoId : undefined, photo: typeof entry.photo === 'string' ? entry.photo : undefined })) : [])
+      setEntries(loadNotebook(projectId))
+      setSaveError('')
     } catch { setEntries([]) }
     loadedProjectRef.current = projectId
   }, [projectId])
 
   useEffect(() => {
-    if (loadedProjectRef.current === projectId) localStorage.setItem(keyFor(projectId), JSON.stringify(entries))
+    if (loadedProjectRef.current !== projectId) return
+    try {
+      saveNotebook(projectId, entries)
+      setSaveError('')
+    } catch (error) {
+      console.error('記事簿保存失敗:', error)
+      setSaveError('記事簿保存失敗，請檢查裝置儲存空間')
+    }
   }, [entries, projectId])
 
   const addEntry = () => {
@@ -55,6 +62,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     <header className="topbar"><div className="brand-mark" aria-hidden="true">▦</div><button className="project-trigger" type="button" onClick={onBack} aria-label="返回並選擇 Project"><strong>{projectName}</strong><span>⌄</span></button></header>
     <main className="notebook-body">
       <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div></div>
+      {saveError && <div className="save-toast error" role="alert">{saveError}</div>}
       {showCompose && <div className="notebook-modal-backdrop" onClick={() => setShowCompose(false)}><section className="notebook-compose notebook-modal" onClick={event => event.stopPropagation()}>
         <div className="notebook-modal-heading"><h2>新增記事</h2><button type="button" onClick={() => setShowCompose(false)}>×</button></div>
         <textarea value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') addEntry() }} placeholder="快速記錄現場事項…" aria-label="記事內容" />

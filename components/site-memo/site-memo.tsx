@@ -28,11 +28,9 @@ import {
   type MemoLetterhead,
   createDefaultMemo,
   loadMemo,
-  saveMemo,
   loadHistory,
-  saveHistory,
   loadLetterheads,
-  saveLetterheads,
+  saveMemoState,
   clone,
   readFileAsDataUrl,
   formatBytes,
@@ -102,9 +100,11 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [saveToast, setSaveToast] = useState('')
   const exportRef = useRef<HTMLDivElement>(null)
+  const loadedProjectRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    loadedProjectRef.current = null
     setReady(false)
     setMemo(createDefaultMemo())
     setHistory([])
@@ -124,7 +124,13 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       }
       setHistory(storedHistory)
       setLetterheads(storedLetterheads)
+      loadedProjectRef.current = projectId
       setReady(true)
+    }).catch(error => {
+      if (cancelled) return
+      console.error('Site Memo 讀取失敗:', error)
+      setSaveState('error')
+      setSaveToast('Site Memo 讀取失敗，請重新開啟此頁')
     })
     return () => {
       cancelled = true
@@ -132,9 +138,9 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   }, [projectId])
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || loadedProjectRef.current !== projectId) return
     setSaveState('saving')
-    Promise.all([saveMemo(projectId, memo), saveHistory(projectId, history), saveLetterheads(projectId, letterheads)]).then(() => {
+    saveMemoState(projectId, memo, history, letterheads).then(() => {
       setSaveState('saved')
       setLastSavedAt(new Date().toISOString())
     }).catch(error => {

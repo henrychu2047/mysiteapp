@@ -122,23 +122,30 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate }: Databas
   const [drawingPoints, setDrawingPoints] = useState<Array<{ x: number; y: number }>>([])
   const drawingPageRef = useRef<number | null>(null)
   const imageDrawingRef = useRef(false)
+  const loadedProjectRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    loadedProjectRef.current = null
     setReady(false)
     Promise.all([readFiles(projectId), loadAllHandover()]).then(([stored, handover]) => {
       if (cancelled) return
       setFiles(stored.map(normalizeFile))
       setTowers(handover[projectId]?.towers || [])
       try { setCustomFolders(JSON.parse(localStorage.getItem(`database-folders:${projectId}`) || '{}')) } catch { setCustomFolders({}) }
+      loadedProjectRef.current = projectId
       setReady(true)
-    }).catch(() => setReady(true))
+    }).catch(error => {
+      if (cancelled) return
+      console.error('資料庫檔案讀取失敗:', error)
+      setReady(false)
+    })
     return () => { cancelled = true }
   }, [projectId])
 
   useEffect(() => {
-    if (ready) void writeFiles(files, projectId)
-  }, [files, ready])
+    if (ready && loadedProjectRef.current === projectId) void writeFiles(files, projectId)
+  }, [files, ready, projectId])
 
   const selectedTower = towers.find(tower => tower.name === drawingTower)
   const selectedFloor = selectedTower?.floors.find(floor => floor.name === drawingFloor)
