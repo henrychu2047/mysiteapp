@@ -41,7 +41,7 @@ export function MemoDocument({ memo, letterhead, photoSources = {}, onZoomImage 
                 </div>
               ))}
             </div>
-            <div className="memo-document-delivery">{memo.delivery}</div>
+            <div className="memo-document-delivery"><span>{memo.delivery}</span></div>
           </div>
           <div className="memo-document-attention"><span>Attn:</span> {memo.recipient.attn}</div>
           <div className="memo-document-salutation">Dear Sir/Madam,</div>
