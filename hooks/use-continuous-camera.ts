@@ -53,7 +53,7 @@ export function useContinuousCamera() {
   const toggleFlash = useCallback(async () => { const next = !flashEnabled; setFlashEnabled(next); await applyCameraSettings(next, zoomLevel) }, [applyCameraSettings, flashEnabled, zoomLevel])
   const changeZoom = useCallback(async (next: number) => { setZoomLevel(next); await applyCameraSettings(flashEnabled, next) }, [applyCameraSettings, flashEnabled])
 
-  const capturePhoto = useCallback(async (onCapture: (file: File) => Promise<void>) => {
+  const capturePhoto = useCallback(async (onCapture: (file: File) => Promise<void>, aspectRatio: 'rectangle' | 'square' = 'rectangle') => {
     if (captureBusy || !videoRef.current) return
     setCaptureBusy(true)
     const video = videoRef.current
@@ -64,9 +64,17 @@ export function useContinuousCamera() {
     }
     try {
       const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight
+      const sourceSize = Math.min(video.videoWidth, video.videoHeight)
+      canvas.width = aspectRatio === 'square' ? sourceSize : video.videoWidth
+      canvas.height = aspectRatio === 'square' ? sourceSize : video.videoHeight
       const context = canvas.getContext('2d'); if (!context) throw new Error('無法建立畫布')
-      context.drawImage(video, 0, 0)
+      if (aspectRatio === 'square') {
+        const sourceX = (video.videoWidth - sourceSize) / 2
+        const sourceY = (video.videoHeight - sourceSize) / 2
+        context.drawImage(video, sourceX, sourceY, sourceSize, sourceSize, 0, 0, sourceSize, sourceSize)
+      } else {
+        context.drawImage(video, 0, 0)
+      }
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('無法擷取相片')), 'image/jpeg', 0.92))
       await onCapture(new File([blob], 'camera.jpg', { type: 'image/jpeg' }))
       setCameraError('')
