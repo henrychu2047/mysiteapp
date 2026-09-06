@@ -396,18 +396,26 @@ export default function Page() {
   }
   const importLocalBackup = async (file: File | undefined) => {
     if (!file) return
-    const restored = await restoreLocalBackup(file, exportLocalBackup)
-    if (!restored) return
-    saveQueueRef.current = saveQueueRef.current.catch(error => {
-      console.error('上一個資料保存任務失敗:', error)
-    }).then(() => saveStoredPhotos(restored.photos))
     try {
       await saveQueueRef.current
-      setProjects(restored.projects); setCurrentProjectId(restored.currentProjectId); setPhotos(current => { releasePhotoUrls(current); return restored.photos }); alert('ZIP 備份已還原')
     } catch (error) {
-      console.error('ZIP 備份保存失敗:', error)
+      console.error('等待目前相片保存失敗:', error)
       setSaveToast(describePhotoStorageError(error))
+      return
     }
+    const restored = await restoreLocalBackup(file, {
+      createRecoveryBackup: exportLocalBackup,
+      currentPhotos: photos,
+      currentProjectIds: projects.map(project => project.id),
+    })
+    if (!restored) return
+    setProjects(restored.projects)
+    setCurrentProjectId(restored.currentProjectId)
+    setPhotos(current => {
+      releasePhotoUrls(current)
+      return restored.photos.map(photo => hydratePhoto(photo))
+    })
+    alert('ZIP 備份已還原')
   }
 
   if (appMode === 'notebook') return <><Notebook projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />{sharedMediaOverlays}</>
