@@ -245,7 +245,7 @@ export function loadAllHandover(): Promise<Record<string, HandoverProjectData>> 
 export function saveAllHandover(map: Record<string, HandoverProjectData | Tower[]>): Promise<void> {
   return openHandoverDb().then(db => new Promise<void>((resolve, reject) => {
     let transaction: IDBTransaction
-    let clearRequest: IDBRequest<IDBValidKey>
+    let clearRequest: IDBRequest<undefined>
     let operationError: DOMException | null = null
     try {
       transaction = db.transaction(HO_STORE, 'readwrite')
