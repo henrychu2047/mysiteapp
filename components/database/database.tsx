@@ -52,7 +52,7 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate }: Databas
     setReady(false)
     Promise.all([readDatabaseFiles(projectId), loadAllHandover()]).then(([stored, handover]) => {
       if (cancelled) return
-      setFiles(stored.map(normalizeFile))
+      setFiles(stored.map(normalizeDatabaseFile))
       setTowers(handover[projectId]?.towers || [])
       try { setCustomFolders(JSON.parse(localStorage.getItem(`database-folders:${projectId}`) || '{}')) } catch { setCustomFolders({}) }
       loadedProjectRef.current = projectId
