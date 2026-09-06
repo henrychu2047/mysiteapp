@@ -66,7 +66,9 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate }: Databas
   }, [projectId])
 
   useEffect(() => {
-    if (ready && loadedProjectRef.current === projectId) void writeDatabaseFiles(files, projectId).catch(error => {\n      console.error('資料庫檔案保存失敗:', error)\n    })
+    if (ready && loadedProjectRef.current === projectId) void writeDatabaseFiles(files, projectId).catch(error => {
+      console.error('資料庫檔案保存失敗:', error)
+    })
   }, [files, ready, projectId])
 
   const selectedTower = towers.find(tower => tower.name === drawingTower)
