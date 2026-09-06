@@ -24,10 +24,10 @@ export async function exportLocalBackup({ currentProjectId, projects, photos }: 
   try {
     const zip = new JSZip()
     zip.file('projects.json', JSON.stringify({ version: 4, exportedAt: new Date().toISOString(), currentProjectId, projects }, null, 2))
-    try { zip.file('handover.json', JSON.stringify(await loadAllHandover(), null, 2)) } catch (error) { console.warn('Handover backup skipped', error) }
-    try { zip.file('site-memo.json', JSON.stringify(await loadAllMemos(), null, 2)) } catch (error) { console.warn('Site Memo backup skipped', error) }
-    try { zip.file('notebooks.json', JSON.stringify(loadAllNotebooks(projects.map(project => project.id)), null, 2)) } catch (error) { console.warn('Notebook backup skipped', error) }
-    try { zip.file('database.json', JSON.stringify(await loadAllDatabaseFiles(), null, 2)) } catch (error) { console.warn('Database backup skipped', error) }
+    zip.file('handover.json', JSON.stringify(await loadAllHandover(), null, 2))
+    zip.file('site-memo.json', JSON.stringify(await loadAllMemos(), null, 2))
+    zip.file('notebooks.json', JSON.stringify(loadAllNotebooks(projects.map(project => project.id)), null, 2))
+    zip.file('database.json', JSON.stringify(await loadAllDatabaseFiles(), null, 2))
     const photosByProject = new Map<string, Photo[]>()
     for (const photo of photos) photosByProject.set(photo.projectId, [...(photosByProject.get(photo.projectId) || []), photo])
     for (const project of projects) {
