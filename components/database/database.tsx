@@ -10,6 +10,17 @@ import { normalizeDatabaseFile, readDatabaseFiles, writeDatabaseFiles, type Data
 type DatabaseProps = { projectId: string; projectName: string; onBack: () => void; onNavigate?: (mode: 'home' | 'photo' | 'handover' | 'about') => void }
 const FOLDERS = ['圖紙', 'Spec', '照片', '其他'] as const
 
+class DatabaseErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('[database] render failed:', error, info) }
+  render() {
+    return this.state.hasError
+      ? <div className="database-error"><strong>資料庫照片無法載入</strong><p>請關閉預覽後再試；如仍然失敗，請重新上載該圖片。</p><button type="button" onClick={() => this.setState({ hasError: false })}>重新載入</button></div>
+      : this.props.children
+  }
+}
+
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
