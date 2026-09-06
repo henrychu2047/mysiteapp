@@ -5,89 +5,8 @@ import { BottomNav } from '@/components/ui/bottom-nav'
 import { ArrowLeft, ChevronRight, FileText, Folder, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
 import { renderPdfToPages } from '@/components/site-memo/memo-data'
+import { normalizeDatabaseFile, readDatabaseFiles, writeDatabaseFiles, type DatabaseFile } from '@/lib/database-storage'
 
-type FileAnnotation = { page?: number; kind: 'text' | 'marker' | 'draw'; x: number; y: number; text?: string; points?: Array<{ x: number; y: number }> }
-type DatabaseFile = { id: string; projectId: string; folder: string; path: string; name: string; type: string; size: number; dataUrl: string; createdAt: string; annotations?: FileAnnotation[] }
-
-function normalizeAnnotations(value: unknown): FileAnnotation[] {
-  if (!Array.isArray(value)) return []
-  return value.flatMap(item => {
-    if (!item || typeof item !== 'object') return []
-    const source = item as Partial<FileAnnotation>
-    if (source.kind !== 'text' && source.kind !== 'marker' && source.kind !== 'draw') return []
-    const x = typeof source.x === 'number' && Number.isFinite(source.x) ? Math.max(0, Math.min(1, source.x)) : 0.5
-    const y = typeof source.y === 'number' && Number.isFinite(source.y) ? Math.max(0, Math.min(1, source.y)) : 0.5
-    const points = Array.isArray(source.points) ? source.points.flatMap(point => {
-      if (!point || typeof point.x !== 'number' || typeof point.y !== 'number' || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return []
-      return [{ x: Math.max(0, Math.min(1, point.x)), y: Math.max(0, Math.min(1, point.y)) }]
-    }) : undefined
-    if (source.kind === 'text' && (typeof source.text !== 'string' || !source.text.trim())) return []
-    return [{ page: typeof source.page === 'number' && Number.isFinite(source.page) ? Math.max(1, Math.floor(source.page)) : undefined, kind: source.kind, x, y, text: typeof source.text === 'string' ? source.text : undefined, points }]
-  })
-}
-
-function normalizeFile(file: DatabaseFile): DatabaseFile {
-  const source = file && typeof file === 'object' ? file as Partial<DatabaseFile> : {}
-  return {
-    id: typeof source.id === 'string' ? source.id : `DB-invalid-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    projectId: typeof source.projectId === 'string' ? source.projectId : '',
-    folder: typeof source.folder === 'string' ? source.folder : '其他',
-    path: typeof source.path === 'string' ? source.path : '',
-    name: typeof source.name === 'string' && source.name.trim() ? source.name : '未命名檔案',
-    type: typeof source.type === 'string' ? source.type : '',
-    size: Number.isFinite(source.size) ? Math.max(0, source.size as number) : 0,
-    dataUrl: typeof source.dataUrl === 'string' ? source.dataUrl : '',
-    createdAt: typeof source.createdAt === 'string' ? source.createdAt : new Date(0).toISOString(),
-    annotations: normalizeAnnotations(source.annotations),
-  }
-}
-
-function annotationPoints(annotation: FileAnnotation) {
-  return Array.isArray(annotation.points) ? annotation.points.filter(point => point && Number.isFinite(point.x) && Number.isFinite(point.y)).map(point => `${point.x},${point.y}`).join(' ') : ''
-}
-
-const DB_NAME = 'site-database-db'
-const STORE = 'files'
-const FOLDERS = ['圖紙', 'Spec', '照片', '其他'] as const
-
-type DatabaseProps = { projectId: string; projectName: string; onBack: () => void; onNavigate?: (mode: 'home' | 'photo' | 'handover' | 'about') => void }
-
-class DatabaseErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false }
-  static getDerivedStateFromError() { return { hasError: true } }
-  componentDidCatch(error: Error, info: ErrorInfo) { console.error('[database] render failed:', error, info) }
-  render() { return this.state.hasError ? <div className="database-error"><strong>資料庫照片無法載入</strong><p>請關閉預覽後再試；如仍然失敗，請重新上載該圖片。</p><button type="button" onClick={() => this.setState({ hasError: false })}>重新載入</button></div> : this.props.children }
-}
-
-function openDb() {
-  return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: 'id' })
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-function readFiles(projectId: string) {
-  return openDb().then(db => new Promise<DatabaseFile[]>((resolve, reject) => {
-    const request = db.transaction(STORE, 'readonly').objectStore(STORE).getAll()
-    request.onsuccess = () => resolve((request.result as unknown[]).filter(file => file && typeof file === 'object' && (file as DatabaseFile).projectId === projectId).map(file => normalizeFile(file as DatabaseFile)))
-    request.onerror = () => reject(request.error)
-  }))
-}
-function writeFiles(files: DatabaseFile[], projectId: string) {
-  return openDb().then(db => new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite')
-    const store = tx.objectStore(STORE)
-    const request = store.getAll()
-    request.onsuccess = () => {
-      ;(request.result as DatabaseFile[]).filter(file => file.projectId === projectId).forEach(file => store.delete(file.id))
-      files.filter(file => file.projectId === projectId).forEach(file => store.put(file))
-    }
-    request.onerror = () => reject(request.error)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  }))
-}
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -128,7 +47,7 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate }: Databas
     let cancelled = false
     loadedProjectRef.current = null
     setReady(false)
-    Promise.all([readFiles(projectId), loadAllHandover()]).then(([stored, handover]) => {
+    Promise.all([readDatabaseFiles(projectId), loadAllHandover()]).then(([stored, handover]) => {
       if (cancelled) return
       setFiles(stored.map(normalizeFile))
       setTowers(handover[projectId]?.towers || [])
@@ -144,7 +63,7 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate }: Databas
   }, [projectId])
 
   useEffect(() => {
-    if (ready && loadedProjectRef.current === projectId) void writeFiles(files, projectId)
+    if (ready && loadedProjectRef.current === projectId) void writeDatabaseFiles(files, projectId)
   }, [files, ready, projectId])
 
   const selectedTower = towers.find(tower => tower.name === drawingTower)
@@ -188,7 +107,7 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate }: Databas
   }
   const remove = (id: string) => setFiles(current => current.filter(file => file.id !== id))
   const openFile = async (file: DatabaseFile) => {
-    const safeFile = normalizeFile(file)
+    const safeFile = normalizeDatabaseFile(file)
     if (!safeFile.dataUrl) { window.alert('檔案資料無法讀取，請重新上載。'); return }
     setViewer(safeFile)
     setEditingFile(false)
