@@ -5,7 +5,10 @@ import { BottomNav } from '@/components/ui/bottom-nav'
 import { ArrowLeft, ChevronRight, FileText, Folder, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
 import { renderPdfToPages } from '@/components/site-memo/memo-data'
-import { normalizeDatabaseFile, readDatabaseFiles, writeDatabaseFiles, type DatabaseFile } from '@/lib/database-storage'
+import { normalizeDatabaseFile, readDatabaseFiles, writeDatabaseFiles, type DatabaseFile, type FileAnnotation } from '@/lib/database-storage'
+
+type DatabaseProps = { projectId: string; projectName: string; onBack: () => void; onNavigate?: (mode: 'home' | 'photo' | 'handover' | 'about') => void }
+const FOLDERS = ['圖紙', 'Spec', '照片', '其他'] as const
 
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
