@@ -165,10 +165,20 @@ const HO_STORE = 'projects'
 function openHandoverDb() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(HO_DB, 1)
-    request.onupgradeneeded = () => request.result.createObjectStore(HO_STORE, { keyPath: 'projectId' })
-    request.onsuccess = () => resolve(request.result)
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(HO_STORE)) request.result.createObjectStore(HO_STORE, { keyPath: 'projectId' })
+    }
+    request.onsuccess = () => {
+      const db = request.result
+      db.onversionchange = () => db.close()
+      resolve(db)
+    }
     request.onerror = () => reject(request.error)
   })
+}
+
+function transactionFailure(transaction: IDBTransaction, requestError?: DOMException | null) {
+  return requestError || transaction.error || new DOMException('制房移交資料庫交易被中止', 'AbortError')
 }
 
 function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
@@ -177,13 +187,7 @@ function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
       for (const room of floor.rooms) {
         const handover = room.handover
         if (handover.personName || handover.personCompany || handover.personContractor || handover.personDepartment || handover.personPosition) {
-          return {
-            name: handover.personName || '',
-            company: handover.personCompany || '',
-            email: '',
-            department: handover.personDepartment || '',
-            position: handover.personPosition || '',
-          }
+          return { name: handover.personName || '', company: handover.personCompany || '', email: '', department: handover.personDepartment || '', position: handover.personPosition || '' }
         }
       }
     }
@@ -194,68 +198,72 @@ function responsiblePersonFromLegacyRooms(towers: Tower[]): ResponsiblePerson {
 function normalizeProjectData(row: { towers?: Tower[]; responsiblePerson?: ResponsiblePerson } | undefined): HandoverProjectData {
   const towers = Array.isArray(row?.towers) ? normalizeTowers(row.towers) : []
   const responsiblePerson = row?.responsiblePerson || responsiblePersonFromLegacyRooms(towers)
-  return {
-    towers,
-    responsiblePerson: { ...createResponsiblePerson(), ...responsiblePerson },
-  }
+  return { towers, responsiblePerson: { ...createResponsiblePerson(), ...responsiblePerson } }
 }
 
 export function loadHandover(projectId: string): Promise<HandoverProjectData> {
-  return openHandoverDb().then(
-    db =>
-      new Promise<HandoverProjectData>((resolve, reject) => {
-        const request = db.transaction(HO_STORE, 'readonly').objectStore(HO_STORE).get(projectId)
-        request.onsuccess = () => resolve(normalizeProjectData(request.result))
-        request.onerror = () => reject(request.error)
-      }),
-  )
+  return openHandoverDb().then(db => new Promise<HandoverProjectData>((resolve, reject) => {
+    let transaction: IDBTransaction
+    try { transaction = db.transaction(HO_STORE, 'readonly') } catch (error) { db.close(); reject(error); return }
+    const request = transaction.objectStore(HO_STORE).get(projectId)
+    let data = normalizeProjectData(undefined)
+    request.onsuccess = () => { data = normalizeProjectData(request.result) }
+    transaction.oncomplete = () => { db.close(); resolve(data) }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+  }))
 }
 
 export function saveHandover(projectId: string, data: HandoverProjectData): Promise<void> {
-  return openHandoverDb().then(
-    db =>
-      new Promise<void>((resolve, reject) => {
-        const transaction = db.transaction(HO_STORE, 'readwrite')
-        transaction.objectStore(HO_STORE).put({ projectId, ...data })
-        transaction.oncomplete = () => resolve()
-        transaction.onerror = () => reject(transaction.error)
-      }),
-  )
+  return openHandoverDb().then(db => new Promise<void>((resolve, reject) => {
+    let transaction: IDBTransaction
+    let request: IDBRequest<IDBValidKey>
+    try {
+      transaction = db.transaction(HO_STORE, 'readwrite')
+      request = transaction.objectStore(HO_STORE).put({ projectId, ...data })
+    } catch (error) { db.close(); reject(error); return }
+    transaction.oncomplete = () => { db.close(); resolve() }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+  }))
 }
 
 // 跨所有 Project 的資料（供 ZIP 備份使用）
 export function loadAllHandover(): Promise<Record<string, HandoverProjectData>> {
-  return openHandoverDb().then(
-    db =>
-      new Promise<Record<string, HandoverProjectData>>((resolve, reject) => {
-        const request = db.transaction(HO_STORE, 'readonly').objectStore(HO_STORE).getAll()
-        request.onsuccess = () => {
-          const map: Record<string, HandoverProjectData> = {}
-          for (const row of request.result as { projectId: string; towers?: Tower[]; responsiblePerson?: ResponsiblePerson }[]) {
-            map[row.projectId] = normalizeProjectData(row)
-          }
-          resolve(map)
-        }
-        request.onerror = () => reject(request.error)
-      }),
-  )
+  return openHandoverDb().then(db => new Promise<Record<string, HandoverProjectData>>((resolve, reject) => {
+    let transaction: IDBTransaction
+    try { transaction = db.transaction(HO_STORE, 'readonly') } catch (error) { db.close(); reject(error); return }
+    const request = transaction.objectStore(HO_STORE).getAll()
+    let rows: Array<{ projectId: string; towers?: Tower[]; responsiblePerson?: ResponsiblePerson }> = []
+    request.onsuccess = () => { rows = request.result as Array<{ projectId: string; towers?: Tower[]; responsiblePerson?: ResponsiblePerson }> }
+    transaction.oncomplete = () => { db.close(); resolve(Object.fromEntries(rows.map(row => [row.projectId, normalizeProjectData(row)]))) }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, request.error)) }
+  }))
 }
 
 export function saveAllHandover(map: Record<string, HandoverProjectData | Tower[]>): Promise<void> {
-  return openHandoverDb().then(
-    db =>
-      new Promise<void>((resolve, reject) => {
-        const transaction = db.transaction(HO_STORE, 'readwrite')
-        const store = transaction.objectStore(HO_STORE)
-        store.clear()
+  return openHandoverDb().then(db => new Promise<void>((resolve, reject) => {
+    let transaction: IDBTransaction
+    let clearRequest: IDBRequest<IDBValidKey>
+    let operationError: DOMException | null = null
+    try {
+      transaction = db.transaction(HO_STORE, 'readwrite')
+      const store = transaction.objectStore(HO_STORE)
+      clearRequest = store.clear()
+      clearRequest.onerror = () => { operationError = clearRequest.error }
+      clearRequest.onsuccess = () => {
         for (const [projectId, value] of Object.entries(map)) {
           const data = Array.isArray(value) ? normalizeProjectData({ towers: value }) : normalizeProjectData(value)
-          store.put({ projectId, ...data })
+          const request = store.put({ projectId, ...data })
+          request.onerror = () => { operationError = request.error }
         }
-        transaction.oncomplete = () => resolve()
-        transaction.onerror = () => reject(transaction.error)
-      }),
-  )
+      }
+    } catch (error) { db.close(); reject(error); return }
+    transaction.oncomplete = () => { db.close(); resolve() }
+    transaction.onerror = () => { db.close(); reject(transactionFailure(transaction, operationError || clearRequest.error)) }
+    transaction.onabort = () => { db.close(); reject(transactionFailure(transaction, operationError || clearRequest.error)) }
+  }))
 }
 
 export function clearAllHandover(): Promise<void> {
