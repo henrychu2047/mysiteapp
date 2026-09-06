@@ -1,19 +1,14 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Camera, PenLine, ClipboardList, Database as DatabaseIcon, BookOpen, ShieldCheck, Settings2 } from 'lucide-react'
-import { SiteMemo } from '@/components/site-memo/site-memo'
-import { Database } from '@/components/database/database'
-import { Handover } from '@/components/handover/handover'
-import { Notebook } from '@/components/notebook/notebook'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { ProjectPicker, RenameProjectDialog } from '@/components/project/project-dialogs'
 import { FirstProjectSetup } from '@/components/project/first-project-setup'
 import { useAppStatus } from '@/hooks/use-app-status'
 import { usePhotoAnnotations } from '@/hooks/use-photo-annotations'
 import { buildFloorNames, createRoomHandover, loadAllHandover, saveAllHandover, type Tower } from '@/components/handover/handover-data'
-import { exportLocalBackup as createLocalBackup, importLocalBackup as restoreLocalBackup } from '@/lib/backup'
-import { exportPhotoExcel, openPhotoPdfPreview } from '@/lib/photo-reports'
 import {
   CURRENT_PROJECT_KEY,
   DEFAULT_PROJECT,
@@ -43,6 +38,11 @@ import {
 import { photoSourceMap, type PhotoSource } from '@/lib/photo-attachments'
 import { PhotoPicker } from '@/components/photo/photo-picker'
 import { ContinuousCameraModal } from '@/components/photo/continuous-camera-modal'
+
+const SiteMemo = dynamic(() => import('@/components/site-memo/site-memo').then(module => module.SiteMemo), { ssr: false })
+const Database = dynamic(() => import('@/components/database/database').then(module => module.Database), { ssr: false })
+const Handover = dynamic(() => import('@/components/handover/handover').then(module => module.Handover), { ssr: false })
+const Notebook = dynamic(() => import('@/components/notebook/notebook').then(module => module.Notebook), { ssr: false })
 
 export default function Page() {
   const [categories, setCategories] = useState(defaultCategories)
@@ -379,9 +379,11 @@ export default function Page() {
     })
   }
   const exportExcel = async () => {
+    const { exportPhotoExcel } = await import('@/lib/photo-reports')
     await exportPhotoExcel(photos, selected)
   }
   const exportPdf = async () => {
+    const { openPhotoPdfPreview } = await import('@/lib/photo-reports')
     openPhotoPdfPreview(photos, selected)
   }
 
@@ -389,6 +391,7 @@ export default function Page() {
     if (backupBusy) return false
     setBackupBusy(true)
     try {
+      const { exportLocalBackup: createLocalBackup } = await import('@/lib/backup')
       return await createLocalBackup({ currentProjectId, projects, photos })
     } finally {
       setBackupBusy(false)
@@ -403,6 +406,7 @@ export default function Page() {
       setSaveToast(describePhotoStorageError(error))
       return
     }
+    const { importLocalBackup: restoreLocalBackup } = await import('@/lib/backup')
     const restored = await restoreLocalBackup(file, {
       createRecoveryBackup: exportLocalBackup,
       currentPhotos: photos,

@@ -101,7 +101,11 @@ public/
 AI_BASE_URL=https://api.sharesai.xyz/v1
 AI_API_KEY=你的新APIKey
 AI_MODEL=gpt-5.4-mini
+# Public deployment: set this to the exact HTTPS origin of the app.
+MEMO_POLISH_ALLOWED_ORIGIN=https://your-app.example
 ```
+
+`MEMO_POLISH_ALLOWED_ORIGIN` 會拒絕非該網域發出的 AI 潤色請求；此 API 亦內置每分鐘 10 次的 basic rate limit。正式公開服務仍建議在 reverse proxy / Cloudflare 加入登入或 access policy，避免 API quota 被濫用。
 
 儲存後必須 **Redeploy / Recreate Container**，單純 Restart 有時不會套用新的 Stack 環境變數。可在 Container > Inspect > Config.Env 確認已載入；不要在畫面或日誌公開完整 Key。
 
