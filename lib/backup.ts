@@ -128,14 +128,17 @@ export async function importLocalBackup(file: File, options: ImportOptions): Pro
     if (!confirm(`確認匯入此備份？\nProject：${prepared.projects.length} 個\n相片：${prepared.photos.length} 張\nSite Memo：${prepared.memos ? '有' : '無'}\n制房移交：${prepared.handover ? '有' : '無'}\n資料庫檔案：${prepared.database ? '有' : '無'}\n\n匯入前會先下載目前資料作為復原備份。`)) return null
     if (!await options.createRecoveryBackup()) throw new Error('目前資料的 recovery backup 未能建立，已取消匯入')
     const [previousHandover, previousMemos, previousDatabase] = await Promise.all([loadAllHandover(), loadAllMemos(), loadAllDatabaseFiles()])
-    const notebookIds = [...new Set([...options.currentProjectIds, ...Object.keys(prepared.notebooks || {})])]
+    const notebookIds = [...new Set([...options.currentProjectIds, ...prepared.projects.map(project => project.id), ...Object.keys(prepared.notebooks || {})])]
     const previousNotebooks = loadAllNotebooks(notebookIds)
+    const importedNotebooks = prepared.notebooks
+      ? Object.fromEntries(notebookIds.map(projectId => [projectId, prepared.notebooks![projectId] || []]))
+      : undefined
     let photosWritten = false; let handoverWritten = false; let memosWritten = false; let notebooksWritten = false; let databaseWritten = false
     try {
       await saveStoredPhotos(prepared.photos); photosWritten = true
       if (prepared.handover) { await saveAllHandover(prepared.handover); handoverWritten = true }
       if (prepared.memos) { await saveAllMemos(prepared.memos); memosWritten = true }
-      if (prepared.notebooks) { saveAllNotebooks(prepared.notebooks); notebooksWritten = true }
+      if (importedNotebooks) { notebooksWritten = true; saveAllNotebooks(importedNotebooks) }
       if (prepared.database) { await saveAllDatabaseFiles(prepared.database); databaseWritten = true }
     } catch (error) {
       const rollbackFailures: string[] = []
