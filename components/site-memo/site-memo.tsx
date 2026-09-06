@@ -32,6 +32,7 @@ import {
   loadLetterheads,
   saveMemoState,
   clone,
+  MAX_MEMO_PDF_BYTES,
   readFileAsDataUrl,
   formatBytes,
   nowStamp,
@@ -332,6 +333,8 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
   async function addPdf(files: FileList | null) {
     if (!files || !files[0]) return
     const file = files[0]
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { alert('只支援 PDF 檔案'); return }
+    if (file.size > MAX_MEMO_PDF_BYTES) { alert('PDF 檔案超過 25 MB 上限'); return }
     setPdfBusy(true)
     try {
       const dataUrl = await readFileAsDataUrl(file)

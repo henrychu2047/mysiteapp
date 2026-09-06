@@ -9,6 +9,8 @@ import { saveStoredPhotos, type Photo } from '@/lib/photo-storage'
 type BackupData = { currentProjectId: string; projects: Project[]; photos: Photo[] }
 type ImportOptions = { createRecoveryBackup: () => Promise<boolean>; currentPhotos: Photo[]; currentProjectIds: string[] }
 type PreparedBackup = BackupData & { handover?: Record<string, HandoverProjectData | Tower[]>; memos?: Record<string, MemoBackup>; notebooks?: Record<string, unknown>; database?: Record<string, DatabaseFile[]> }
+const MAX_BACKUP_ARCHIVE_BYTES = 500 * 1024 * 1024
+const MAX_BACKUP_FILE_COUNT = 2_000
 
 const dataUrlFromBlob = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader()
@@ -75,7 +77,10 @@ function parseDatabaseBackup(value: unknown): Record<string, DatabaseFile[]> {
 }
 
 async function prepareImport(file: File): Promise<PreparedBackup> {
+  if (file.size > MAX_BACKUP_ARCHIVE_BYTES) throw new Error('備份檔超過 500 MB 上限')
   const zip = await JSZip.loadAsync(file)
+  const archiveFiles = Object.values(zip.files).filter(entry => !entry.dir)
+  if (archiveFiles.length > MAX_BACKUP_FILE_COUNT) throw new Error(`備份檔包含超過 ${MAX_BACKUP_FILE_COUNT} 個檔案，已取消匯入`)
   const manifest = zip.file('projects.json')
   if (!manifest) throw new Error('找不到 projects.json')
   const raw = JSON.parse(await manifest.async('text')) as { version?: unknown; projects?: unknown; currentProjectId?: unknown }

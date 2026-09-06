@@ -29,6 +29,8 @@ export type Memo = {
 export type HistoryRecord = { recordId: string; savedAt: string; action: string; memo: Memo }
 
 const DEFAULT_PROJECT_ID = 'default-project'
+export const MAX_MEMO_PDF_BYTES = 25 * 1024 * 1024
+export const MAX_RENDERED_PDF_PAGES = 30
 
 export function createDefaultMemo(): Memo {
   return {
@@ -218,10 +220,12 @@ export async function renderPdfToPages(dataUrl: string): Promise<MemoPdfPage[]> 
   const pdfjs = await import('pdfjs-dist')
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
   const base64 = dataUrl.split(',')[1] || ''
+  if (!base64 || base64.length > Math.ceil(MAX_MEMO_PDF_BYTES * 4 / 3)) throw new Error('PDF 檔案超過 25 MB 上限')
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   const doc = await pdfjs.getDocument({ data: bytes }).promise
+  if (doc.numPages > MAX_RENDERED_PDF_PAGES) throw new Error(`PDF 超過 ${MAX_RENDERED_PDF_PAGES} 頁上限`)
   const pages: MemoPdfPage[] = []
   for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber++) {
     const page = await doc.getPage(pageNumber)

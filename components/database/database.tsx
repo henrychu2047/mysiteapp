@@ -9,6 +9,9 @@ import { normalizeDatabaseFile, readDatabaseFiles, writeDatabaseFiles, type Data
 
 type DatabaseProps = { projectId: string; projectName: string; onBack: () => void; onNavigate?: (mode: 'home' | 'photo' | 'handover' | 'about') => void }
 const FOLDERS = ['圖紙', 'Spec', '照片', '其他'] as const
+const MAX_DATABASE_FILE_BYTES = 25 * 1024 * 1024
+const MAX_DATABASE_PROJECT_BYTES = 200 * 1024 * 1024
+const MAX_DATABASE_FILES_PER_UPLOAD = 20
 
 class DatabaseErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false }
@@ -117,10 +120,19 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate }: Databas
   }
   const upload = async (fileList: FileList | null) => {
     if (!fileList?.length || !currentPath) return
+    const selectedFiles = Array.from(fileList)
+    const hasUnsupportedFile = selectedFiles.some(file => !(file.type === 'application/pdf' || file.type.startsWith('image/')))
+    const oversizedFile = selectedFiles.find(file => file.size > MAX_DATABASE_FILE_BYTES)
+    const selectedBytes = selectedFiles.reduce((total, file) => total + file.size, 0)
+    const projectBytes = files.reduce((total, file) => total + Math.max(0, file.size), 0)
+    if (selectedFiles.length > MAX_DATABASE_FILES_PER_UPLOAD) { window.alert(`每次最多上載 ${MAX_DATABASE_FILES_PER_UPLOAD} 個檔案。`); return }
+    if (hasUnsupportedFile) { window.alert('只支援 PDF 及圖片檔案。'); return }
+    if (oversizedFile) { window.alert(`「${oversizedFile.name}」超過 25 MB 上限。`); return }
+    if (projectBytes + selectedBytes > MAX_DATABASE_PROJECT_BYTES) { window.alert('此 Project 的資料庫檔案將超過 200 MB 上限，請先刪除不需要的檔案。'); return }
     setBusy(true)
     try {
       const additions: DatabaseFile[] = []
-      for (const file of Array.from(fileList)) additions.push({ id: `DB-${Date.now()}-${additions.length}`, projectId, folder, path: currentPath, name: file.name, type: file.type || 'application/octet-stream', size: file.size, dataUrl: await readAsDataUrl(file), createdAt: new Date().toISOString() })
+      for (const file of selectedFiles) additions.push({ id: `DB-${Date.now()}-${additions.length}`, projectId, folder, path: currentPath, name: file.name, type: file.type || 'application/octet-stream', size: file.size, dataUrl: await readAsDataUrl(file), createdAt: new Date().toISOString() })
       setFiles(current => [...current, ...additions])
     } finally { setBusy(false) }
   }
