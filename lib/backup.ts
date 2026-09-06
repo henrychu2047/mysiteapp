@@ -1,41 +1,33 @@
 import JSZip from 'jszip'
 import { loadAllHandover, saveAllHandover, type HandoverProjectData, type Tower } from '@/components/handover/handover-data'
-import { loadAllMemos, saveAllMemos } from '@/components/site-memo/memo-data'
+import { loadAllMemos, saveAllMemos, type MemoBackup } from '@/components/site-memo/memo-data'
 import { loadAllNotebooks, saveAllNotebooks } from '@/lib/notebook-storage'
+import { loadAllDatabaseFiles, normalizeDatabaseFile, saveAllDatabaseFiles, type DatabaseFile } from '@/lib/database-storage'
 import { normalizeCategoryName, normalizeProject, type Project } from '@/lib/project-settings'
-import type { Photo } from '@/lib/photo-storage'
+import { saveStoredPhotos, type Photo } from '@/lib/photo-storage'
 
-type BackupData = {
-  currentProjectId: string
-  projects: Project[]
-  photos: Photo[]
-}
+type BackupData = { currentProjectId: string; projects: Project[]; photos: Photo[] }
+type ImportOptions = { createRecoveryBackup: () => Promise<boolean>; currentPhotos: Photo[]; currentProjectIds: string[] }
+type PreparedBackup = BackupData & { handover?: Record<string, HandoverProjectData | Tower[]>; memos?: Record<string, MemoBackup>; notebooks?: Record<string, unknown>; database?: Record<string, DatabaseFile[]> }
 
-const dataUrlFromBlob = (blob: Blob) => new Promise<string>(resolve => {
+const dataUrlFromBlob = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader()
   reader.onload = () => resolve(String(reader.result))
+  reader.onerror = () => reject(reader.error || new Error('無法讀取備份相片'))
   reader.readAsDataURL(blob)
 })
 
 type PhotoMetadata = Pick<Photo, 'id' | 'category' | 'tags' | 'note' | 'createdAt' | 'projectId' | 'annotations'>
-
-const photoMetadata = (photo: Photo): PhotoMetadata => ({
-  id: photo.id,
-  category: photo.category,
-  tags: photo.tags,
-  note: photo.note,
-  createdAt: photo.createdAt,
-  projectId: photo.projectId,
-  annotations: photo.annotations,
-})
+const photoMetadata = (photo: Photo): PhotoMetadata => ({ id: photo.id, category: photo.category, tags: photo.tags, note: photo.note, createdAt: photo.createdAt, projectId: photo.projectId, annotations: photo.annotations })
 
 export async function exportLocalBackup({ currentProjectId, projects, photos }: BackupData): Promise<boolean> {
   try {
     const zip = new JSZip()
-    zip.file('projects.json', JSON.stringify({ version: 3, exportedAt: new Date().toISOString(), currentProjectId, projects }, null, 2))
-    try { const handover = await loadAllHandover(); zip.file('handover.json', JSON.stringify(handover, null, 2)) } catch (error) { console.warn('Handover backup skipped', error) }
-    try { const memos = await loadAllMemos(); zip.file('site-memo.json', JSON.stringify(memos, null, 2)) } catch (error) { console.warn('Site Memo backup skipped', error) }
+    zip.file('projects.json', JSON.stringify({ version: 4, exportedAt: new Date().toISOString(), currentProjectId, projects }, null, 2))
+    try { zip.file('handover.json', JSON.stringify(await loadAllHandover(), null, 2)) } catch (error) { console.warn('Handover backup skipped', error) }
+    try { zip.file('site-memo.json', JSON.stringify(await loadAllMemos(), null, 2)) } catch (error) { console.warn('Site Memo backup skipped', error) }
     try { zip.file('notebooks.json', JSON.stringify(loadAllNotebooks(projects.map(project => project.id)), null, 2)) } catch (error) { console.warn('Notebook backup skipped', error) }
+    try { zip.file('database.json', JSON.stringify(await loadAllDatabaseFiles(), null, 2)) } catch (error) { console.warn('Database backup skipped', error) }
     const photosByProject = new Map<string, Photo[]>()
     for (const photo of photos) photosByProject.set(photo.projectId, [...(photosByProject.get(photo.projectId) || []), photo])
     for (const project of projects) {
@@ -50,21 +42,17 @@ export async function exportLocalBackup({ currentProjectId, projects, photos }: 
       }
     }
     const blob = await zip.generateAsync({ type: 'blob' })
-    const file = new File([blob], `project-camera-backup-${new Date().toISOString().slice(0, 10)}.zip`, { type: 'application/zip' })
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'Project Camera ZIP 備份' }); return true } catch (error) {
+    const output = new File([blob], `project-camera-backup-${new Date().toISOString().slice(0, 10)}.zip`, { type: 'application/zip' })
+    if (navigator.share && navigator.canShare?.({ files: [output] })) {
+      try { await navigator.share({ files: [output], title: 'Project Camera ZIP 備份' }); return true } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return false
         console.warn('Share backup failed, falling back to download', error)
       }
     }
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
-    link.style.display = 'none'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
+    link.href = url; link.download = output.name; link.style.display = 'none'
+    document.body.appendChild(link); link.click(); link.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 3000)
     alert('完整備份已開始下載')
     return true
@@ -75,80 +63,96 @@ export async function exportLocalBackup({ currentProjectId, projects, photos }: 
   }
 }
 
-export async function importLocalBackup(file: File, createRecoveryBackup: () => Promise<boolean>): Promise<BackupData | null> {
+function parseDatabaseBackup(value: unknown): Record<string, DatabaseFile[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('資料庫檔案格式不正確')
+  return Object.fromEntries(Object.entries(value).map(([projectId, files]) => {
+    if (!Array.isArray(files)) throw new Error(`資料庫 Project ${projectId} 格式不正確`)
+    return [projectId, files.map(file => {
+      if (!file || typeof file !== 'object') throw new Error(`資料庫 Project ${projectId} 有無效檔案`)
+      return normalizeDatabaseFile({ ...(file as DatabaseFile), projectId })
+    })]
+  }))
+}
+
+async function prepareImport(file: File): Promise<PreparedBackup> {
+  const zip = await JSZip.loadAsync(file)
+  const manifest = zip.file('projects.json')
+  if (!manifest) throw new Error('找不到 projects.json')
+  const raw = JSON.parse(await manifest.async('text')) as { version?: unknown; projects?: unknown; currentProjectId?: unknown }
+  const version = typeof raw.version === 'number' ? raw.version : 1
+  if (version > 4) throw new Error(`不支援的備份版本：${version}`)
+  if (!Array.isArray(raw.projects) || !raw.projects.length) throw new Error('備份沒有有效 Project')
+  const projects = raw.projects.map((value, index) => {
+    if (!value || typeof value !== 'object') throw new Error(`Project ${index + 1} 格式不正確`)
+    const project = value as Partial<Project>
+    if (typeof project.id !== 'string' || !project.id.trim() || typeof project.name !== 'string' || !project.name.trim()) throw new Error(`Project ${index + 1} 缺少有效名稱或 ID`)
+    return normalizeProject({ ...project, id: project.id.trim(), name: project.name.trim() } as Project)
+  })
+  const projectIds = new Set<string>()
+  for (const project of projects) {
+    if (projectIds.has(project.id)) throw new Error(`Project ID 重複：${project.id}`)
+    projectIds.add(project.id)
+  }
+  const currentProjectId = typeof raw.currentProjectId === 'string' && projectIds.has(raw.currentProjectId) ? raw.currentProjectId : projects[0].id
+  const photos: Photo[] = []
+  const photoIds = new Set<string>()
+  for (const project of projects) {
+    const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}/photos/`
+    const metadataFile = zip.file(`${prefix}metadata.json`)
+    const metadataRows = metadataFile ? JSON.parse(await metadataFile.async('text')) as unknown : []
+    if (!Array.isArray(metadataRows)) throw new Error(`${project.name} 的相片 metadata 格式不正確`)
+    const metadataMap = new Map<string, Partial<PhotoMetadata>>()
+    for (const value of metadataRows) if (value && typeof value === 'object' && typeof (value as Partial<PhotoMetadata>).id === 'string') metadataMap.set((value as Partial<PhotoMetadata>).id!, value as Partial<PhotoMetadata>)
+    const entries = Object.values(zip.files).filter(entry => !entry.dir && entry.name.startsWith(prefix) && /\.jpg$/i.test(entry.name)) as JSZip.JSZipObject[]
+    for (const entry of entries) {
+      const id = entry.name.split('/').pop()!.replace(/\.jpg$/i, '')
+      if (!id || photoIds.has(id)) throw new Error(`相片 ID 重複：${id || '未命名'}`)
+      photoIds.add(id)
+      const blob = await entry.async('blob')
+      const metadata = metadataMap.get(id)
+      const src = await dataUrlFromBlob(blob)
+      photos.push({ id, src, cleanSrc: src, originalBlob: blob, category: normalizeCategoryName(typeof metadata?.category === 'string' ? metadata.category : project.settings?.categories?.[0]?.name || '其它'), tags: metadata?.tags && typeof metadata.tags === 'object' ? metadata.tags : {}, note: typeof metadata?.note === 'string' ? metadata.note : '', createdAt: typeof metadata?.createdAt === 'string' ? metadata.createdAt : new Date().toISOString(), projectId: project.id, annotations: Array.isArray(metadata?.annotations) ? metadata.annotations : [] })
+    }
+  }
+  const readJson = async (name: string) => { const entry = zip.file(name); return entry ? JSON.parse(await entry.async('text')) as unknown : undefined }
+  const [handoverRaw, memoRaw, notebookRaw, databaseRaw] = await Promise.all([readJson('handover.json'), readJson('site-memo.json'), readJson('notebooks.json'), readJson('database.json')])
+  if (handoverRaw !== undefined && (!handoverRaw || typeof handoverRaw !== 'object' || Array.isArray(handoverRaw))) throw new Error('制房移交資料格式不正確')
+  if (memoRaw !== undefined && (!memoRaw || typeof memoRaw !== 'object' || Array.isArray(memoRaw))) throw new Error('Site Memo 資料格式不正確')
+  if (notebookRaw !== undefined && (!notebookRaw || typeof notebookRaw !== 'object' || Array.isArray(notebookRaw))) throw new Error('記事簿資料格式不正確')
+  return { projects, currentProjectId, photos, handover: handoverRaw as Record<string, HandoverProjectData | Tower[]> | undefined, memos: memoRaw as Record<string, MemoBackup> | undefined, notebooks: notebookRaw as Record<string, unknown> | undefined, database: databaseRaw === undefined ? undefined : parseDatabaseBackup(databaseRaw) }
+}
+
+export async function importLocalBackup(file: File, options: ImportOptions): Promise<BackupData | null> {
   try {
-    const zip = await JSZip.loadAsync(file)
-    const manifest = zip.file('projects.json')
-    if (!manifest) throw new Error('找不到 projects.json')
-    const raw = JSON.parse(await manifest.async('text')) as { version?: unknown; projects?: unknown; currentProjectId?: unknown }
-    const version = typeof raw.version === 'number' ? raw.version : 1
-    if (version > 3) throw new Error(`不支援的備份版本：${version}`)
-    if (!Array.isArray(raw.projects) || !raw.projects.length) throw new Error('備份沒有有效 Project')
-    const projects = raw.projects.map((value, index) => {
-      if (!value || typeof value !== 'object') throw new Error(`Project ${index + 1} 格式不正確`)
-      const project = value as Partial<Project>
-      if (typeof project.id !== 'string' || !project.id.trim() || typeof project.name !== 'string' || !project.name.trim()) throw new Error(`Project ${index + 1} 缺少有效名稱或 ID`)
-      return normalizeProject({ ...project, id: project.id.trim(), name: project.name.trim() } as Project)
-    })
-    const currentProjectId = typeof raw.currentProjectId === 'string' && projects.some(project => project.id === raw.currentProjectId) ? raw.currentProjectId : projects[0].id
-    const photoCount = Object.values(zip.files).filter(entry => !entry.dir && /\/photos\/[^/]+\.jpg$/i.test(entry.name)).length
-    const memoFile = zip.file('site-memo.json')
-    const handoverFile = zip.file('handover.json')
-    const notebooksFile = zip.file('notebooks.json')
-    if (!confirm(`確認匯入此備份？\nProject：${projects.length} 個\n相片：${photoCount} 張\nSite Memo：${memoFile ? '有' : '無'}\n制房移交：${handoverFile ? '有' : '無'}\n\n匯入前會先下載目前資料作為復原備份。`)) return null
-    await createRecoveryBackup()
-    const photos: Photo[] = []
-    for (const project of projects) {
-      const prefix = `${project.name.replace(/[\\/:*?"<>|]/g, '_')}-${project.id}/photos/`
-      const metadataFile = zip.file(`${prefix}metadata.json`)
-      const metadataRows = metadataFile ? JSON.parse(await metadataFile.async('text')) as unknown : []
-      const metadataMap = new Map<string, Partial<PhotoMetadata>>()
-      if (Array.isArray(metadataRows)) {
-        for (const value of metadataRows) {
-          if (!value || typeof value !== 'object') continue
-          const metadata = value as Partial<PhotoMetadata>
-          if (typeof metadata.id === 'string') metadataMap.set(metadata.id, metadata)
-        }
-      }
-      const entries = Object.values(zip.files).filter(entry => !entry.dir && entry.name.startsWith(prefix) && /\.jpg$/i.test(entry.name)) as JSZip.JSZipObject[]
-      for (const entry of entries) {
-        const blob = await entry.async('blob')
-        const src = await dataUrlFromBlob(blob)
-        const id = entry.name.split('/').pop()!.replace(/\.jpg$/, '')
-        const metadata = metadataMap.get(id)
-        photos.push({
-          id,
-          src,
-          cleanSrc: src,
-          originalBlob: blob,
-          category: normalizeCategoryName(typeof metadata?.category === 'string' ? metadata.category : project.settings?.categories?.[0]?.name || '其它'),
-          tags: metadata?.tags && typeof metadata.tags === 'object' ? metadata.tags : {},
-          note: typeof metadata?.note === 'string' ? metadata.note : '',
-          createdAt: typeof metadata?.createdAt === 'string' ? metadata.createdAt : new Date().toISOString(),
-          projectId: project.id,
-          annotations: Array.isArray(metadata?.annotations) ? metadata.annotations : [],
-        })
-      }
+    const prepared = await prepareImport(file)
+    if (!confirm(`確認匯入此備份？\nProject：${prepared.projects.length} 個\n相片：${prepared.photos.length} 張\nSite Memo：${prepared.memos ? '有' : '無'}\n制房移交：${prepared.handover ? '有' : '無'}\n資料庫檔案：${prepared.database ? '有' : '無'}\n\n匯入前會先下載目前資料作為復原備份。`)) return null
+    if (!await options.createRecoveryBackup()) throw new Error('目前資料的 recovery backup 未能建立，已取消匯入')
+    const [previousHandover, previousMemos, previousDatabase] = await Promise.all([loadAllHandover(), loadAllMemos(), loadAllDatabaseFiles()])
+    const notebookIds = [...new Set([...options.currentProjectIds, ...Object.keys(prepared.notebooks || {})])]
+    const previousNotebooks = loadAllNotebooks(notebookIds)
+    let photosWritten = false; let handoverWritten = false; let memosWritten = false; let notebooksWritten = false; let databaseWritten = false
+    try {
+      await saveStoredPhotos(prepared.photos); photosWritten = true
+      if (prepared.handover) { await saveAllHandover(prepared.handover); handoverWritten = true }
+      if (prepared.memos) { await saveAllMemos(prepared.memos); memosWritten = true }
+      if (prepared.notebooks) { saveAllNotebooks(prepared.notebooks); notebooksWritten = true }
+      if (prepared.database) { await saveAllDatabaseFiles(prepared.database); databaseWritten = true }
+    } catch (error) {
+      const rollbackFailures: string[] = []
+      const rollback = async (label: string, action: () => Promise<void> | void) => { try { await action() } catch (rollbackError) { console.error(`Rollback ${label} failed:`, rollbackError); rollbackFailures.push(label) } }
+      if (databaseWritten) await rollback('資料庫檔案', () => saveAllDatabaseFiles(previousDatabase))
+      if (notebooksWritten) await rollback('記事簿', () => saveAllNotebooks(previousNotebooks))
+      if (memosWritten) await rollback('Site Memo', () => saveAllMemos(previousMemos))
+      if (handoverWritten) await rollback('制房移交', () => saveAllHandover(previousHandover))
+      if (photosWritten) await rollback('相片', () => saveStoredPhotos(options.currentPhotos))
+      const suffix = rollbackFailures.length ? `；但 ${rollbackFailures.join('、')} 未能自動回復` : '，並已自動回復原有資料'
+      throw new Error(`匯入未能完成${suffix}`, { cause: error })
     }
-    if (handoverFile) {
-      const handoverData = JSON.parse(await handoverFile.async('text'))
-      if (!handoverData || typeof handoverData !== 'object') throw new Error('制房移交資料格式不正確')
-      await saveAllHandover(handoverData as Record<string, HandoverProjectData | Tower[]>)
-    }
-    if (memoFile) {
-      const memoData = JSON.parse(await memoFile.async('text'))
-      if (!memoData || typeof memoData !== 'object' || Array.isArray(memoData)) throw new Error('Site Memo 資料格式不正確')
-      await saveAllMemos(memoData)
-    }
-    if (notebooksFile) {
-      const notebooks = JSON.parse(await notebooksFile.async('text'))
-      if (!notebooks || typeof notebooks !== 'object' || Array.isArray(notebooks)) throw new Error('記事簿資料格式不正確')
-      saveAllNotebooks(notebooks as Record<string, unknown>)
-    }
-    return { projects, currentProjectId, photos }
+    return { projects: prepared.projects, currentProjectId: prepared.currentProjectId, photos: prepared.photos }
   } catch (error) {
     console.error('Complete backup import failed:', error)
-    alert(`ZIP 備份檔案無法讀取：${error instanceof Error ? error.message : '格式不正確'}`)
+    alert(`ZIP 備份檔案無法讀取或還原：${error instanceof Error ? error.message : '格式不正確'}`)
     return null
   }
 }
+
