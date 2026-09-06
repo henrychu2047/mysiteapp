@@ -33,6 +33,9 @@ function formatSize(size: number) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
+function annotationPoints(annotation: FileAnnotation) {
+  return annotation.kind === 'draw' ? (annotation.points || []).map(point => `${point.x},${point.y}`).join(' ') : ''
+}
 function DatabaseContent({ projectId, projectName, onBack, onNavigate }: DatabaseProps) {
   const [files, setFiles] = useState<DatabaseFile[]>([])
   const [towers, setTowers] = useState<Tower[]>([])
