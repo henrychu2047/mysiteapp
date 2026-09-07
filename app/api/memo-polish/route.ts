@@ -1,12 +1,14 @@
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
-const API_VERSION = 'memo-polish-2026-09-01-2'
+const API_VERSION = 'memo-polish-2026-09-07-3'
 
 const GEMINI_MODEL = 'gemini-2.5-flash'
 const MAX_INPUT_CHARS = 12_000
+const MAX_REQUEST_BYTES = 64 * 1024
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = 10
+const MAX_RATE_LIMIT_BUCKETS = 2_000
 const requestBuckets = new Map<string, { count: number; resetAt: number }>()
 
 const SYSTEM_PROMPT = `你是一位資深香港建造業機電工程 (M&E) 合約專家，專責撰寫地盤公函 (Site Memo)。
@@ -24,16 +26,20 @@ function cleanEnv(value: string | undefined) {
 }
 
 function clientKey(request: Request) {
-  return request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous'
+  // Cloudflare overwrites this header, unlike generic forwarding headers which a
+  // client can forge. Without Cloudflare, deliberately fall back to one shared
+  // bucket rather than trusting a user-controlled IP header.
+  return request.headers.get('cf-connecting-ip')?.trim() || 'anonymous'
 }
 
 function isRateLimited(request: Request) {
   const now = Date.now()
+  for (const [bucketKey, bucket] of requestBuckets) if (bucket.resetAt <= now) requestBuckets.delete(bucketKey)
   const key = clientKey(request)
   const current = requestBuckets.get(key)
   if (!current || current.resetAt <= now) {
+    if (requestBuckets.size >= MAX_RATE_LIMIT_BUCKETS) return true
     requestBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    if (requestBuckets.size > 1_000) for (const [bucketKey, bucket] of requestBuckets) if (bucket.resetAt <= now) requestBuckets.delete(bucketKey)
     return false
   }
   current.count += 1
@@ -54,8 +60,18 @@ export async function POST(request: Request) {
   try {
     const allowedOrigin = cleanEnv(process.env.MEMO_POLISH_ALLOWED_ORIGIN)
     if (allowedOrigin && request.headers.get('origin') !== allowedOrigin) return Response.json({ error: '不允許的請求來源' }, { status: 403 })
+    const contentLength = Number(request.headers.get('content-length'))
+    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) return Response.json({ error: '請求內容過大' }, { status: 413 })
+    const contentType = request.headers.get('content-type')
+    if (contentType && !contentType.toLowerCase().includes('application/json')) return Response.json({ error: '請求格式必須為 JSON' }, { status: 415 })
     if (isRateLimited(request)) return Response.json({ error: '請求過於頻繁，請稍後再試' }, { status: 429, headers: { 'Retry-After': '60' } })
-    const { roughInput } = await request.json()
+    let payload: unknown
+    try {
+      payload = await request.json()
+    } catch {
+      return Response.json({ error: 'JSON 格式不正確' }, { status: 400 })
+    }
+    const roughInput = payload && typeof payload === 'object' ? (payload as { roughInput?: unknown }).roughInput : undefined
     if (typeof roughInput !== 'string' || !roughInput.trim()) {
       return Response.json({ error: '缺少輸入內容' }, { status: 400 })
     }

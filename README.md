@@ -107,6 +107,8 @@ MEMO_POLISH_ALLOWED_ORIGIN=https://your-app.example
 
 `MEMO_POLISH_ALLOWED_ORIGIN` 會拒絕非該網域發出的 AI 潤色請求；此 API 亦內置每分鐘 10 次的 basic rate limit。正式公開服務仍建議在 reverse proxy / Cloudflare 加入登入或 access policy，避免 API quota 被濫用。
 
+如網站經 Cloudflare proxy 對外，API 會以 Cloudflare 注入的 `CF-Connecting-IP` 分流 rate limit；沒有該 header 時，會安全地使用共用 bucket，而不會信任可偽造的 `X-Forwarded-For`。請在 reverse proxy 設定 API request body 上限為 64 KB 或以下。
+
 儲存後必須 **Redeploy / Recreate Container**，單純 Restart 有時不會套用新的 Stack 環境變數。可在 Container > Inspect > Config.Env 確認已載入；不要在畫面或日誌公開完整 Key。
 
 ## 本機開發
@@ -122,6 +124,12 @@ pnpm dev
 pnpm run build
 pnpm start
 ```
+
+## Docker 正式部署
+
+Repository 內的 `Dockerfile` 會建立 Next.js standalone production image，不會在 container 開機時安裝套件、clone GitHub 或重新 build。推送至 `main` 後，GitHub Actions 會發布 `ghcr.io/henrychu2047/mysiteapp:main` 及 commit SHA tag；Portainer 應改用已建好的 image，並保留現有的 AI 環境變數。
+
+首次切換前，請確認 GHCR package 已可被 Portainer pull（設為 public，或在 Portainer 加入具 `read:packages` 權限的 GitHub Container Registry credential）。
 
 連接 Vercel 後，按平台設定推送或合併至 `main` 自動部署。
 

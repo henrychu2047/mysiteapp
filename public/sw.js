@@ -1,4 +1,6 @@
-const CACHE_NAME = 'site-photo-static-v23'
+// Content-hashed Next.js assets are safe to reuse. Keeping one stable cache
+// name removes the old manual version sync with the registration URL.
+const CACHE_NAME = 'site-photo-static'
 const STATIC_RESOURCE = /\/_next\/static\//
 
 self.addEventListener('install', (event) => {
