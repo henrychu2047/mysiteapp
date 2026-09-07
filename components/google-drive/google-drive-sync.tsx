@@ -73,11 +73,13 @@ async function googleJson<T>(url: string, token: string, init?: RequestInit, fal
     headers,
   })
   const body = await response.text()
-  let data: T & { error?: { message?: string } | string; error_description?: string } = {} as T & { error?: { message?: string } | string; error_description?: string }
+  let data: T & { error?: { message?: string; errors?: Array<{ reason?: string; message?: string }> } | string; error_description?: string } = {} as T & { error?: { message?: string; errors?: Array<{ reason?: string; message?: string }> } | string; error_description?: string }
   try { data = JSON.parse(body) as typeof data } catch { /* Google may return plain text. */ }
   if (!response.ok) {
-    const error = typeof data.error === 'string' ? data.error_description || data.error : data.error?.message
-    throw new Error(error || fallback)
+    const detail = typeof data.error === 'string'
+      ? data.error_description || data.error
+      : data.error?.errors?.[0]?.reason || data.error?.errors?.[0]?.message || data.error?.message
+    throw new Error(`${detail || fallback}（HTTP ${response.status}）`)
   }
   return data
 }
@@ -105,9 +107,6 @@ function safeName(value: string) {
 }
 
 async function uploadPhoto(token: string, input: { rootFolderId: string; projectName: string; projectId: string; photoId: string; createdAt: string; file: Blob }) {
-  const existing = await findFile(token, `appProperties has { key='worksitePhotoId' and value='${escapeQuery(input.photoId)}' } and trashed=false`)
-  if (existing) return existing
-
   const projectFolder = await ensureFolder(token, safeName(input.projectName) || safeName(input.projectId) || 'Project', input.rootFolderId)
   const photosFolder = await ensureFolder(token, 'Photos', projectFolder.id)
   const month = Number.isFinite(Date.parse(input.createdAt)) ? input.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7)
@@ -132,6 +131,20 @@ async function uploadPhoto(token: string, input: { rootFolderId: string; project
     headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
     body,
   }, '相片上傳 Google Drive 失敗')
+}
+
+async function uploadPhotoWithRetry(token: string, input: Parameters<typeof uploadPhoto>[1]) {
+  let lastError: unknown
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await uploadPhoto(token, input)
+    } catch (error) {
+      lastError = error
+      if (attempt === 1 || !/HTTP (429|500|502|503|504)/i.test(readableError(error))) throw error
+      await new Promise(resolve => window.setTimeout(resolve, 700))
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('相片上傳 Google Drive 失敗')
 }
 
 function loadGoogleClient() {
@@ -212,6 +225,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
     setSyncProgress({ current: 0, total: unsyncedPhotos.length, uploaded: 0, failed: 0 })
     let uploaded = 0
     let failed = 0
+    let firstError = ''
     try {
       const rootFolder = await ensureFolder(session.accessToken, 'Worksite App')
       for (const [index, photo] of unsyncedPhotos.entries()) {
@@ -220,17 +234,18 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
           const blob = photo.originalBlob || await (await fetch(photo.cleanSrc || photo.src)).blob()
           if (!blob.type.startsWith('image/')) throw new Error('只可上傳相片檔案')
           if (blob.size > 25 * 1024 * 1024) throw new Error('單張相片不可超過 25 MB')
-          const file = await uploadPhoto(session.accessToken, { rootFolderId: rootFolder.id, projectName: projectNames.get(photo.projectId) || photo.projectId, projectId: photo.projectId, photoId: photo.id, createdAt: photo.createdAt, file: blob })
+          const file = await uploadPhotoWithRetry(session.accessToken, { rootFolderId: rootFolder.id, projectName: projectNames.get(photo.projectId) || photo.projectId, projectId: photo.projectId, photoId: photo.id, createdAt: photo.createdAt, file: blob })
           uploaded += 1
           onUpdatePhoto(photo.id, { status: 'synced', fileId: file.id, syncedAt: new Date().toISOString() })
         } catch (error) {
           failed += 1
+          if (!firstError) firstError = readableError(error)
           onUpdatePhoto(photo.id, { status: 'error', fileId: photo.googleDrive?.fileId, error: readableError(error) })
         } finally {
           setSyncProgress({ current: index + 1, total: unsyncedPhotos.length, uploaded, failed })
         }
       }
-      setMessage(uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。${failed ? ` ${failed} 張失敗，可再試一次。` : ''}` : failed ? `${failed} 張相片同步失敗，可再試一次。` : '沒有新相片需要同步。')
+      setMessage(uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。${failed ? ` ${failed} 張失敗，可再試一次。原因：${firstError}` : ''}` : failed ? `${failed} 張相片同步失敗，可再試一次。原因：${firstError}` : '沒有新相片需要同步。')
     } catch (error) {
       const errorMessage = readableError(error)
       if (/unauthenticated|invalid credentials|token|401/i.test(errorMessage)) {
