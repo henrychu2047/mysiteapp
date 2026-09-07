@@ -6,6 +6,13 @@ export type PhotoAnnotation = {
   points?: Array<{ x: number; y: number }>
 }
 
+export type GoogleDriveSync = {
+  status: 'pending' | 'syncing' | 'synced' | 'error'
+  fileId?: string
+  syncedAt?: string
+  error?: string
+}
+
 export type Photo = {
   id: string
   src: string
@@ -19,6 +26,7 @@ export type Photo = {
   createdAt: string
   projectId: string
   annotations?: PhotoAnnotation[]
+  googleDrive?: GoogleDriveSync
 }
 
 const PHOTO_DB = 'site-photo-db'

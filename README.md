@@ -111,6 +111,25 @@ MEMO_POLISH_ALLOWED_ORIGIN=https://your-app.example
 
 儲存後必須 **Redeploy / Recreate Container**，單純 Restart 有時不會套用新的 Stack 環境變數。可在 Container > Inspect > Config.Env 確認已載入；不要在畫面或日誌公開完整 Key。
 
+## 私人 Google Drive 相片同步
+
+相片會先保存於裝置，只有在「資料 > 備份」頁連接 Google Drive 並按同步後才會上傳；不會建立公開連結。首次設定時，在 Google Cloud 建立 OAuth 2.0 Web application、啟用 Google Drive API，並把下列 Redirect URI 加入 Authorized redirect URIs：
+
+```text
+https://management.henrynas.cc/api/google-drive/callback
+```
+
+在 Portainer stack 加入以下環境變數（不要提交到 Git）：
+
+```text
+GOOGLE_DRIVE_CLIENT_ID=Google OAuth client ID
+GOOGLE_DRIVE_CLIENT_SECRET=Google OAuth client secret
+GOOGLE_DRIVE_APP_ORIGIN=https://management.henrynas.cc
+GOOGLE_DRIVE_SESSION_SECRET=至少32字元的隨機字串
+```
+
+每位使用者可登入自己的 Google 帳戶；授權資料只會保存於該使用者瀏覽器的加密 session cookie。App 只要求 `drive.file` 權限（僅管理此 App 建立的檔案），每個帳戶首次同步後會在自己的 Drive 建立私人 `Worksite App / Project / Photos / YYYY-MM` 資料夾，其他使用者無法存取。重新部署時必須保留相同的 `GOOGLE_DRIVE_SESSION_SECRET`，否則現有瀏覽器需要重新連接。
+
 ## 本機開發
 需要 Node.js 及 pnpm，建議依照專案 lockfile 安裝：
 ```bash

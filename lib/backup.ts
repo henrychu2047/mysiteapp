@@ -19,8 +19,8 @@ const dataUrlFromBlob = (blob: Blob) => new Promise<string>((resolve, reject) =>
   reader.readAsDataURL(blob)
 })
 
-type PhotoMetadata = Pick<Photo, 'id' | 'category' | 'tags' | 'note' | 'createdAt' | 'projectId' | 'annotations'>
-const photoMetadata = (photo: Photo): PhotoMetadata => ({ id: photo.id, category: photo.category, tags: photo.tags, note: photo.note, createdAt: photo.createdAt, projectId: photo.projectId, annotations: photo.annotations })
+type PhotoMetadata = Pick<Photo, 'id' | 'category' | 'tags' | 'note' | 'createdAt' | 'projectId' | 'annotations' | 'googleDrive'>
+const photoMetadata = (photo: Photo): PhotoMetadata => ({ id: photo.id, category: photo.category, tags: photo.tags, note: photo.note, createdAt: photo.createdAt, projectId: photo.projectId, annotations: photo.annotations, googleDrive: photo.googleDrive })
 
 export async function exportLocalBackup({ currentProjectId, projects, photos }: BackupData): Promise<boolean> {
   try {
@@ -116,7 +116,7 @@ async function prepareImport(file: File): Promise<PreparedBackup> {
       const blob = await entry.async('blob')
       const metadata = metadataMap.get(id)
       const src = await dataUrlFromBlob(blob)
-      photos.push({ id, src, cleanSrc: src, originalBlob: blob, category: normalizeCategoryName(typeof metadata?.category === 'string' ? metadata.category : project.settings?.categories?.[0]?.name || '其它'), tags: metadata?.tags && typeof metadata.tags === 'object' ? metadata.tags : {}, note: typeof metadata?.note === 'string' ? metadata.note : '', createdAt: typeof metadata?.createdAt === 'string' ? metadata.createdAt : new Date().toISOString(), projectId: project.id, annotations: Array.isArray(metadata?.annotations) ? metadata.annotations : [] })
+      photos.push({ id, src, cleanSrc: src, originalBlob: blob, category: normalizeCategoryName(typeof metadata?.category === 'string' ? metadata.category : project.settings?.categories?.[0]?.name || '其它'), tags: metadata?.tags && typeof metadata.tags === 'object' ? metadata.tags : {}, note: typeof metadata?.note === 'string' ? metadata.note : '', createdAt: typeof metadata?.createdAt === 'string' ? metadata.createdAt : new Date().toISOString(), projectId: project.id, annotations: Array.isArray(metadata?.annotations) ? metadata.annotations : [], googleDrive: metadata?.googleDrive })
     }
   }
   const readJson = async (name: string) => { const entry = zip.file(name); return entry ? JSON.parse(await entry.async('text')) as unknown : undefined }
