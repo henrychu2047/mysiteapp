@@ -10,7 +10,9 @@ const DRIVE_API = 'https://www.googleapis.com/drive/v3'
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3'
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder'
 const SESSION_KEY = 'worksite-google-drive-session'
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID?.trim() || ''
+// This is a public browser OAuth client ID. Keep the fallback so a missing
+// CI build variable cannot silently remove the Google Drive controls.
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID?.trim() || '176157429212-ivkkkubuh05hhnrjgait5knehremqvhu.apps.googleusercontent.com'
 
 type DriveSession = { accessToken: string; email: string; expiresAt: number }
 type DriveStatus = { configured: boolean; connected: boolean; email?: string }
