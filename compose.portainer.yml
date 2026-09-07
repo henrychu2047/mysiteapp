@@ -1,6 +1,7 @@
 services:
   mysiteapp:
     image: ghcr.io/henrychu2047/mysiteapp:${MYSITEAPP_IMAGE_TAG:-main}
+    pull_policy: always
     container_name: mysiteapp
     restart: unless-stopped
     ports:
