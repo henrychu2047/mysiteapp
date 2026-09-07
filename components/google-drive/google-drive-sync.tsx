@@ -42,6 +42,10 @@ function readableError(value: unknown) {
   return value instanceof Error && value.message ? value.message : '同步失敗，請稍後再試'
 }
 
+function isAuthError(value: unknown) {
+  return typeof value === 'object' && value !== null && 'status' in value && (value as { status?: unknown }).status === 401
+}
+
 function storedSession(): DriveSession | null {
   try {
     const value = sessionStorage.getItem(SESSION_KEY)
@@ -79,7 +83,9 @@ async function googleJson<T>(url: string, token: string, init?: RequestInit, fal
     const detail = typeof data.error === 'string'
       ? data.error_description || data.error
       : data.error?.errors?.[0]?.reason || data.error?.errors?.[0]?.message || data.error?.message
-    throw new Error(`${detail || fallback}（HTTP ${response.status}）`)
+    const error = new Error(`${detail || fallback}（HTTP ${response.status}）`) as Error & { status?: number }
+    error.status = response.status
+    throw error
   }
   return data
 }
@@ -226,6 +232,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
     let uploaded = 0
     let failed = 0
     let firstError = ''
+    let authExpired = false
     try {
       const rootFolder = await ensureFolder(session.accessToken, 'Worksite App')
       for (const [index, photo] of unsyncedPhotos.entries()) {
@@ -238,6 +245,12 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
           uploaded += 1
           onUpdatePhoto(photo.id, { status: 'synced', fileId: file.id, syncedAt: new Date().toISOString() })
         } catch (error) {
+          if (isAuthError(error)) {
+            authExpired = true
+            sessionStorage.removeItem(SESSION_KEY)
+            setDrive({ configured: Boolean(GOOGLE_CLIENT_ID), connected: false })
+            break
+          }
           failed += 1
           if (!firstError) firstError = readableError(error)
           onUpdatePhoto(photo.id, { status: 'error', fileId: photo.googleDrive?.fileId, error: readableError(error) })
@@ -245,7 +258,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
           setSyncProgress({ current: index + 1, total: unsyncedPhotos.length, uploaded, failed })
         }
       }
-      setMessage(uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。${failed ? ` ${failed} 張失敗，可再試一次。原因：${firstError}` : ''}` : failed ? `${failed} 張相片同步失敗，可再試一次。原因：${firstError}` : '沒有新相片需要同步。')
+      setMessage(authExpired ? 'Google Drive 授權已失效，請重新連接後再同步。' : uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。${failed ? ` ${failed} 張失敗，可再試一次。原因：${firstError}` : ''}` : failed ? `${failed} 張相片同步失敗，可再試一次。原因：${firstError}` : '沒有新相片需要同步。')
     } catch (error) {
       const errorMessage = readableError(error)
       if (/unauthenticated|invalid credentials|token|401/i.test(errorMessage)) {
