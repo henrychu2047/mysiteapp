@@ -238,7 +238,10 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
       for (const [index, photo] of unsyncedPhotos.entries()) {
         onUpdatePhoto(photo.id, { status: 'syncing', fileId: photo.googleDrive?.fileId })
         try {
-          const blob = photo.originalBlob || await (await fetch(photo.cleanSrc || photo.src)).blob()
+          // Drive backup should contain the same Smart Tag-stamped image shown
+          // in the app. Older photos may only have the stamped thumbnail after
+          // being rehydrated from IndexedDB, so keep that as the second choice.
+          const blob = photo.stampedBlob || photo.thumbnailBlob || (photo.src && await (await fetch(photo.src)).blob()) || photo.originalBlob || await (await fetch(photo.cleanSrc || photo.src)).blob()
           if (!blob.type.startsWith('image/')) throw new Error('只可上傳相片檔案')
           if (blob.size > 25 * 1024 * 1024) throw new Error('單張相片不可超過 25 MB')
           const file = await uploadPhotoWithRetry(session.accessToken, { rootFolderId: rootFolder.id, projectName: projectNames.get(photo.projectId) || photo.projectId, projectId: photo.projectId, photoId: photo.id, createdAt: photo.createdAt, file: blob })

@@ -311,7 +311,7 @@ export default function Page() {
   }
   const createProjectPhoto = async (file: File, category: string): Promise<Photo> => {
     const result = await stampImage(file, category, tags, note, currentProject.name, visibleTags)
-    const photo: Photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, thumbnailBlob: result.thumbnailBlob, category, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
+    const photo: Photo = { id: createId(), src: result.stamped, cleanSrc: result.clean, originalBlob: result.originalBlob, stampedBlob: result.stampedBlob, thumbnailBlob: result.thumbnailBlob, category, tags: { ...tags }, note, createdAt: new Date().toISOString(), projectId: currentProject.id }
     saveQueueRef.current = saveQueueRef.current.catch(error => {
       console.error('上一個資料保存任務失敗:', error)
     }).then(() => saveStoredPhoto(photo))

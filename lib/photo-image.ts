@@ -26,7 +26,7 @@ export function imageAsJpeg(dataUrl: string) {
 }
 
 export function stampImage(file: File, category: string, tags: Record<string, string> = {}, note = '', projectName = '', visibleTags?: string[]) {
-  return new Promise<{ stamped: string; clean: string; originalBlob: Blob; thumbnailBlob: Blob }>((resolve, reject) => {
+  return new Promise<{ stamped: string; clean: string; originalBlob: Blob; stampedBlob: Blob; thumbnailBlob: Blob }>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
       const image = new Image()
@@ -70,13 +70,14 @@ export function stampImage(file: File, category: string, tags: Record<string, st
           ctx.fillText(row.value, textX + labelWidth, y, width - size - labelWidth)
         })
         const stamped = canvas.toDataURL('image/jpeg', 0.78)
+        const stampedBlob = dataUrlToBlob(stamped)
         const thumbnailCanvas = document.createElement('canvas')
         const thumbnailWidth = Math.min(960, canvas.width)
         thumbnailCanvas.width = thumbnailWidth
         thumbnailCanvas.height = Math.max(1, Math.round(canvas.height * thumbnailWidth / canvas.width))
         thumbnailCanvas.getContext('2d')?.drawImage(canvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
         const thumbnailBlob = dataUrlToBlob(thumbnailCanvas.toDataURL('image/webp', 0.72))
-        resolve({ stamped, clean: cleanDataUrl, originalBlob, thumbnailBlob })
+        resolve({ stamped, clean: cleanDataUrl, originalBlob, stampedBlob, thumbnailBlob })
       }
       image.onerror = () => reject(new Error('無法讀取相片'))
       image.src = reader.result as string
