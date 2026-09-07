@@ -4,7 +4,30 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GoogleDriveSync, Photo } from '@/lib/photo-storage'
 import type { Project } from '@/lib/project-settings'
 
+const GOOGLE_CLIENT_SCRIPT = 'https://accounts.google.com/gsi/client'
+const DRIVE_SCOPE = 'openid email https://www.googleapis.com/auth/drive.file'
+const DRIVE_API = 'https://www.googleapis.com/drive/v3'
+const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3'
+const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder'
+const SESSION_KEY = 'worksite-google-drive-session'
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID?.trim() || ''
+
+type DriveSession = { accessToken: string; email: string; expiresAt: number }
 type DriveStatus = { configured: boolean; connected: boolean; email?: string }
+type GoogleTokenResponse = { access_token?: string; expires_in?: number; error?: string; error_description?: string }
+type GoogleFile = { id: string; name: string }
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        oauth2?: {
+          initTokenClient: (config: { client_id: string; scope: string; callback: (response: GoogleTokenResponse) => void }) => { requestAccessToken: (options?: { prompt?: string }) => void }
+        }
+      }
+    }
+  }
+}
 
 type GoogleDriveSyncProps = {
   photos: Photo[]
@@ -12,90 +35,217 @@ type GoogleDriveSyncProps = {
   onUpdatePhoto: (photoId: string, sync: GoogleDriveSync) => void
 }
 
-const defaultStatus: DriveStatus = { configured: false, connected: false }
-
 function readableError(value: unknown) {
   return value instanceof Error && value.message ? value.message : '同步失敗，請稍後再試'
 }
 
+function storedSession(): DriveSession | null {
+  try {
+    const value = sessionStorage.getItem(SESSION_KEY)
+    if (!value) return null
+    const session = JSON.parse(value) as Partial<DriveSession>
+    if (!session.accessToken || !session.email || typeof session.expiresAt !== 'number' || session.expiresAt <= Date.now() + 60_000) {
+      sessionStorage.removeItem(SESSION_KEY)
+      return null
+    }
+    return { accessToken: session.accessToken, email: session.email, expiresAt: session.expiresAt }
+  } catch {
+    return null
+  }
+}
+
+function saveSession(session: DriveSession) {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
+}
+
+function escapeQuery(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
+async function googleJson<T>(url: string, token: string, init?: RequestInit, fallback = 'Google Drive 請求失敗'): Promise<T> {
+  const headers = new Headers(init?.headers)
+  headers.set('Authorization', `Bearer ${token}`)
+  const response = await fetch(url, {
+    ...init,
+    headers,
+  })
+  const body = await response.text()
+  let data: T & { error?: { message?: string } | string; error_description?: string } = {} as T & { error?: { message?: string } | string; error_description?: string }
+  try { data = JSON.parse(body) as typeof data } catch { /* Google may return plain text. */ }
+  if (!response.ok) {
+    const error = typeof data.error === 'string' ? data.error_description || data.error : data.error?.message
+    throw new Error(error || fallback)
+  }
+  return data
+}
+
+async function findFile(token: string, query: string) {
+  const params = new URLSearchParams({ q: query, spaces: 'drive', pageSize: '1', fields: 'files(id,name)' })
+  const result = await googleJson<{ files?: GoogleFile[] }>(`${DRIVE_API}/files?${params}`, token, undefined, '無法讀取 Google Drive')
+  return result.files?.[0] || null
+}
+
+async function ensureFolder(token: string, name: string, parentId?: string) {
+  const parentQuery = parentId ? ` and '${escapeQuery(parentId)}' in parents` : " and 'root' in parents"
+  const query = `mimeType='${DRIVE_FOLDER_MIME}' and trashed=false and name='${escapeQuery(name)}'${parentQuery}`
+  const existing = await findFile(token, query)
+  if (existing) return existing
+  return googleJson<GoogleFile>(`${DRIVE_API}/files`, token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: DRIVE_FOLDER_MIME, ...(parentId ? { parents: [parentId] } : {}) }),
+  }, '無法建立 Google Drive 資料夾')
+}
+
+function safeName(value: string) {
+  return value.trim().replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_').slice(0, 120)
+}
+
+async function uploadPhoto(token: string, input: { rootFolderId: string; projectName: string; projectId: string; photoId: string; createdAt: string; file: Blob }) {
+  const existing = await findFile(token, `appProperties has { key='worksitePhotoId' and value='${escapeQuery(input.photoId)}' } and trashed=false`)
+  if (existing) return existing
+
+  const projectFolder = await ensureFolder(token, safeName(input.projectName) || safeName(input.projectId) || 'Project', input.rootFolderId)
+  const photosFolder = await ensureFolder(token, 'Photos', projectFolder.id)
+  const month = Number.isFinite(Date.parse(input.createdAt)) ? input.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7)
+  const monthFolder = await ensureFolder(token, month, photosFolder.id)
+  const extension = input.file.type === 'image/png' ? 'png' : input.file.type === 'image/webp' ? 'webp' : 'jpg'
+  const datePart = Number.isFinite(Date.parse(input.createdAt)) ? input.createdAt.replace(/[:.]/g, '-').replace(/Z$/, '') : new Date().toISOString().replace(/[:.]/g, '-').replace(/Z$/, '')
+  const metadata = {
+    name: `${datePart}-${input.photoId}.${extension}`,
+    mimeType: input.file.type || 'image/jpeg',
+    parents: [monthFolder.id],
+    appProperties: { worksitePhotoId: input.photoId, worksiteProjectId: input.projectId, source: 'worksite-app' },
+  }
+  const boundary = `worksite-${crypto.randomUUID().replaceAll('-', '')}`
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`,
+    `--${boundary}\r\nContent-Type: ${metadata.mimeType}\r\n\r\n`,
+    input.file,
+    `\r\n--${boundary}--`,
+  ])
+  return googleJson<GoogleFile>(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,name`, token, {
+    method: 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  }, '相片上傳 Google Drive 失敗')
+}
+
+function loadGoogleClient() {
+  if (window.google?.accounts?.oauth2) return Promise.resolve()
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_CLIENT_SCRIPT}"]`)
+    const script = existing || document.createElement('script')
+    const complete = () => window.google?.accounts?.oauth2 ? resolve() : reject(new Error('Google 登入元件未能載入'))
+    script.addEventListener('load', complete, { once: true })
+    script.addEventListener('error', () => reject(new Error('無法載入 Google 登入元件')), { once: true })
+    if (!existing) {
+      script.src = GOOGLE_CLIENT_SCRIPT
+      script.async = true
+      script.defer = true
+      document.head.appendChild(script)
+    }
+  })
+}
+
 export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: GoogleDriveSyncProps) {
-  const [drive, setDrive] = useState<DriveStatus>(defaultStatus)
-  const [loading, setLoading] = useState(true)
+  const [drive, setDrive] = useState<DriveStatus>({ configured: Boolean(GOOGLE_CLIENT_ID), connected: false })
+  const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [message, setMessage] = useState('')
   const syncingRef = useRef(false)
   const projectNames = useMemo(() => new Map(projects.map(project => [project.id, project.name])), [projects])
   const unsyncedPhotos = useMemo(() => photos.filter(photo => photo.googleDrive?.status !== 'synced'), [photos])
 
-  const refreshStatus = useCallback(async () => {
+  useEffect(() => {
+    const session = storedSession()
+    setDrive({ configured: Boolean(GOOGLE_CLIENT_ID), connected: Boolean(session), email: session?.email })
+  }, [])
+
+  const connect = useCallback(async () => {
+    if (!GOOGLE_CLIENT_ID) return
+    setLoading(true)
+    setMessage('')
     try {
-      const response = await fetch('/api/google-drive/status', { cache: 'no-store' })
-      if (!response.ok) throw new Error('無法讀取 Google Drive 連線狀態')
-      setDrive(await response.json() as DriveStatus)
+      await loadGoogleClient()
+      const client = window.google?.accounts?.oauth2?.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        callback: async response => {
+          if (!response.access_token) {
+            setMessage(response.error_description || response.error || 'Google Drive 連接未完成，請再試一次。')
+            setLoading(false)
+            return
+          }
+          try {
+            const profile = await googleJson<{ email?: string; email_verified?: boolean }>('https://openidconnect.googleapis.com/v1/userinfo', response.access_token, undefined, '無法確認 Google 帳戶')
+            if (!profile.email || !profile.email_verified) throw new Error('Google 帳戶電郵未驗證')
+            const session = { accessToken: response.access_token, email: profile.email.toLowerCase(), expiresAt: Date.now() + (response.expires_in || 3600) * 1000 }
+            saveSession(session)
+            setDrive({ configured: true, connected: true, email: session.email })
+            setMessage('Google Drive 已連接。按「同步相片」開始上傳。')
+          } catch (error) {
+            setMessage(readableError(error))
+          } finally {
+            setLoading(false)
+          }
+        },
+      })
+      if (!client) throw new Error('無法開始 Google 登入')
+      client.requestAccessToken({ prompt: 'consent' })
     } catch (error) {
       setMessage(readableError(error))
-    } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => {
-    void refreshStatus()
-    const result = new URLSearchParams(window.location.search).get('googleDrive')
-    if (result) {
-      setMessage(result === 'connected' ? 'Google Drive 已連接。按「同步相片」開始上傳。' : 'Google Drive 連接未完成，請再試一次。')
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-  }, [refreshStatus])
-
   const syncPhotos = useCallback(async () => {
-    if (syncingRef.current || !drive.connected || !unsyncedPhotos.length) return
+    const session = storedSession()
+    if (syncingRef.current || !session || !unsyncedPhotos.length) return
     syncingRef.current = true
     setSyncing(true)
     setMessage('')
     let uploaded = 0
     try {
+      const rootFolder = await ensureFolder(session.accessToken, 'Worksite App')
       for (const photo of unsyncedPhotos) {
         onUpdatePhoto(photo.id, { status: 'syncing', fileId: photo.googleDrive?.fileId })
         try {
           const blob = photo.originalBlob || await (await fetch(photo.cleanSrc || photo.src)).blob()
-          const form = new FormData()
-          form.append('photo', blob, `${photo.id}.jpg`)
-          form.set('photoId', photo.id)
-          form.set('projectId', photo.projectId)
-          form.set('projectName', projectNames.get(photo.projectId) || photo.projectId)
-          form.set('createdAt', photo.createdAt)
-          const response = await fetch('/api/google-drive/upload', { method: 'POST', body: form })
-          const payload = await response.json() as { fileId?: string; error?: string }
-          if (!response.ok || !payload.fileId) {
-            if (response.status === 401) {
-              setDrive(current => ({ ...current, connected: false }))
-              throw new Error('Google Drive 授權已失效，請重新連接')
-            }
-            throw new Error(payload.error || '上傳失敗')
-          }
+          if (!blob.type.startsWith('image/')) throw new Error('只可上傳相片檔案')
+          if (blob.size > 25 * 1024 * 1024) throw new Error('單張相片不可超過 25 MB')
+          const file = await uploadPhoto(session.accessToken, { rootFolderId: rootFolder.id, projectName: projectNames.get(photo.projectId) || photo.projectId, projectId: photo.projectId, photoId: photo.id, createdAt: photo.createdAt, file: blob })
           uploaded += 1
-          onUpdatePhoto(photo.id, { status: 'synced', fileId: payload.fileId, syncedAt: new Date().toISOString() })
+          onUpdatePhoto(photo.id, { status: 'synced', fileId: file.id, syncedAt: new Date().toISOString() })
         } catch (error) {
           onUpdatePhoto(photo.id, { status: 'error', fileId: photo.googleDrive?.fileId, error: readableError(error) })
         }
       }
       setMessage(uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。` : '沒有新相片需要同步。')
+    } catch (error) {
+      const errorMessage = readableError(error)
+      if (/unauthenticated|invalid credentials|token|401/i.test(errorMessage)) {
+        sessionStorage.removeItem(SESSION_KEY)
+        setDrive({ configured: Boolean(GOOGLE_CLIENT_ID), connected: false })
+        setMessage('Google Drive 授權已失效，請重新連接。')
+      } else {
+        setMessage(errorMessage)
+      }
     } finally {
       syncingRef.current = false
       setSyncing(false)
     }
-  }, [drive.connected, onUpdatePhoto, projectNames, unsyncedPhotos])
+  }, [onUpdatePhoto, projectNames, unsyncedPhotos])
 
-  const disconnect = async () => {
-    await fetch('/api/google-drive/disconnect', { method: 'POST' })
-    setDrive(current => ({ ...current, connected: false, email: undefined }))
-    setMessage('此裝置已中斷 Google Drive。已上傳的相片會保留在 Drive。')
+  const disconnect = () => {
+    sessionStorage.removeItem(SESSION_KEY)
+    setDrive({ configured: Boolean(GOOGLE_CLIENT_ID), connected: false })
+    setMessage('此瀏覽器已中斷 Google Drive。已上傳的相片會保留在 Drive。')
   }
 
   return <div className="about-block">
     <h3>私人 Google Drive 相片同步</h3>
-    {loading ? <p>正在檢查 Google Drive 設定…</p> : !drive.configured ? <p>尚未設定 Google Drive。完成 Google Cloud OAuth 設定並加入伺服器環境變數後，才可連接私人 Drive。</p> : !drive.connected ? <><p>相片會先保留在本機；連接後由你手動開始上傳，檔案不會公開分享。</p><button type="button" onClick={() => { window.location.assign('/api/google-drive/connect') }}>連接私人 Google Drive</button></> : <><p>已連接：{drive.email}。未同步 {unsyncedPhotos.length} 張相片。</p><div className="backup-actions"><button type="button" onClick={() => void syncPhotos()} disabled={syncing || !unsyncedPhotos.length}>{syncing ? '正在同步…' : unsyncedPhotos.length ? `同步 ${unsyncedPhotos.length} 張相片` : '全部相片已同步'}</button><button type="button" onClick={() => void disconnect()} disabled={syncing}>中斷此裝置連接</button></div></>}
+    {!drive.configured ? <p>Google Drive 尚未啟用。管理員只需在建置 App 時加入公開的 Google Client ID；不需要在伺服器保存 Google 密碼、Client Secret 或任何使用者帳戶資料。</p> : !drive.connected ? <><p>相片會先保留在本機；按連接後會開啟 Google 官方登入／授權視窗。App 看不到你的 Google 密碼。</p><button type="button" onClick={() => void connect()} disabled={loading}>{loading ? '正在開啟 Google 登入…' : '連接私人 Google Drive'}</button></> : <><p>已連接：{drive.email}。未同步 {unsyncedPhotos.length} 張相片。授權只保留在此瀏覽器的暫存中，關閉瀏覽器或過期後按連接即可重新授權。</p><div className="backup-actions"><button type="button" onClick={() => void syncPhotos()} disabled={syncing || !unsyncedPhotos.length}>{syncing ? '正在同步…' : unsyncedPhotos.length ? `同步 ${unsyncedPhotos.length} 張相片` : '全部相片已同步'}</button><button type="button" onClick={disconnect} disabled={syncing}>中斷此瀏覽器連接</button></div></>}
     {message && <p role="status">{message}</p>}
   </div>
 }

@@ -33,5 +33,7 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID=${{ vars.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}

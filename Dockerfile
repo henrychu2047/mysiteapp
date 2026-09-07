@@ -10,6 +10,8 @@ RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID
+ENV NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1

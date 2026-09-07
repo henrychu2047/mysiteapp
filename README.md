@@ -113,22 +113,21 @@ MEMO_POLISH_ALLOWED_ORIGIN=https://your-app.example
 
 ## 私人 Google Drive 相片同步
 
-相片會先保存於裝置，只有在「資料 > 備份」頁連接 Google Drive 並按同步後才會上傳；不會建立公開連結。首次設定時，在 Google Cloud 建立 OAuth 2.0 Web application、啟用 Google Drive API，並把下列 Redirect URI 加入 Authorized redirect URIs：
+相片會先保存於裝置，只有在「資料 > 備份」頁連接 Google Drive 並按同步後才會上傳；不會建立公開連結。每位使用者會在瀏覽器開啟 Google 官方登入／授權視窗，密碼只會交給 Google，App 及伺服器均不會接收或保存 Google 密碼、Client Secret、refresh token 或相片內容。
+
+首次設定時，在 Google Cloud 建立 OAuth 2.0 **Web application**、啟用 Google Drive API，並在 **Authorized JavaScript origins** 加入：
 
 ```text
-https://management.henrynas.cc/api/google-drive/callback
+https://management.henrynas.cc
 ```
 
-在 Portainer stack 加入以下環境變數（不要提交到 Git）：
+將得到的公開 Client ID 作為 GitHub Actions repository variable `NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID`；發佈 image workflow 會自動在 build 時傳入：
 
 ```text
-GOOGLE_DRIVE_CLIENT_ID=Google OAuth client ID
-GOOGLE_DRIVE_CLIENT_SECRET=Google OAuth client secret
-GOOGLE_DRIVE_APP_ORIGIN=https://management.henrynas.cc
-GOOGLE_DRIVE_SESSION_SECRET=至少32字元的隨機字串
+NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID=Google OAuth client ID
 ```
 
-每位使用者可登入自己的 Google 帳戶；授權資料只會保存於該使用者瀏覽器的加密 session cookie。App 只要求 `drive.file` 權限（僅管理此 App 建立的檔案），每個帳戶首次同步後會在自己的 Drive 建立私人 `Worksite App / Project / Photos / YYYY-MM` 資料夾，其他使用者無法存取。重新部署時必須保留相同的 `GOOGLE_DRIVE_SESSION_SECRET`，否則現有瀏覽器需要重新連接。
+Container / Portainer **不需要**任何 Google OAuth 環境變數。App 只要求 `drive.file` 權限（僅管理此 App 建立的檔案）；每個帳戶首次同步後會在自己的 Drive 建立私人 `Worksite App / Project / Photos / YYYY-MM` 資料夾，其他使用者無法存取。Google access token 只保留在該使用者的 browser sessionStorage，通常約一小時後失效；重新按連接即可再授權。
 
 ## 本機開發
 需要 Node.js 及 pnpm，建議依照專案 lockfile 安裝：
