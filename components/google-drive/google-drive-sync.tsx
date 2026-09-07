@@ -14,6 +14,7 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID?.trim() 
 
 type DriveSession = { accessToken: string; email: string; expiresAt: number }
 type DriveStatus = { configured: boolean; connected: boolean; email?: string }
+type SyncProgress = { current: number; total: number; uploaded: number; failed: number }
 type GoogleTokenResponse = { access_token?: string; expires_in?: number; error?: string; error_description?: string }
 type GoogleFile = { id: string; name: string }
 
@@ -152,6 +153,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
   const [drive, setDrive] = useState<DriveStatus>({ configured: Boolean(GOOGLE_CLIENT_ID), connected: false })
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null)
   const [message, setMessage] = useState('')
   const syncingRef = useRef(false)
   const projectNames = useMemo(() => new Map(projects.map(project => [project.id, project.name])), [projects])
@@ -205,10 +207,12 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
     syncingRef.current = true
     setSyncing(true)
     setMessage('')
+    setSyncProgress({ current: 0, total: unsyncedPhotos.length, uploaded: 0, failed: 0 })
     let uploaded = 0
+    let failed = 0
     try {
       const rootFolder = await ensureFolder(session.accessToken, 'Worksite App')
-      for (const photo of unsyncedPhotos) {
+      for (const [index, photo] of unsyncedPhotos.entries()) {
         onUpdatePhoto(photo.id, { status: 'syncing', fileId: photo.googleDrive?.fileId })
         try {
           const blob = photo.originalBlob || await (await fetch(photo.cleanSrc || photo.src)).blob()
@@ -218,10 +222,13 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
           uploaded += 1
           onUpdatePhoto(photo.id, { status: 'synced', fileId: file.id, syncedAt: new Date().toISOString() })
         } catch (error) {
+          failed += 1
           onUpdatePhoto(photo.id, { status: 'error', fileId: photo.googleDrive?.fileId, error: readableError(error) })
+        } finally {
+          setSyncProgress({ current: index + 1, total: unsyncedPhotos.length, uploaded, failed })
         }
       }
-      setMessage(uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。` : '沒有新相片需要同步。')
+      setMessage(uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。${failed ? ` ${failed} 張失敗，可再試一次。` : ''}` : failed ? `${failed} 張相片同步失敗，可再試一次。` : '沒有新相片需要同步。')
     } catch (error) {
       const errorMessage = readableError(error)
       if (/unauthenticated|invalid credentials|token|401/i.test(errorMessage)) {
@@ -245,7 +252,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
 
   return <div className="about-block">
     <h3>私人 Google Drive 相片同步</h3>
-    {!drive.configured ? <p>Google Drive 尚未啟用。管理員只需在建置 App 時加入公開的 Google Client ID；不需要在伺服器保存 Google 密碼、Client Secret 或任何使用者帳戶資料。</p> : !drive.connected ? <><p>相片會先保留在本機；按連接後會開啟 Google 官方登入／授權視窗。App 看不到你的 Google 密碼。</p><button type="button" onClick={() => void connect()} disabled={loading}>{loading ? '正在開啟 Google 登入…' : '連接私人 Google Drive'}</button></> : <><p>已連接：{drive.email}。未同步 {unsyncedPhotos.length} 張相片。授權只保留在此瀏覽器的暫存中，關閉瀏覽器或過期後按連接即可重新授權。</p><div className="backup-actions"><button type="button" onClick={() => void syncPhotos()} disabled={syncing || !unsyncedPhotos.length}>{syncing ? '正在同步…' : unsyncedPhotos.length ? `同步 ${unsyncedPhotos.length} 張相片` : '全部相片已同步'}</button><button type="button" onClick={disconnect} disabled={syncing}>中斷此瀏覽器連接</button></div></>}
+    {!drive.configured ? <p>Google Drive 尚未啟用。管理員只需在建置 App 時加入公開的 Google Client ID；不需要在伺服器保存 Google 密碼、Client Secret 或任何使用者帳戶資料。</p> : !drive.connected ? <><p>相片會先保留在本機；按連接後會開啟 Google 官方登入／授權視窗。App 看不到你的 Google 密碼。</p><button type="button" onClick={() => void connect()} disabled={loading}>{loading ? '正在開啟 Google 登入…' : '連接私人 Google Drive'}</button></> : <><p>已連接：{drive.email}。未同步 {unsyncedPhotos.length} 張相片。授權只保留在此瀏覽器的暫存中，關閉瀏覽器或過期後按連接即可重新授權。</p><div className="backup-actions"><button type="button" onClick={() => void syncPhotos()} disabled={syncing || !unsyncedPhotos.length}>{syncing ? '正在同步…' : unsyncedPhotos.length ? `同步 ${unsyncedPhotos.length} 張相片` : '全部相片已同步'}</button><button type="button" onClick={disconnect} disabled={syncing}>中斷此瀏覽器連接</button></div>{syncProgress && <p role="status" aria-live="polite">同步中：{syncProgress.current}／{syncProgress.total} 張（成功 {syncProgress.uploaded}，失敗 {syncProgress.failed}）</p>}</>}
     {message && <p role="status">{message}</p>}
   </div>
 }
