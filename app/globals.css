@@ -6,6 +6,12 @@
 html { background: var(--background); scrollbar-gutter: stable; }
 .offline-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 200; padding: 8px 16px; background: var(--navy); color: #fff; text-align: center; font-size: 13px; }
 body { margin: 0; background: var(--background); color: var(--foreground); font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Hiragino Sans GB', 'Noto Sans CJK TC', sans-serif; font-size: 16px; overflow-x: hidden; }
+.legal-page { min-height: 100svh; padding: max(28px, env(safe-area-inset-top)) 18px calc(32px + env(safe-area-inset-bottom)); background: var(--background); }
+.legal-card { width: min(760px, 100%); margin: 0 auto; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--line); border-radius: 18px; background: var(--card); box-shadow: 0 12px 30px rgba(21, 33, 43, .06); }
+.legal-kicker { margin-bottom: 8px; color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+.legal-card h1 { margin: 0; font-size: clamp(30px, 6vw, 42px); letter-spacing: -.04em; }
+.legal-updated { margin-top: 10px; color: var(--muted); font-size: 14px; }
+.legal-card section { margin-top: 30px; }.legal-card h2 { margin: 0 0 10px; font-size: 19px; }.legal-card p { color: #384750; line-height: 1.75; }.legal-card p + p { margin-top: 12px; }.legal-card a { color: var(--blue); font-weight: 700; }
 button, input { font: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .app-shell, .memo-app, .ho-app { width: 100%; min-height: 100svh; max-width: 680px; margin: 0 auto; background: var(--background); position: relative; } .app-shell { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
