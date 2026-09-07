@@ -112,7 +112,7 @@ function safeName(value: string) {
   return value.trim().replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_').slice(0, 120)
 }
 
-async function uploadPhoto(token: string, input: { rootFolderId: string; projectName: string; projectId: string; photoId: string; createdAt: string; file: Blob }) {
+async function uploadPhoto(token: string, input: { rootFolderId: string; projectName: string; projectId: string; photoId: string; createdAt: string; file: Blob; fileId?: string }) {
   const projectFolder = await ensureFolder(token, safeName(input.projectName) || safeName(input.projectId) || 'Project', input.rootFolderId)
   const photosFolder = await ensureFolder(token, 'Photos', projectFolder.id)
   const month = Number.isFinite(Date.parse(input.createdAt)) ? input.createdAt.slice(0, 7) : new Date().toISOString().slice(0, 7)
@@ -132,8 +132,11 @@ async function uploadPhoto(token: string, input: { rootFolderId: string; project
     input.file,
     `\r\n--${boundary}--`,
   ])
-  return googleJson<GoogleFile>(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,name`, token, {
-    method: 'POST',
+  const endpoint = input.fileId
+    ? `${DRIVE_UPLOAD_API}/files/${encodeURIComponent(input.fileId)}?uploadType=multipart&fields=id,name`
+    : `${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,name`
+  return googleJson<GoogleFile>(endpoint, token, {
+    method: input.fileId ? 'PATCH' : 'POST',
     headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
     body,
   }, '相片上傳 Google Drive 失敗')
@@ -141,13 +144,16 @@ async function uploadPhoto(token: string, input: { rootFolderId: string; project
 
 async function uploadPhotoWithRetry(token: string, input: Parameters<typeof uploadPhoto>[1]) {
   let lastError: unknown
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       return await uploadPhoto(token, input)
     } catch (error) {
       lastError = error
-      if (attempt === 1 || !/HTTP (429|500|502|503|504)/i.test(readableError(error))) throw error
-      await new Promise(resolve => window.setTimeout(resolve, 700))
+      const detail = readableError(error)
+      const hasStatus = typeof error === 'object' && error !== null && 'status' in error
+      const retryable = !hasStatus || /HTTP (408|429|500|502|503|504)/i.test(detail)
+      if (attempt === 2 || !retryable) throw error
+      await new Promise(resolve => window.setTimeout(resolve, 800 * (attempt + 1)))
     }
   }
   throw lastError instanceof Error ? lastError : new Error('相片上傳 Google Drive 失敗')
@@ -174,6 +180,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
   const [drive, setDrive] = useState<DriveStatus>({ configured: Boolean(GOOGLE_CLIENT_ID), connected: false })
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [resyncing, setResyncing] = useState(false)
   const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null)
   const [message, setMessage] = useState('')
   const syncingRef = useRef(false)
@@ -222,20 +229,22 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
     }
   }, [])
 
-  const syncPhotos = useCallback(async () => {
+  const syncPhotos = useCallback(async (force = false) => {
     const session = storedSession()
-    if (syncingRef.current || !session || !unsyncedPhotos.length) return
+    const candidates = force ? photos : unsyncedPhotos
+    if (syncingRef.current || !session || !candidates.length) return
     syncingRef.current = true
     setSyncing(true)
+    setResyncing(force)
     setMessage('')
-    setSyncProgress({ current: 0, total: unsyncedPhotos.length, uploaded: 0, failed: 0 })
+    setSyncProgress({ current: 0, total: candidates.length, uploaded: 0, failed: 0 })
     let uploaded = 0
     let failed = 0
     let firstError = ''
     let authExpired = false
     try {
       const rootFolder = await ensureFolder(session.accessToken, 'Worksite App')
-      for (const [index, photo] of unsyncedPhotos.entries()) {
+      for (const [index, photo] of candidates.entries()) {
         onUpdatePhoto(photo.id, { status: 'syncing', fileId: photo.googleDrive?.fileId })
         try {
           // Drive backup should contain the same Smart Tag-stamped image shown
@@ -244,7 +253,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
           const blob = photo.stampedBlob || photo.thumbnailBlob || (photo.src && await (await fetch(photo.src)).blob()) || photo.originalBlob || await (await fetch(photo.cleanSrc || photo.src)).blob()
           if (!blob.type.startsWith('image/')) throw new Error('只可上傳相片檔案')
           if (blob.size > 25 * 1024 * 1024) throw new Error('單張相片不可超過 25 MB')
-          const file = await uploadPhotoWithRetry(session.accessToken, { rootFolderId: rootFolder.id, projectName: projectNames.get(photo.projectId) || photo.projectId, projectId: photo.projectId, photoId: photo.id, createdAt: photo.createdAt, file: blob })
+          const file = await uploadPhotoWithRetry(session.accessToken, { rootFolderId: rootFolder.id, projectName: projectNames.get(photo.projectId) || photo.projectId, projectId: photo.projectId, photoId: photo.id, createdAt: photo.createdAt, file: blob, fileId: force ? photo.googleDrive?.fileId : undefined })
           uploaded += 1
           onUpdatePhoto(photo.id, { status: 'synced', fileId: file.id, syncedAt: new Date().toISOString() })
         } catch (error) {
@@ -258,7 +267,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
           if (!firstError) firstError = readableError(error)
           onUpdatePhoto(photo.id, { status: 'error', fileId: photo.googleDrive?.fileId, error: readableError(error) })
         } finally {
-          setSyncProgress({ current: index + 1, total: unsyncedPhotos.length, uploaded, failed })
+          setSyncProgress({ current: index + 1, total: candidates.length, uploaded, failed })
         }
       }
       setMessage(authExpired ? 'Google Drive 授權已失效，請重新連接後再同步。' : uploaded ? `已同步 ${uploaded} 張相片到私人 Google Drive。${failed ? ` ${failed} 張失敗，可再試一次。原因：${firstError}` : ''}` : failed ? `${failed} 張相片同步失敗，可再試一次。原因：${firstError}` : '沒有新相片需要同步。')
@@ -274,8 +283,9 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
     } finally {
       syncingRef.current = false
       setSyncing(false)
+      setResyncing(false)
     }
-  }, [onUpdatePhoto, projectNames, unsyncedPhotos])
+  }, [onUpdatePhoto, photos, projectNames, unsyncedPhotos])
 
   const disconnect = () => {
     sessionStorage.removeItem(SESSION_KEY)
@@ -285,7 +295,7 @@ export function GoogleDriveSyncPanel({ photos, projects, onUpdatePhoto }: Google
 
   return <div className="about-block">
     <h3>私人 Google Drive 相片同步</h3>
-    {!drive.configured ? <p>Google Drive 尚未啟用。管理員只需在建置 App 時加入公開的 Google Client ID；不需要在伺服器保存 Google 密碼、Client Secret 或任何使用者帳戶資料。</p> : !drive.connected ? <><p>相片會先保留在本機；按連接後會開啟 Google 官方登入／授權視窗。App 看不到你的 Google 密碼。</p><button type="button" onClick={() => void connect()} disabled={loading}>{loading ? '正在開啟 Google 登入…' : '連接私人 Google Drive'}</button></> : <><p>已連接：{drive.email}。未同步 {unsyncedPhotos.length} 張相片。授權只保留在此瀏覽器的暫存中，關閉瀏覽器或過期後按連接即可重新授權。</p><div className="backup-actions"><button type="button" onClick={() => void syncPhotos()} disabled={syncing || !unsyncedPhotos.length}>{syncing ? '正在同步…' : unsyncedPhotos.length ? `同步 ${unsyncedPhotos.length} 張相片` : '全部相片已同步'}</button><button type="button" onClick={disconnect} disabled={syncing}>中斷此瀏覽器連接</button></div>{syncProgress && <p role="status" aria-live="polite">同步中：{syncProgress.current}／{syncProgress.total} 張（成功 {syncProgress.uploaded}，失敗 {syncProgress.failed}）</p>}</>}
+    {!drive.configured ? <p>Google Drive 尚未啟用。管理員只需在建置 App 時加入公開的 Google Client ID；不需要在伺服器保存 Google 密碼、Client Secret 或任何使用者帳戶資料。</p> : !drive.connected ? <><p>相片會先保留在本機；按連接後會開啟 Google 官方登入／授權視窗。App 看不到你的 Google 密碼。</p><button type="button" onClick={() => void connect()} disabled={loading}>{loading ? '正在開啟 Google 登入…' : '連接私人 Google Drive'}</button></> : <><p>已連接：{drive.email}。未同步 {unsyncedPhotos.length} 張相片。授權只保留在此瀏覽器的暫存中，關閉瀏覽器或過期後按連接即可重新授權。</p><div className="backup-actions"><button type="button" onClick={() => void syncPhotos()} disabled={syncing || !unsyncedPhotos.length}>{syncing ? '正在同步…' : unsyncedPhotos.length ? `同步 ${unsyncedPhotos.length} 張相片` : '全部相片已同步'}</button><button type="button" onClick={() => void syncPhotos(true)} disabled={syncing || !photos.length}>{resyncing ? '正在重新同步…' : '重新同步全部相片'}</button><button type="button" onClick={disconnect} disabled={syncing}>中斷此瀏覽器連接</button></div>{syncProgress && <p role="status" aria-live="polite">同步中：{syncProgress.current}／{syncProgress.total} 張（成功 {syncProgress.uploaded}，失敗 {syncProgress.failed}）</p>}</>}
     {message && <p role="status">{message}</p>}
   </div>
 }
