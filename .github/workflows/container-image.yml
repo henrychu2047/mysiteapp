@@ -3,6 +3,7 @@ name: Publish container image
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -25,7 +26,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/mysiteapp
           tags: |
-            type=raw,value=main
+            type=raw,value=main,enable={{is_default_branch}}
+            type=ref,event=tag
             type=sha,prefix=sha-
       - uses: docker/build-push-action@v6
         with:
