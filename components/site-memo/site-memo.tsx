@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
+import { StandaloneToolbar } from '@/components/ui/standalone-toolbar'
 import {
   X,
   Users,
@@ -71,7 +72,7 @@ const MEMO_CONTRACT_CLAUSES = [
   { label: '責任及費用一併保留', text: '本司保留按照合約申請工期延長（EOT）及追討相關費用、損失之全部權利。' },
 ]
 
-export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered, generalPhotoTags, photoSources, onSelectAlbumPhotos, onOpenCamera }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean; generalPhotoTags: string[]; photoSources: Record<string, PhotoSource>; onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void; onOpenCamera: (onCapture: (photo: PhotoSource) => void) => void }) {
+export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineDataManage, projectId, projectName, isRegistered, generalPhotoTags, photoSources, onSelectAlbumPhotos, onOpenCamera, showNavigation = true, onOpenSettings }: { onBack: () => void; onNavigate: (mode: AppMode) => void; onOpenMachineData: () => void; onOpenMachineDataManage?: () => void; projectId: string; projectName: string; isRegistered: boolean; generalPhotoTags: string[]; photoSources: Record<string, PhotoSource>; onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void; onOpenCamera: (onCapture: (photo: PhotoSource) => void) => void; showNavigation?: boolean; onOpenSettings?: () => void }) {
   const [memo, setMemo] = useState<Memo>(createDefaultMemo)
   const [letterheads, setLetterheads] = useState<MemoLetterhead[]>([])
   const [letterheadName, setLetterheadName] = useState('')
@@ -526,12 +527,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   return (
     <div className="app-shell memo-app">
-      <header className="topbar">
-        <div className="brand-mark" aria-hidden="true">▦</div>
-        <button className="project-trigger" onClick={onBack} aria-label="返回並選擇 Project">
-          <strong>{projectName}</strong><span>⌄</span>
-        </button>
-      </header>
+      <StandaloneToolbar projectName={projectName} onProjectClick={onBack} onSettingsClick={onOpenSettings} />
 
       <main className="memo-body">
         <div className="memo-heading">
@@ -573,7 +569,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
       </main>
       {saveToast && <div className="memo-save-toast" role="alert">{saveToast}</div>}
 
-      <BottomNav onNavigate={onNavigate} />
+      {showNavigation && <BottomNav onNavigate={onNavigate} />}
 
       {modal === 1 && (
         <MemoModal title="收件人" onClose={() => setModal(null)}>

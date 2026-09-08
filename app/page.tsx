@@ -39,11 +39,16 @@ import { photoSourceMap, type PhotoSource } from '@/lib/photo-attachments'
 import { PhotoPicker } from '@/components/photo/photo-picker'
 import { ContinuousCameraModal } from '@/components/photo/continuous-camera-modal'
 import { GoogleDriveSyncPanel } from '@/components/google-drive/google-drive-sync'
+import { APP_MANIFESTS, getConfiguredAppId } from '@/lib/app-architecture'
 
 const SiteMemo = dynamic(() => import('@/components/site-memo/site-memo').then(module => module.SiteMemo), { ssr: false })
 const Database = dynamic(() => import('@/components/database/database').then(module => module.Database), { ssr: false })
 const Handover = dynamic(() => import('@/components/handover/handover').then(module => module.Handover), { ssr: false })
 const Notebook = dynamic(() => import('@/components/notebook/notebook').then(module => module.Notebook), { ssr: false })
+
+const APP_ID = getConfiguredAppId()
+const APP_MANIFEST = APP_MANIFESTS[APP_ID]
+const INITIAL_MODE = APP_ID === 'site-memo' ? 'memo' : APP_ID === 'handover' ? 'handover' : APP_ID === 'notebook' ? 'notebook' : APP_ID === 'database' ? 'database' : APP_ID === 'camera' ? 'photo' : 'home'
 
 export default function Page() {
   const [categories, setCategories] = useState(defaultCategories)
@@ -67,7 +72,7 @@ export default function Page() {
   const [setupRoomSuffixStart, setSetupRoomSuffixStart] = useState('')
   const [setupRoomSuffixEnd, setSetupRoomSuffixEnd] = useState('')
   const [active, setActive] = useState<string | null>(null)
-  const [appMode, setAppMode] = useState<'home' | 'photo' | 'memo' | 'notebook' | 'handover' | 'reserve' | 'database' | 'about' | 'backup'>('home')
+  const [appMode, setAppMode] = useState<'home' | 'photo' | 'memo' | 'notebook' | 'handover' | 'reserve' | 'database' | 'about' | 'backup'>(INITIAL_MODE)
   const [tab, setTab] = useState<'home' | 'photos' | 'settings'>('home')
   const [settingsOptions, setSettingsOptions] = useState<Record<string, string[]>>(tagOptions)
   const [structureOptions, setStructureOptions] = useState<Record<string, string[]>>({ 座數: [], 樓層: [], 位置: [] })
@@ -105,6 +110,7 @@ export default function Page() {
   const [cameraRequest, setCameraRequest] = useState<((photo: PhotoSource) => void) | null>(null)
   const [cameraInitialCategory, setCameraInitialCategory] = useState<string | undefined>()
   const [cameraAutoStart, setCameraAutoStart] = useState(false)
+  const cameraLaunchRef = useRef(false)
   const updateGoogleDriveSync = useCallback((photoId: string, googleDrive: NonNullable<Photo['googleDrive']>) => {
     const current = photosRef.current.find(photo => photo.id === photoId)
     if (!current) return
@@ -327,6 +333,13 @@ export default function Page() {
     setCameraAutoStart(autoStart)
     setCameraRequest(() => onCapture)
   }
+  useEffect(() => {
+    if (APP_ID !== 'camera' || cameraLaunchRef.current || !settingsReady || !photosReady || !projectsLoaded || cameraRequest) return
+    const categoryNames = categories.map(category => category.name)
+    const rememberedCategory = currentProject.settings?.lastCameraCategory
+    cameraLaunchRef.current = true
+    openSharedCamera(() => {}, rememberedCategory && categoryNames.includes(rememberedCategory) ? rememberedCategory : categoryNames[0], true)
+  }, [cameraRequest, categories, currentProject, photosReady, projectsLoaded, settingsReady])
   const sharedMediaOverlays = <>
     {photoPickerRequest && <PhotoPicker photos={projectPhotos} onConfirm={photoIds => { photoPickerRequest(photoIds); setPhotoPickerRequest(null) }} onClose={() => setPhotoPickerRequest(null)} />}
     {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} tags={tags} visibleTags={visibleTags} tagOptions={{ ...effectiveSettingsOptions, ...structureOptions }} note={note} noteHistory={noteHistory} selectedNotes={selectedNotes} projectName={currentProject.name} photos={projectPhotos} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onSelectTag={(label, value) => setTags(current => ({ ...current, [label]: value }))} onNoteChange={setNote} onRememberNote={rememberNote} onToggleRecentNote={item => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} onToggleVisibleTag={label => setVisibleTags(current => current.includes(label) ? current.filter(item => item !== label) : [...current, label])} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo) }} onClose={() => { setPicker(null); setCategoryPickerRequest(null); setCameraRequest(null); setCameraAutoStart(false) }} />}
@@ -429,14 +442,24 @@ export default function Page() {
     })
     alert('ZIP 備份已還原')
   }
+  const openSharedSettings = () => {
+    setSettingsLabel(null)
+    setHandoverView('settings')
+    setAppMode('photo')
+    setTab('settings')
+    setActive(null)
+  }
+  const openProjectPicker = () => setProjectPanel(true)
+  const appBack = APP_ID === 'full' ? () => setAppMode('home') : openProjectPicker
+  const projectPickerOverlay = projectPanel && <ProjectPicker projects={projects} currentProjectId={currentProject.id} newProjectName={newProjectName} onNewProjectNameChange={setNewProjectName} onClose={() => setProjectPanel(false)} onSelect={project => { const projectSettings = project.settings || createProjectSettings(); switchingProjectRef.current = true; setCurrentProjectId(project.id); setCategories(projectSettings.categories); setTags(projectSettings.tags); setNote(projectSettings.note); setNoteHistory(projectSettings.noteHistory || []); setVisibleTags(projectSettings.visibleTags?.filter(tag => SMART_TAG_KEYS.includes(tag)) || [...SMART_TAG_KEYS]); setSettingsOptions(mergeTagOptions(projectSettings.settingsOptions)); setSelectedNotes([]); setProjectPanel(false); setActive(null); setSelected([]) }} onRename={project => { setProjectPanel(false); setRenameProjectId(project.id); setRenameProjectName(project.name) }} onAdd={addProject} getPhotoCount={projectId => photos.filter(photo => (photo.projectId || DEFAULT_PROJECT.id) === projectId).length} />
 
-  if (appMode === 'notebook') return <><Notebook projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />{sharedMediaOverlays}</>
+  if (appMode === 'notebook') return <><Notebook projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={appBack} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} showNavigation={APP_ID === 'full'} onOpenSettings={openSharedSettings} />{sharedMediaOverlays}{projectPickerOverlay}</>
 
-  if (appMode === 'database') return <Database projectId={currentProject.id} projectName={currentProject.name} onBack={() => setAppMode('home')} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />
+  if (appMode === 'database') return <><Database projectId={currentProject.id} projectName={currentProject.name} onBack={appBack} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} showNavigation={APP_ID === 'full'} onOpenSettings={openSharedSettings} />{projectPickerOverlay}</>
 
-  if (appMode === 'memo') return <><SiteMemo generalPhotoTags={effectiveSettingsOptions['事項'] || []} isRegistered={isRegistered} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => { const categoryNames = categories.map(category => category.name); const rememberedCategory = currentProject.settings?.lastCameraCategory; openSharedCamera(onCapture, rememberedCategory && categoryNames.includes(rememberedCategory) ? rememberedCategory : categoryNames[0], true) }} onBack={() => setAppMode('home')} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('settings'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('settings'); setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } }} />{sharedMediaOverlays}</>
+  if (appMode === 'memo') return <><SiteMemo generalPhotoTags={effectiveSettingsOptions['事項'] || []} isRegistered={isRegistered} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => { const categoryNames = categories.map(category => category.name); const rememberedCategory = currentProject.settings?.lastCameraCategory; openSharedCamera(onCapture, rememberedCategory && categoryNames.includes(rememberedCategory) ? rememberedCategory : categoryNames[0], true) }} onBack={appBack} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('settings'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('settings'); setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } }} showNavigation={APP_ID === 'full'} onOpenSettings={openSharedSettings} />{sharedMediaOverlays}{projectPickerOverlay}</>
 
-  if (appMode === 'handover') return <><Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={() => setAppMode('home')} onOpenPhotoSettings={label => { setSettingsLabel(label || null); setAppMode('photo'); setTab('settings'); setActive(null) }} onPhotoSettingsBack={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover') }} onStructureChange={handleStructureChange} onResponsibleEmailChange={setResponsibleEmail} isRegistered={isRegistered} onUpdateApp={updateApp} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') { setHandoverView('settings') } }} />{sharedMediaOverlays}</>
+  if (appMode === 'handover') return <><Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={appBack} onOpenPhotoSettings={label => { setSettingsLabel(label || null); setAppMode('photo'); setTab('settings'); setActive(null) }} onPhotoSettingsBack={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover') }} onStructureChange={handleStructureChange} onResponsibleEmailChange={setResponsibleEmail} isRegistered={isRegistered} onUpdateApp={updateApp} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') { setHandoverView('settings') } }} showNavigation={APP_ID === 'full'} onOpenSettings={openSharedSettings} />{sharedMediaOverlays}{projectPickerOverlay}</>
 
   const navMode = appMode as string
 
@@ -444,7 +467,7 @@ export default function Page() {
     {renameProjectId && <RenameProjectDialog name={renameProjectName} onNameChange={setRenameProjectName} onClose={() => setRenameProjectId(null)} onSave={renameCurrentProject} />}
     {firstLaunch && <FirstProjectSetup projectName={setupProjectName} towers={setupTowers} towerPrefix={setupTowerPrefix} floors={setupFloors} floorPrefix={setupFloorPrefix} floorSuffix={setupFloorSuffix} compactFloors={setupCompactFloors} rooms={setupRooms} roomSuffixStart={setupRoomSuffixStart} roomSuffixEnd={setupRoomSuffixEnd} onProjectNameChange={setSetupProjectName} onTowersChange={setSetupTowers} onTowerPrefixChange={setSetupTowerPrefix} onFloorsChange={setSetupFloors} onFloorPrefixChange={setSetupFloorPrefix} onFloorSuffixChange={setSetupFloorSuffix} onCompactFloorsChange={setSetupCompactFloors} onRoomsChange={setSetupRooms} onRoomSuffixStartChange={setSetupRoomSuffixStart} onRoomSuffixEndChange={setSetupRoomSuffixEnd} onComplete={() => void completeFirstLaunch()} />}
     {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
-    <main className="app-shell">
+    <main className={`app-shell app-${APP_MANIFEST.id} shell-${APP_MANIFEST.shell}`} data-app-id={APP_MANIFEST.id}>
       <header className="topbar">
         <div className="brand-mark" aria-hidden="true">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button>
       </header>
@@ -456,7 +479,7 @@ export default function Page() {
       {updateAvailable && <div className="camera-error-banner" role="status">已有新版本可用，請按「更新 App」套用。</div>}
       {appMode === 'backup' && <section className="content info-page"><button className="back-link" onClick={() => { setHandoverView('settings'); setAppMode('handover') }}>‹ 返回設定</button><div className="section-heading"><div><p className="eyebrow">BACKUP</p><h2>備份</h2></div></div><GoogleDriveSyncPanel photos={photos} projects={projects} onUpdatePhoto={updateGoogleDriveSync} /><div className="about-block"><h3>完整資料備份</h3><p>備份整個 App 的 Project、相片、Site Memo 及機房移交資料。</p><div className="backup-actions"><button type="button" onClick={exportLocalBackup} disabled={backupBusy}>{backupBusy ? '正在準備備份…' : '匯出完整備份'}</button><button type="button" onClick={() => backupRef.current?.click()} disabled={backupBusy}>匯入完整備份</button><input ref={backupRef} hidden type="file" accept="application/zip,.zip" onChange={async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file || !confirm('匯入資料會取代目前 App 的全部資料。是否繼續？')) return; await importLocalBackup(file) }} /></div></div></section>}
       {appMode === 'about' && <section className="content info-page"><div className="section-heading"><div><p className="eyebrow">ABOUT</p></div></div><div className="about-block"><h3 className="about-title">關於此 App</h3><p>這是一個為地盤工程而設的流動記錄工具，支援離線使用，所有相片與資料均保存在本機裝置。主要功能包括：拍照記錄（自動加上工程類別、樓層、機房等智能標籤並生成 Excel／PDF 報表）、Site Memo（一鍵生成 A4 Site Memo）及制房移交。</p></div><div className="about-block"><h3>資料私隱</h3><p>App 不會在預設畫面展示個人或工程聯絡資料。請於每個 Project 內自行填寫所需資料，並定期匯出備份。</p></div></section>}
-      <BottomNav active={navMode === 'home' ? 'home' : navMode === 'photo' ? 'photo' : navMode === 'handover' ? 'handover' : navMode === 'about' ? 'about' : undefined} onNavigate={mode => { setAppMode(mode); if (mode === 'home') { setTab('home'); setActive(null) } if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />
+      {APP_ID === 'full' && <BottomNav active={navMode === 'home' ? 'home' : navMode === 'photo' ? 'photo' : navMode === 'handover' ? 'handover' : navMode === 'about' ? 'about' : undefined} onNavigate={mode => { setAppMode(mode); if (mode === 'home') { setTab('home'); setActive(null) } if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') setHandoverView('settings') }} />}
     </main>
     {saveToast && <div className="camera-error-banner" role="alert">{saveToast}</div>}
     {sharedMediaOverlays}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
+import { StandaloneToolbar } from '@/components/ui/standalone-toolbar'
 import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 import { loadNotebook, saveNotebook, type NotebookEntry } from '@/lib/notebook-storage'
 
@@ -13,11 +14,13 @@ type Props = {
   photoSources: Record<string, PhotoSource>
   onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void
   onOpenCamera: (onCapture: (photoId: string) => void) => void
+  showNavigation?: boolean
+  onOpenSettings?: () => void
 }
 
 const categories = ['待辦', '問題', '進度', '交辦']
 
-export function Notebook({ projectId, projectName, onBack, onNavigate, photoSources, onSelectAlbumPhotos, onOpenCamera }: Props) {
+export function Notebook({ projectId, projectName, onBack, onNavigate, photoSources, onSelectAlbumPhotos, onOpenCamera, showNavigation = true, onOpenSettings }: Props) {
   const [entries, setEntries] = useState<NotebookEntry[]>([])
   const [text, setText] = useState('')
   const [category, setCategory] = useState('待辦')
@@ -59,7 +62,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const pendingPhoto = resolveAttachmentPhoto(photoId, undefined, photoSources)
 
   return <div className="app-shell notebook-app">
-    <header className="topbar"><div className="brand-mark" aria-hidden="true">▦</div><button className="project-trigger" type="button" onClick={onBack} aria-label="返回並選擇 Project"><strong>{projectName}</strong><span>⌄</span></button></header>
+    <StandaloneToolbar projectName={projectName} onProjectClick={onBack} onSettingsClick={onOpenSettings} />
     <main className="notebook-body">
       <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div></div>
       {saveError && <div className="save-toast error" role="alert">{saveError}</div>}
@@ -72,6 +75,6 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       </section></div>}
       <div className="notebook-tools"><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜尋記事…" aria-label="搜尋記事" /><div className="notebook-filters"><button className={filter === '全部' ? 'chosen' : ''} onClick={() => setFilter('全部')}>全部</button>{categories.map(item => <button key={item} className={filter === item ? 'chosen' : ''} onClick={() => setFilter(item)}>{item}</button>)}<div className="notebook-actions"><button className="notebook-add-button" type="button" onClick={() => setShowCompose(true)}>＋ 新增</button><button className="notebook-camera-button" type="button" onClick={() => { setShowCompose(true); onOpenCamera(setPhotoId) }} aria-label="拍照"><span>▣</span> 拍照</button></div></div></div>
       <section className="notebook-list">{visible.map(entry => { const source = resolveAttachmentPhoto(entry.photoId, entry.photo, photoSources); return <article className={`notebook-entry ${entry.done ? 'is-done' : ''}`} key={entry.id}><div className="notebook-entry-main"><button className="notebook-check" onClick={() => toggle(entry.id, 'done')} aria-label={entry.done ? '標記未完成' : '標記完成'}>{entry.done ? '✓' : '○'}</button><div><div className="notebook-entry-meta"><span>{entry.category}</span><time>{new Date(entry.createdAt).toLocaleString('zh-HK', { hour12: false })}</time></div><p>{entry.text}</p>{source ? <img className="notebook-entry-photo" src={source} alt="記事相片" /> : entry.photoId ? <div className="attachment-unavailable">相片已從相簿移除</div> : null}</div></div><div className="notebook-entry-actions"><button onClick={() => toggle(entry.id, 'pinned')} aria-label={entry.pinned ? '取消置頂' : '置頂'}>{entry.pinned ? '★' : '☆'}</button><button onClick={() => remove(entry.id)} aria-label="刪除記事">×</button></div></article> })}{!visible.length && <div className="empty-state">尚未有記事<br /><small>在上方輸入現場事項即可快速建立</small></div>}</section>
-    </main><BottomNav onNavigate={onNavigate} />
+    </main>{showNavigation && <BottomNav onNavigate={onNavigate} />}
   </div>
 }

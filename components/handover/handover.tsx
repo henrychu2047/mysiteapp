@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
+import { StandaloneToolbar } from '@/components/ui/standalone-toolbar'
 import {
   Camera,
   PenLine,
@@ -66,6 +67,8 @@ type Props = {
   photoSources: Record<string, PhotoSource>
   onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void
   onOpenCamera: (onCapture: (photoId: string) => void) => void
+  showNavigation?: boolean
+  onOpenSettings?: () => void
 }
 
 type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
@@ -91,7 +94,7 @@ const expandRoomSuffixRange = (start: string, end: string) => {
   })
 }
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showNavigation = true, onOpenSettings }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -598,12 +601,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   return (
     <div className="app-shell ho-app">
-      <header className="topbar">
-        <div className="brand-mark" aria-hidden="true">▦</div>
-        <button className="project-trigger" onClick={goBack} aria-label="返回並選擇 Project">
-          <strong>{projectName}</strong><span>⌄</span>
-        </button>
-      </header>
+      <StandaloneToolbar projectName={projectName} onProjectClick={goBack} onSettingsClick={onOpenSettings || onOpenPhotoSettings} />
 
       <main className="ho-body">
       {view !== 'home' && view !== 'manage' && view !== 'settings' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
@@ -1299,7 +1297,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         </div>
       )}
 
-      <BottomNav onNavigate={onNavigate} />
+      {showNavigation && <BottomNav onNavigate={onNavigate} />}
     </div>
   )
 }
