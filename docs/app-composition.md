@@ -1,7 +1,21 @@
 # App composition
 
-`mysiteapp` is deployed as separate Web Apps from the same repository. Set
-`NEXT_PUBLIC_APP_ID` per deployment before running `pnpm build`:
+`mysiteapp` can expose separate Web Apps from one deployment by path. It can
+also be built separately with `NEXT_PUBLIC_APP_ID` when an App needs its own
+deployment.
+
+Path mapping:
+
+| URL path | App |
+| --- | --- |
+| `/camera` | Camera App |
+| `/memo` | Site Memo App |
+| `/handover` | Handover App |
+| `/notebook` | Notebook App |
+| `/database` | Database App |
+| `/full` or `/` | Full App |
+
+For separate deployments, set `NEXT_PUBLIC_APP_ID` before running `pnpm build`:
 
 | App ID | Product | Shell | Team |
 | --- | --- | --- | --- |

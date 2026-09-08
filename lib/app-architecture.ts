@@ -39,3 +39,10 @@ export function getConfiguredAppId(): AppId {
   return configured && APP_IDS.has(configured) ? configured : 'full'
 }
 
+export function getAppIdFromPath(pathname: string): AppId | null {
+  const segment = pathname.split('/').filter(Boolean)[0]
+  if (segment === 'memo') return 'site-memo'
+  if (segment && APP_IDS.has(segment as AppId)) return segment as AppId
+  return null
+}
+

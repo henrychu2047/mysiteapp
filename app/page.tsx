@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Camera, PenLine, ClipboardList, Database as DatabaseIcon, BookOpen, ShieldCheck, Settings2 } from 'lucide-react'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { ProjectPicker, RenameProjectDialog } from '@/components/project/project-dialogs'
@@ -39,18 +40,24 @@ import { photoSourceMap, type PhotoSource } from '@/lib/photo-attachments'
 import { PhotoPicker } from '@/components/photo/photo-picker'
 import { ContinuousCameraModal } from '@/components/photo/continuous-camera-modal'
 import { GoogleDriveSyncPanel } from '@/components/google-drive/google-drive-sync'
-import { APP_MANIFESTS, getConfiguredAppId } from '@/lib/app-architecture'
+import { APP_MANIFESTS, getAppIdFromPath, getConfiguredAppId } from '@/lib/app-architecture'
 
 const SiteMemo = dynamic(() => import('@/components/site-memo/site-memo').then(module => module.SiteMemo), { ssr: false })
 const Database = dynamic(() => import('@/components/database/database').then(module => module.Database), { ssr: false })
 const Handover = dynamic(() => import('@/components/handover/handover').then(module => module.Handover), { ssr: false })
 const Notebook = dynamic(() => import('@/components/notebook/notebook').then(module => module.Notebook), { ssr: false })
 
-const APP_ID = getConfiguredAppId()
-const APP_MANIFEST = APP_MANIFESTS[APP_ID]
-const INITIAL_MODE = APP_ID === 'site-memo' ? 'memo' : APP_ID === 'handover' ? 'handover' : APP_ID === 'notebook' ? 'notebook' : APP_ID === 'database' ? 'database' : APP_ID === 'camera' ? 'photo' : 'home'
+const DEFAULT_APP_ID = getConfiguredAppId()
+
+function initialModeForApp(appId: keyof typeof APP_MANIFESTS) {
+  return appId === 'site-memo' ? 'memo' : appId === 'handover' ? 'handover' : appId === 'notebook' ? 'notebook' : appId === 'database' ? 'database' : appId === 'camera' ? 'photo' : 'home'
+}
 
 export default function Page() {
+  const pathname = usePathname()
+  const APP_ID = getAppIdFromPath(pathname) || DEFAULT_APP_ID
+  const APP_MANIFEST = APP_MANIFESTS[APP_ID]
+  const INITIAL_MODE = initialModeForApp(APP_ID)
   const [categories, setCategories] = useState(defaultCategories)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [photosReady, setPhotosReady] = useState(false)
