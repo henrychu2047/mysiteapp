@@ -23,6 +23,7 @@ import {
   Wand2,
   Check,
   Download,
+  Settings2,
 } from 'lucide-react'
 import {
   ROOM_STATUSES,
@@ -603,7 +604,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   return (
     <div className="app-shell ho-app">
-      {showToolbar && <StandaloneToolbar projectName={projectName} onProjectClick={goBack} onSettingsClick={onOpenSettings || onOpenPhotoSettings} />}
+      {showToolbar && <StandaloneToolbar projectName={projectName} onProjectClick={goBack} onSettingsClick={onOpenSettings || onOpenPhotoSettings} showSettings={false} />}
 
       <main className="ho-body">
       {view !== 'home' && view !== 'manage' && view !== 'settings' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
@@ -634,6 +635,11 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <BarChart3 size={30} className="ho-home-icon" />
                 <strong>統計</strong>
                 <span>移交比率</span>
+              </button>
+              <button className="ho-home-card" onClick={() => setView('settings')}>
+                <Settings2 size={30} className="ho-home-icon" />
+                <strong>設定</strong>
+                <span>管理 App 設定</span>
               </button>
             </div>
           </>

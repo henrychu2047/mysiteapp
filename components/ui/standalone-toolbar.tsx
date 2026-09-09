@@ -6,18 +6,19 @@ type Props = {
   projectName: string
   onProjectClick: () => void
   onSettingsClick?: () => void
+  showSettings?: boolean
 }
 
-export function StandaloneToolbar({ projectName, onProjectClick, onSettingsClick }: Props) {
+export function StandaloneToolbar({ projectName, onProjectClick, onSettingsClick, showSettings = true }: Props) {
   return (
     <header className="topbar standalone-topbar">
       <div className="brand-mark" aria-hidden="true">▦</div>
       <button className="project-trigger" type="button" onClick={onProjectClick} aria-label="返回並選擇 Project">
         <strong>{projectName}</strong><span>⌄</span>
       </button>
-      <button className="toolbar-settings" type="button" onClick={onSettingsClick} aria-label="設定">
+      {showSettings && <button className="toolbar-settings" type="button" onClick={onSettingsClick} aria-label="設定">
         <Settings2 size={21} aria-hidden="true" />
-      </button>
+      </button>}
     </header>
   )
 }
