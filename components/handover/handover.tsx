@@ -68,6 +68,7 @@ type Props = {
   photoSources: Record<string, PhotoSource>
   onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void
   onOpenCamera: (onCapture: (photoId: string) => void) => void
+  showToolbar?: boolean
   showNavigation?: boolean
   onOpenSettings?: () => void
 }
@@ -95,7 +96,7 @@ const expandRoomSuffixRange = (start: string, end: string) => {
   })
 }
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showNavigation = true, onOpenSettings }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showToolbar = true, showNavigation = true, onOpenSettings }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -602,7 +603,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   return (
     <div className="app-shell ho-app">
-      <StandaloneToolbar projectName={projectName} onProjectClick={goBack} onSettingsClick={onOpenSettings || onOpenPhotoSettings} />
+      {showToolbar && <StandaloneToolbar projectName={projectName} onProjectClick={goBack} onSettingsClick={onOpenSettings || onOpenPhotoSettings} />}
 
       <main className="ho-body">
       {view !== 'home' && view !== 'manage' && view !== 'settings' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
