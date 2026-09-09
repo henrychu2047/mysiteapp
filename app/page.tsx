@@ -357,18 +357,10 @@ export default function Page() {
   }, [cameraRequest, cameraSettingsOpen, categories, currentProject, photosReady, projectsLoaded, settingsReady])
   const openCameraSettings = () => {
     setCameraSettingsOpen(true)
-    setCameraRequest(null)
-    setCameraAutoStart(false)
-    setHandoverView('settings')
-    setAppMode('handover')
-    setActive(null)
   }
   const returnFromPhotoSettings = () => {
     if (APP_ID === 'camera') {
-      const categoryNames = categories.map(category => category.name)
-      const rememberedCategory = currentProject.settings?.lastCameraCategory
       setCameraSettingsOpen(false)
-      openSharedCamera(() => {}, rememberedCategory && categoryNames.includes(rememberedCategory) ? rememberedCategory : categoryNames[0], true)
       return
     }
     setSettingsLabel(null)
@@ -379,6 +371,7 @@ export default function Page() {
   const sharedMediaOverlays = <>
     {photoPickerRequest && <PhotoPicker photos={projectPhotos} onConfirm={photoIds => { photoPickerRequest(photoIds); setPhotoPickerRequest(null) }} onClose={() => setPhotoPickerRequest(null)} />}
     {cameraRequest && <ContinuousCameraModal categories={categories.map(category => category.name)} initialCategory={cameraInitialCategory} tags={tags} visibleTags={visibleTags} tagOptions={{ ...effectiveSettingsOptions, ...structureOptions }} note={note} noteHistory={noteHistory} selectedNotes={selectedNotes} projectName={currentProject.name} photos={projectPhotos} autoStart={cameraAutoStart} onCategorySelected={rememberCameraCategory} onSelectTag={(label, value) => setTags(current => ({ ...current, [label]: value }))} onNoteChange={setNote} onRememberNote={rememberNote} onToggleRecentNote={item => setSelectedNotes(current => { const next = current.includes(item) ? current.filter(value => value !== item) : [...current, item]; setNote(next.join(' / ')); return next })} onToggleVisibleTag={label => setVisibleTags(current => current.includes(label) ? current.filter(item => item !== label) : [...current, label])} onCapture={async (file, category) => { const photo = await createProjectPhoto(file, category); cameraRequest(photo) }} onOpenSettings={APP_ID === 'camera' ? openCameraSettings : openSharedSettings} onClose={() => { setPicker(null); setCategoryPickerRequest(null); setCameraRequest(null); setCameraAutoStart(false) }} />}
+    {cameraSettingsOpen && APP_ID === 'camera' && <div className="overlay camera-settings-popup-overlay"><button type="button" className="camera-settings-popup-close" onClick={returnFromPhotoSettings} aria-label="關閉設定">×</button><Handover initialView="settings" projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={returnFromPhotoSettings} onOpenPhotoSettings={label => { setCameraSettingsOpen(false); setSettingsLabel(label || null); setAppMode('photo'); setTab('settings'); setActive(null) }} onPhotoSettingsBack={returnFromPhotoSettings} onStructureChange={handleStructureChange} onResponsibleEmailChange={setResponsibleEmail} isRegistered={isRegistered} onUpdateApp={updateApp} onNavigate={mode => { if (mode === 'backup') { setCameraSettingsOpen(false); setAppMode('backup'); return } setAppMode(mode) }} showNavigation={false} onOpenSettings={returnFromPhotoSettings} /></div>}
   </>
   const addProject = () => {
     const name = newProjectName.trim()
