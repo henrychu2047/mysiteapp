@@ -44,6 +44,6 @@ jobs:
           PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
         run: |
           test -n "$PORTAINER_WEBHOOK_URL"
-          curl --fail-with-body --retry 3 --retry-delay 2 \
+          curl --request POST --fail-with-body --retry 3 --retry-delay 2 \
             --connect-timeout 10 --max-time 30 \
             "$PORTAINER_WEBHOOK_URL"
