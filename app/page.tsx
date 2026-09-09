@@ -359,9 +359,8 @@ export default function Page() {
     setCameraSettingsOpen(true)
     setCameraRequest(null)
     setCameraAutoStart(false)
-    setSettingsLabel(null)
-    setAppMode('photo')
-    setTab('settings')
+    setHandoverView('settings')
+    setAppMode('handover')
     setActive(null)
   }
   const returnFromPhotoSettings = () => {
@@ -489,7 +488,7 @@ export default function Page() {
 
   if (appMode === 'memo') return <><SiteMemo generalPhotoTags={effectiveSettingsOptions['事項'] || []} isRegistered={isRegistered} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => { const categoryNames = categories.map(category => category.name); const rememberedCategory = currentProject.settings?.lastCameraCategory; openSharedCamera(onCapture, rememberedCategory && categoryNames.includes(rememberedCategory) ? rememberedCategory : categoryNames[0], true) }} onBack={appBack} onOpenMachineData={() => { setHandoverView('home'); setAppMode('handover') }} onOpenMachineDataManage={() => { setHandoverView('settings'); setAppMode('handover') }} onNavigate={mode => { if (mode === 'handover') setHandoverView('settings'); setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } }} showNavigation={APP_ID === 'full'} onOpenSettings={openSharedSettings} />{sharedMediaOverlays}{projectPickerOverlay}</>
 
-  if (appMode === 'handover') return <><Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={appBack} onOpenPhotoSettings={label => { setSettingsLabel(label || null); setAppMode('photo'); setTab('settings'); setActive(null) }} onPhotoSettingsBack={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover') }} onStructureChange={handleStructureChange} onResponsibleEmailChange={setResponsibleEmail} isRegistered={isRegistered} onUpdateApp={updateApp} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') { setHandoverView('settings') } }} showNavigation={APP_ID === 'full'} onOpenSettings={openSharedSettings} />{sharedMediaOverlays}{projectPickerOverlay}</>
+  if (appMode === 'handover') return <><Handover initialView={handoverView} projectId={currentProject.id} projectName={currentProject.name} photoSources={projectPhotoSources} onSelectAlbumPhotos={openPhotoPicker} onOpenCamera={onCapture => openSharedCamera(photo => onCapture(photo.id))} onBack={appBack} onOpenPhotoSettings={label => { setSettingsLabel(label || null); setAppMode('photo'); setTab('settings'); setActive(null) }} onPhotoSettingsBack={() => { setSettingsLabel(null); setHandoverView('settings'); setAppMode('handover') }} onSettingsBack={APP_ID === 'camera' && cameraSettingsOpen ? returnFromPhotoSettings : undefined} onStructureChange={handleStructureChange} onResponsibleEmailChange={setResponsibleEmail} isRegistered={isRegistered} onUpdateApp={updateApp} onNavigate={mode => { setAppMode(mode); if (mode === 'photo') { setTab('photos'); setActive(null) } if (mode === 'handover') { setHandoverView('settings') } }} showNavigation={APP_ID === 'full'} onOpenSettings={openSharedSettings} />{sharedMediaOverlays}{projectPickerOverlay}</>
 
   const navMode = appMode as string
 

@@ -60,6 +60,7 @@ type Props = {
   projectName: string
   onOpenPhotoSettings?: (label?: string) => void
   onPhotoSettingsBack?: () => void
+  onSettingsBack?: () => void
   onStructureChange?: (options: Record<string, string[]>) => void
   onResponsibleEmailChange?: (email: string) => void
   isRegistered?: boolean
@@ -94,7 +95,7 @@ const expandRoomSuffixRange = (start: string, end: string) => {
   })
 }
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showNavigation = true, onOpenSettings }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showNavigation = true, onOpenSettings }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -560,7 +561,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
 
   const goBack = () => {
     if (view === 'home') return onBack()
-        if (view === 'settings') return setView('home')
+        if (view === 'settings') return onSettingsBack ? onSettingsBack() : setView('home')
         if (view === 'manage') return setView('settings')
         if (view === 'status-list') return setView('stats')
     if (view === 'detail') return setView('flow-room')
