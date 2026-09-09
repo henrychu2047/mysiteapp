@@ -46,4 +46,4 @@ jobs:
           test -n "$PORTAINER_WEBHOOK_URL"
           curl --fail-with-body --retry 3 --retry-delay 2 \
             --connect-timeout 10 --max-time 30 \
-            -X POST "$PORTAINER_WEBHOOK_URL"
+            "$PORTAINER_WEBHOOK_URL"
