@@ -356,12 +356,6 @@ export default function Page() {
     openSharedCamera(() => {}, rememberedCategory && categoryNames.includes(rememberedCategory) ? rememberedCategory : categoryNames[0], true)
   }, [cameraRequest, cameraSettingsOpen, categories, currentProject, photosReady, projectsLoaded, settingsReady])
   const openCameraSettings = () => {
-    // Unmount the camera overlay before showing the full settings screen.
-    // Keeping both fixed overlays mounted can leave the camera layer intercepting
-    // pointer events on some browsers, especially while camera permission is pending.
-    cameraLaunchRef.current = true
-    setCameraRequest(null)
-    setCameraAutoStart(false)
     setCameraSettingsOpen(true)
   }
   const returnFromPhotoSettings = () => {
