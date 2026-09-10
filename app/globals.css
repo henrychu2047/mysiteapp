@@ -86,6 +86,8 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .profile-meta .profile-email { font-size: 14px; font-weight: 400; color: var(--muted); text-decoration: none; margin-top: 0; }
 @media (min-width: 700px) { .content, .memo-body, .ho-body { padding: 35px 28px calc(96px + env(safe-area-inset-bottom)); }.app-card { padding: 24px; }.app-card span, .app-card > svg { font-size: 38px; }.app-card > svg { width: 38px; height: 38px; }.app-card strong { font-size: 21px; line-height: 1.3; }.app-card small { font-size: 13px; line-height: 1.4; }.category-card { min-height: 145px; padding: 16px; }.category-card strong { font-size: 16px; line-height: 1.3; }.category-card > span:last-child { font-size: 13px; line-height: 1.35; }.category-icon { font-size: 32px; }.quick-card { gap: 14px; padding: 18px; }.quick-card span { font-size: 29px; }.quick-card strong { font-size: 17px; line-height: 1.3; }.quick-card small { font-size: 13px; line-height: 1.4; }.capture-button { min-height: 120px; padding: 18px 16px; gap: 12px; }.capture-button span { font-size: 31px; }.capture-button strong { font-size: 17px; line-height: 1.3; }.capture-button small { margin-top: 7px; font-size: 13px; line-height: 1.4; } }
 
+.notebook-modal { width: fit-content; min-width: min(420px, calc(100vw - 36px)); max-width: calc(100vw - 36px); }
+
 /* Visual polish */
 body { background: linear-gradient(145deg, #f7f9fa 0%, var(--background) 55%, #e6ecef 100%); }
 .app-shell, .memo-app, .ho-app, .notebook-app { box-shadow: 0 0 45px rgba(21, 33, 43, .08); }
