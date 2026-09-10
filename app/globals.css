@@ -525,7 +525,8 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 @media (prefers-reduced-motion: reduce) { .notebook-modal-backdrop, .notebook-modal-enter { animation: none; } .notebook-pull-indicator { transition: none; } }
 
 /* Settings cards use the same modal frame as Site Memo. */
-.ho-settings-popup-body {
+.ho-settings-popup-body,
+.settings-popup-page {
   box-sizing: border-box;
   height: fit-content !important;
   min-height: 0 !important;
@@ -533,12 +534,23 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
   padding: 0 !important;
   overflow: auto;
 }
-.ho-settings-popup-body .settings-popup-bar {
+.ho-settings-popup-body .settings-popup-bar,
+.settings-popup-page .settings-popup-bar {
   position: relative !important;
   top: auto !important;
   margin: 0 !important;
   padding: calc(14px + env(safe-area-inset-top)) 14px 14px !important;
   box-sizing: border-box;
+}
+.settings-popup-page {
+  padding: 0 !important;
+}
+.settings-popup-page > .section-heading,
+.settings-popup-page > .settings-intro,
+.settings-popup-page > .settings-group,
+.settings-popup-page > .back-link {
+  margin-left: 18px;
+  margin-right: 18px;
 }
 .ho-settings-popup-body > .ho-manage,
 .ho-settings-popup-body > .ho-detail,
