@@ -517,8 +517,7 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 @keyframes notebook-modal-in { from { opacity: 0; transform: translateY(22px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .notebook-modal-backdrop { animation: notebook-backdrop-in .24s ease-out both; }
 .notebook-modal-enter { animation: notebook-modal-in .3s cubic-bezier(.22,.8,.28,1) both; transform-origin: center bottom; }
-.notebook-modal-hidden { opacity: 0; pointer-events: none; animation: none; }
-.notebook-modal-visible { animation: notebook-modal-in .3s cubic-bezier(.22,.8,.28,1) both; transform-origin: center bottom; }
+.notebook-input-backdrop { animation: none; }
 .notebook-pull-indicator { display: grid; place-items: end center; overflow: hidden; color: var(--orange); font-size: 12px; font-weight: 700; transition: height .16s ease-out, opacity .16s ease-out; }
 .notebook-pull-indicator span { padding: 10px 0; }
 .notebook-photo-preview { align-items: flex-start; flex-wrap: wrap; }
