@@ -70,7 +70,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const openCompose = () => { setText(''); setPhotoIds([]); setQuickEntryId(null); setShowCompose(true) }
   const closeCompose = () => { setText(''); setPhotoIds([]); setQuickEntryId(null); setShowCompose(false) }
   const handlePullStart = (event: React.TouchEvent<HTMLElement>) => {
-    if (!isRegistered || showCompose || event.currentTarget.scrollTop !== 0) return
+    if (!isRegistered || !quickMode || showCompose || event.currentTarget.scrollTop !== 0) return
     const target = event.target as HTMLElement
     if (target.closest('button, input, textarea, select, a')) return
     pullStartY.current = event.touches[0]?.clientY ?? null
@@ -78,7 +78,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     setPullDistance(0)
   }
   const handlePullMove = (event: React.TouchEvent<HTMLElement>) => {
-    if (!isRegistered || pullStartY.current === null || pullTriggered.current || event.currentTarget.scrollTop !== 0) return
+    if (!isRegistered || !quickMode || pullStartY.current === null || pullTriggered.current || event.currentTarget.scrollTop !== 0) return
     const distance = Math.max(0, event.touches[0].clientY - pullStartY.current)
     setPullDistance(Math.min(88, distance * 0.55))
     if (distance < 72) return
@@ -120,7 +120,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   return <div className="app-shell notebook-app">
     <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
     <main className="notebook-body" onTouchStart={handlePullStart} onTouchMove={handlePullMove} onTouchEnd={handlePullEnd} onTouchCancel={handlePullEnd}>
-      <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><button type="button" disabled={!isRegistered} onClick={() => setQuickMode(true)} aria-label="開啟快速記事功能；輸入後按鍵盤傳送或換行鍵保存" title={isRegistered ? '開啟快速記事功能' : '註冊版專有功能'} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--orange)', borderRadius: 8, background: 'var(--card)', color: 'var(--orange)', opacity: isRegistered ? 1 : .5 }}><Send size={19} aria-hidden="true" /></button><button type="button" disabled={!isRegistered} onClick={() => setQuickMode(current => !current)} aria-label="快速記事模式" title={isRegistered ? '切換快速記事模式' : '註冊版專有功能'} aria-pressed={quickMode} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: 0, borderRadius: 8, background: quickMode ? 'var(--blue)' : 'var(--orange)', color: 'white', opacity: isRegistered ? 1 : .5 }}><Zap size={22} aria-hidden="true" /></button>{!showNavigation && onOpenSettings && <button type="button" onClick={onOpenSettings} aria-label="設定" title="設定" style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)', color: 'var(--foreground)' }}><Settings2 size={20} aria-hidden="true" /></button>}</div></div>
+      <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><button type="button" disabled={!isRegistered} onClick={() => setQuickMode(true)} aria-label="開啟快速記事功能；輸入後按鍵盤傳送或換行鍵保存" aria-pressed={quickMode} title={isRegistered ? '開啟快速記事功能' : '註冊版專有功能'} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--orange)', borderRadius: 8, background: quickMode ? 'var(--orange-soft)' : 'var(--card)', color: 'var(--orange)', opacity: isRegistered ? 1 : .5 }}><Send size={19} aria-hidden="true" /></button><button type="button" disabled={!isRegistered} onClick={() => setQuickMode(current => !current)} aria-label="快速記事模式；控制下拉新增記事" title={isRegistered ? '開／關快速記事及下拉新增記事' : '註冊版專有功能'} aria-pressed={quickMode} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: 0, borderRadius: 8, background: quickMode ? 'var(--blue)' : 'var(--orange)', color: 'white', opacity: isRegistered ? 1 : .5 }}><Zap size={22} aria-hidden="true" /></button>{!showNavigation && onOpenSettings && <button type="button" onClick={onOpenSettings} aria-label="設定" title="設定" style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)', color: 'var(--foreground)' }}><Settings2 size={20} aria-hidden="true" /></button>}</div></div>
       {saveError && <div className="save-toast error" role="alert">{saveError}</div>}
       {pullDistance > 0 && <div className="notebook-pull-indicator" style={{ height: pullDistance, opacity: Math.min(1, pullDistance / 48) }} aria-hidden="true"><span>{pullDistance >= 40 ? '放開以新增記事' : '下拉新增記事'}</span></div>}
       {showCompose && <div className="notebook-modal-backdrop" onClick={closeCompose}><section className="notebook-compose notebook-modal notebook-modal-enter" onClick={event => event.stopPropagation()}>
