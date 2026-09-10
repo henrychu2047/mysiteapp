@@ -533,9 +533,9 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
   padding: 0 !important;
   overflow: auto;
 }
-.ho-settings-popup-body > .settings-popup-bar {
-  position: sticky;
-  top: 0 !important;
+.ho-settings-popup-body .settings-popup-bar {
+  position: relative !important;
+  top: auto !important;
   margin: 0 !important;
   padding: calc(14px + env(safe-area-inset-top)) 14px 14px !important;
   box-sizing: border-box;
