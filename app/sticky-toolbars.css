@@ -2,11 +2,30 @@
 .topbar,
 .memo-topbar,
 .ho-topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 50%;
+  width: min(680px, 100vw);
+  transform: translateX(-50%);
   z-index: 4;
 }
 
 .bottom-nav {
   position: fixed;
+}
+
+.app-shell > .topbar + .content,
+.app-shell > .topbar + .notebook-body,
+.memo-app > .topbar + .memo-body,
+.ho-app > .topbar + .ho-body {
+  padding-top: calc(82px + 25px);
+}
+
+@media (max-width: 520px) {
+  .app-shell > .topbar + .content,
+  .app-shell > .topbar + .notebook-body,
+  .memo-app > .topbar + .memo-body,
+  .ho-app > .topbar + .ho-body {
+    padding-top: calc(72px + 20px);
+  }
 }
