@@ -517,13 +517,18 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 @keyframes notebook-modal-in { from { opacity: 0; transform: translateY(22px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .notebook-modal-backdrop { animation: notebook-backdrop-in .24s ease-out both; }
 .notebook-modal-enter { animation: notebook-modal-in .3s cubic-bezier(.22,.8,.28,1) both; transform-origin: center bottom; }
-.notebook-input-backdrop { animation: none; padding-bottom: calc(18px + var(--notebook-keyboard-inset, 0px)); transition: padding-bottom .18s ease-out; }
-.notebook-pull-indicator { display: grid; place-items: end center; overflow: hidden; color: var(--orange); font-size: 12px; font-weight: 700; transition: height .16s ease-out, opacity .16s ease-out; }
-.notebook-pull-indicator span { padding: 10px 0; }
+.notebook-input-backdrop { animation: notebook-input-shade .2s ease-out; padding-bottom: calc(18px + var(--notebook-keyboard-inset, 0px)); transition: padding-bottom .18s ease-out; }
+/* Keep the focused textarea fully visible; animate position, never its opacity. */
+@keyframes notebook-input-shade { from { background-color: transparent; } to { background-color: rgba(10, 17, 24, .55); } }
+@keyframes notebook-input-rise { from { transform: translateY(12px); } to { transform: translateY(0); } }
+.notebook-input-backdrop > .notebook-modal { animation: notebook-input-rise .22s cubic-bezier(.16, 1, .3, 1); }
+.notebook-pull-indicator { position: absolute; left: 0; right: 0; z-index: 5; display: grid; place-items: center; height: 0; pointer-events: none; color: var(--orange); font-size: 12px; font-weight: 700; transition: transform .2s ease-out, opacity .16s ease-out; }
+.notebook-pull-indicator.is-pulling { transition: opacity .1s ease-out; }
+.notebook-pull-indicator span { padding: 8px 14px; border-radius: 20px; background: var(--card); box-shadow: 0 3px 12px #15212b18; }
 .notebook-photo-preview { align-items: flex-start; flex-wrap: wrap; }
 .notebook-photo-item { display: flex; align-items: center; gap: 6px; }
 .notebook-entry-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-@media (prefers-reduced-motion: reduce) { .notebook-modal-backdrop, .notebook-modal-enter { animation: none; } .notebook-pull-indicator { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .notebook-modal-backdrop, .notebook-modal-enter, .notebook-input-backdrop > .notebook-modal { animation: none; } .notebook-pull-indicator, .notebook-input-backdrop { transition: none; } }
 
 /* Settings cards use the same modal frame as Site Memo. */
 .ho-settings-popup-body,
