@@ -56,7 +56,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
 
   const addEntry = () => {
     const value = text.trim()
-    if (!value) return
+    if (!value && !photoId) return
     setEntries(current => [{ id: `${Date.now()}-${Math.random()}`, text: value, category, done: false, pinned: false, createdAt: new Date().toISOString(), photoId: photoId || undefined }, ...current])
     setText(''); setPhotoId(''); setShowCompose(false)
     setQuickEntryId(null)
