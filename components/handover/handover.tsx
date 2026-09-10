@@ -104,6 +104,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
   const [loaded, setLoaded] = useState(false)
   const loadedProjectRef = useRef<string | null>(null)
   const [view, setView] = useState<View>(initialView)
+  const previousViewRef = useRef<View | null>(null)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<RoomStatus | null>(null)
   const [toast, setToast] = useState('')
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saved')
@@ -561,9 +562,19 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     return parts.join(' ＞ ')
   }
 
+  const openSettings = () => {
+    previousViewRef.current = view
+    setView('settings')
+  }
+
   const goBack = () => {
     if (view === 'home') return onBack()
-        if (view === 'settings') return onSettingsBack ? onSettingsBack() : setView('home')
+    if (view === 'settings') {
+      if (onSettingsBack) return onSettingsBack()
+      const previousView = previousViewRef.current
+      previousViewRef.current = null
+      return setView(previousView && previousView !== 'settings' ? previousView : 'home')
+    }
         if (view === 'manage') return setView('settings')
         if (view === 'status-list') return setView('stats')
     if (view === 'detail') return setView('flow-room')
@@ -636,7 +647,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
                 <strong>統計</strong>
                 <span>移交比率</span>
               </button>
-              <button className="ho-home-card" onClick={() => setView('settings')}>
+              <button className="ho-home-card" onClick={openSettings}>
                 <Settings2 size={30} className="ho-home-icon" />
                 <strong>設定</strong>
                 <span>管理 App 設定</span>
