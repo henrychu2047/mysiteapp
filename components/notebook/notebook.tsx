@@ -36,6 +36,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const pullStartY = useRef<number | null>(null)
   const pullTriggered = useRef(false)
   const pullOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const composeTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [pullDistance, setPullDistance] = useState(0)
   const [saveError, setSaveError] = useState('')
   const loadedProjectRef = useRef<string | null>(null)
@@ -104,6 +105,13 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     if (!quickMode || !quickEntryId) return
     setEntries(current => current.map(entry => entry.id === quickEntryId ? { ...entry, category, photoId: photoIds[0], photoIds } : entry))
   }, [category, photoIds, quickEntryId, quickMode])
+  useEffect(() => {
+    if (!showCompose) return
+    const frame = requestAnimationFrame(() => {
+      composeTextareaRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [showCompose])
   const toggle = (id: string, field: 'done' | 'pinned') => setEntries(current => current.map(entry => entry.id === id ? { ...entry, [field]: !entry[field] } : entry))
   const remove = (id: string) => { if (confirm('確定刪除此記事？')) setEntries(current => current.filter(entry => entry.id !== id)) }
   const visible = useMemo(() => entries.filter(entry => filter === '全部' || entry.category === filter).filter(entry => !query.trim() || entry.text.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.pinned) - Number(a.pinned) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [entries, filter, query])
@@ -117,7 +125,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       {pullDistance > 0 && <div className="notebook-pull-indicator" style={{ height: pullDistance, opacity: Math.min(1, pullDistance / 48) }} aria-hidden="true"><span>{pullDistance >= 40 ? '放開以新增記事' : '下拉新增記事'}</span></div>}
       {showCompose && <div className="notebook-modal-backdrop" onClick={closeCompose}><section className="notebook-compose notebook-modal notebook-modal-enter" onClick={event => event.stopPropagation()}>
         <div className="notebook-modal-heading"><h2>新增記事</h2><button type="button" onClick={closeCompose}>×</button></div>
-        <textarea autoFocus value={text} onChange={event => handleTextChange(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && quickMode && !event.shiftKey) { event.preventDefault(); finishQuickEntry() } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !quickMode) addEntry() }} placeholder="快速記錄現場事項…" aria-label="記事內容" />
+        <textarea ref={composeTextareaRef} autoFocus value={text} onChange={event => handleTextChange(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && quickMode && !event.shiftKey) { event.preventDefault(); finishQuickEntry() } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !quickMode) addEntry() }} placeholder="快速記錄現場事項…" aria-label="記事內容" />
         <div className="notebook-compose-row"><div className="notebook-compose-tools"><div className="notebook-category-quick-select" role="group" aria-label="記事分類快選">{categories.map(item => <button type="button" key={item} className={category === item ? 'chosen' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="notebook-media-actions"><button type="button" onClick={() => onSelectAlbumPhotos(ids => { const next = Array.from(new Set([...photoIds, ...ids])); setPhotoIds(next); saveQuickEntry(text, next) })}>📎 相簿</button><button type="button" onClick={() => onOpenCamera(photo => { const next = Array.from(new Set([...photoIds, photo])); setPhotoIds(next); saveQuickEntry(text, next) })}>▣ 拍攝</button></div></div>{quickMode ? <span style={{ color: 'var(--blue)', fontSize: 12, fontWeight: 700 }}>輸入即自動保存</span> : <button className="primary-button" type="button" onClick={addEntry}>新增記事</button>}</div>
         {!!photoIds.length && <div className="notebook-photo-preview">{photoIds.map((id, index) => pendingPhotos[index] ? <div className="notebook-photo-item" key={id}><img src={pendingPhotos[index]} alt={`待附加相片 ${index + 1}`} /><button type="button" onClick={() => setPhotoIds(current => current.filter(value => value !== id))}>移除</button></div> : <div className="attachment-unavailable" key={id}>相片已從相簿移除</div>)}</div>}
         <small className="notebook-hint">Ctrl / ⌘ + Enter 可快速新增</small>
