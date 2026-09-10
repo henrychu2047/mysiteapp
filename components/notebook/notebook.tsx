@@ -38,6 +38,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const notebookBodyRef = useRef<HTMLElement | null>(null)
   const composeTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [pullDistance, setPullDistance] = useState(0)
+  const [keyboardInset, setKeyboardInset] = useState(0)
   const [saveError, setSaveError] = useState('')
   const loadedProjectRef = useRef<string | null>(null)
 
@@ -114,6 +115,16 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       body.removeEventListener('touchcancel', cancel)
     }
   }, [isRegistered, pullToAddEnabled, showCompose])
+  useEffect(() => {
+    if (!showCompose || typeof window === 'undefined') { setKeyboardInset(0); return }
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const updateKeyboardInset = () => setKeyboardInset(Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop))
+    updateKeyboardInset()
+    viewport.addEventListener('resize', updateKeyboardInset)
+    viewport.addEventListener('scroll', updateKeyboardInset)
+    return () => { viewport.removeEventListener('resize', updateKeyboardInset); viewport.removeEventListener('scroll', updateKeyboardInset) }
+  }, [showCompose])
   const saveQuickEntry = (value: string, attachmentIds: string[]) => {
     if (!quickMode || (!value.trim() && !attachmentIds.length)) return
     const id = quickEntryId || `${Date.now()}-${Math.random()}`
@@ -142,7 +153,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><button type="button" disabled={!isRegistered} onClick={() => setQuickMode(current => !current)} aria-label="開／關快速記事保存功能；輸入後按鍵盤傳送或換行鍵保存" aria-pressed={quickMode} title={isRegistered ? '開／關快速記事保存功能' : '註冊版專有功能'} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--orange)', borderRadius: 8, background: quickMode ? 'var(--orange)' : '#fff', color: quickMode ? '#fff' : 'var(--navy)', opacity: isRegistered ? 1 : .5 }}><Send size={19} aria-hidden="true" /></button><button type="button" disabled={!isRegistered} onClick={() => setPullToAddEnabled(current => !current)} aria-label="開／關下拉新增記事功能" title={isRegistered ? '開／關下拉新增記事' : '註冊版專有功能'} aria-pressed={pullToAddEnabled} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--line)', borderRadius: 8, background: pullToAddEnabled ? 'var(--blue)' : '#fff', color: pullToAddEnabled ? '#fff' : 'var(--navy)', opacity: isRegistered ? 1 : .5 }}><Zap size={22} aria-hidden="true" /></button>{!showNavigation && onOpenSettings && <button type="button" onClick={onOpenSettings} aria-label="設定" title="設定" style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)', color: 'var(--foreground)' }}><Settings2 size={20} aria-hidden="true" /></button>}</div></div>
       {saveError && <div className="save-toast error" role="alert">{saveError}</div>}
       {pullDistance > 0 && <div className="notebook-pull-indicator" style={{ height: pullDistance, opacity: Math.min(1, pullDistance / 48) }} aria-hidden="true"><span>{pullDistance >= 40 ? '放開以新增記事' : '下拉新增記事'}</span></div>}
-      {showCompose && <div className="notebook-modal-backdrop notebook-input-backdrop" onClick={closeCompose}><section role="dialog" aria-modal="true" aria-label="新增記事" className="notebook-compose notebook-modal" onClick={event => event.stopPropagation()}>
+      {showCompose && <div className="notebook-modal-backdrop notebook-input-backdrop" style={{ '--notebook-keyboard-inset': `${keyboardInset}px` } as React.CSSProperties} onClick={closeCompose}><section role="dialog" aria-modal="true" aria-label="新增記事" className="notebook-compose notebook-modal" onClick={event => event.stopPropagation()}>
         <div className="notebook-modal-heading"><h2>新增記事</h2><button type="button" onClick={closeCompose}>×</button></div>
         <textarea ref={composeTextareaRef} autoFocus value={text} onChange={event => handleTextChange(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && quickMode && !event.shiftKey) { event.preventDefault(); finishQuickEntry() } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !quickMode) addEntry() }} placeholder="快速記錄現場事項…" aria-label="記事內容" />
         <div className="notebook-compose-row"><div className="notebook-compose-tools"><div className="notebook-category-quick-select" role="group" aria-label="記事分類快選">{categories.map(item => <button type="button" key={item} className={category === item ? 'chosen' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="notebook-media-actions"><button type="button" onClick={() => onSelectAlbumPhotos(ids => { const next = Array.from(new Set([...photoIds, ...ids])); setPhotoIds(next); saveQuickEntry(text, next) })}>📎 相簿</button><button type="button" onClick={() => onOpenCamera(photo => { const next = Array.from(new Set([...photoIds, photo])); setPhotoIds(next); saveQuickEntry(text, next) })}>▣ 拍攝</button></div></div>{quickMode ? <span style={{ color: 'var(--blue)', fontSize: 12, fontWeight: 700 }}>輸入即自動保存</span> : <button className="primary-button" type="button" onClick={addEntry}>新增記事</button>}</div>
