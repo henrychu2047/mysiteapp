@@ -36,7 +36,6 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const [quickEntryId, setQuickEntryId] = useState<string | null>(null)
   const pullStartY = useRef<number | null>(null)
   const pullTriggered = useRef(false)
-  const pullOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const composeTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [pullDistance, setPullDistance] = useState(0)
   const [saveError, setSaveError] = useState('')
@@ -85,19 +84,13 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     if (distance < 60) return
     pullTriggered.current = true
     event.preventDefault()
-    setPullDistance(88)
-    pullOpenTimer.current = setTimeout(() => {
-      pullOpenTimer.current = null
-      setPullDistance(0)
-      openCompose()
-    }, 50)
+    setPullDistance(0)
+    openCompose()
   }
   const handlePullEnd = () => {
-    const triggered = pullTriggered.current
     pullStartY.current = null
     pullTriggered.current = false
-    if (!triggered && pullOpenTimer.current) { clearTimeout(pullOpenTimer.current); pullOpenTimer.current = null }
-    if (!triggered) setPullDistance(0)
+    setPullDistance(0)
   }
   const saveQuickEntry = (value: string, attachmentIds: string[]) => {
     if (!quickMode || (!value.trim() && !attachmentIds.length)) return
