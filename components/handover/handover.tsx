@@ -629,8 +629,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onProject
       {showToolbar && <StandaloneToolbar projectName={projectName} onProjectClick={goBack} />}
 
       <main className={`ho-body ${popup && view === 'settings' ? 'ho-settings-popup-body' : ''} ${previousViewRef.current === 'settings' && view !== 'settings' ? 'ho-settings-popup-body' : ''}`}>
-      {popup && view === 'settings' && <div className="settings-popup-bar"><span className="settings-popup-bar-spacer" aria-hidden="true" /><strong>設定</strong><button onClick={goBack} aria-label="關閉">×</button></div>}
-      {previousViewRef.current === 'settings' && view !== 'settings' && <div className="settings-popup-bar"><span className="settings-popup-bar-spacer" aria-hidden="true" /><strong>{view === 'manage' ? '機房資料' : '負責人'}</strong><button onClick={goBack} aria-label="關閉">×</button></div>}
+      {popup && view === 'settings' && <div className="settings-popup-bar"><span className="settings-popup-bar-spacer" aria-hidden="true" /><strong>設定</strong><button onClick={goBack} aria-label="關閉"><X size={22} /></button></div>}
+      {previousViewRef.current === 'settings' && view !== 'settings' && <div className="settings-popup-bar"><span className="settings-popup-bar-spacer" aria-hidden="true" /><strong>{view === 'manage' ? '機房資料' : '負責人'}</strong><button onClick={goBack} aria-label="關閉"><X size={22} /></button></div>}
       {view !== 'home' && view !== 'manage' && view !== 'settings' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
       {view !== 'home' && view !== 'manage' && view !== 'settings' && previousViewRef.current !== 'settings' && (
           <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">返回</button>
