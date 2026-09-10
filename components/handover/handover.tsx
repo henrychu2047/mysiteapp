@@ -562,19 +562,28 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
     return parts.join(' ＞ ')
   }
 
-  const openSettings = () => {
+  const openView = (nextView: View) => {
     previousViewRef.current = view
-    setView('settings')
+    setView(nextView)
+  }
+
+  const openSettings = () => {
+    openView('settings')
+  }
+
+  const returnToPreviousView = (fallback: View = 'home') => {
+    const previousView = previousViewRef.current
+    previousViewRef.current = null
+    return setView(previousView && previousView !== view ? previousView : fallback)
   }
 
   const goBack = () => {
     if (view === 'home') return onBack()
     if (view === 'settings') {
       if (onSettingsBack) return onSettingsBack()
-      const previousView = previousViewRef.current
-      previousViewRef.current = null
-      return setView(previousView && previousView !== 'settings' ? previousView : 'home')
+      return returnToPreviousView()
     }
+    if (view === 'flow-tower' || view === 'stats') return returnToPreviousView()
         if (view === 'manage') return setView('settings')
         if (view === 'status-list') return setView('stats')
     if (view === 'detail') return setView('flow-room')
@@ -634,15 +643,13 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             <div className="ho-home-grid">
               <button
                 className="ho-home-card"
-                onClick={() => {
-                  setView('flow-tower')
-                }}
+                onClick={() => openView('flow-tower')}
               >
                 <ClipboardCheck size={30} className="ho-home-icon" />
                 <strong>制房移交狀況</strong>
                 <span>日期、移交狀態、相片、Defect</span>
               </button>
-              <button className="ho-home-card" onClick={() => setView('stats')}>
+              <button className="ho-home-card" onClick={() => openView('stats')}>
                 <BarChart3 size={30} className="ho-home-icon" />
                 <strong>統計</strong>
                 <span>移交比率</span>
