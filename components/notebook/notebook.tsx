@@ -46,6 +46,30 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const [swipeEntryId, setSwipeEntryId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const loadedProjectRef = useRef<string | null>(null)
+  const preferencesLoadPendingRef = useRef(false)
+
+  useEffect(() => {
+    preferencesLoadPendingRef.current = true
+    try {
+      const saved = localStorage.getItem(`notebook-preferences:${projectId}`)
+      const preferences = saved ? JSON.parse(saved) as { quickMode?: boolean; pullToAddEnabled?: boolean } : {}
+      setQuickMode(Boolean(preferences.quickMode))
+      setPullToAddEnabled(Boolean(preferences.pullToAddEnabled))
+    } catch {
+      setQuickMode(false)
+      setPullToAddEnabled(false)
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    if (preferencesLoadPendingRef.current) {
+      preferencesLoadPendingRef.current = false
+      return
+    }
+    try {
+      localStorage.setItem(`notebook-preferences:${projectId}`, JSON.stringify({ quickMode, pullToAddEnabled }))
+    } catch { /* 本機儲存不可用時仍可正常使用 */ }
+  }, [projectId, quickMode, pullToAddEnabled])
 
   useEffect(() => {
     try {
