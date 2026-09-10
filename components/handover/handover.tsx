@@ -682,6 +682,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         {/* ===== 設定首頁 ===== */}
         {view === 'settings' && (
           <div className="ho-manage">
+            <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
             <div className="ho-heading ho-manage-heading">
               <p className="eyebrow">APP SETTINGS</p>
               <h2>設定</h2>
