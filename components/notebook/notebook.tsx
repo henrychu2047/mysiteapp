@@ -84,7 +84,6 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     setPullDistance(Math.min(88, distance * 0.55))
     if (distance < 60) return
     pullTriggered.current = true
-    event.preventDefault()
     setPullDistance(88)
   }
   const handlePullEnd = () => {
