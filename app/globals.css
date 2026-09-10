@@ -527,14 +527,15 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 /* Settings cards use the same modal frame as Site Memo. */
 .ho-settings-popup-body {
   box-sizing: border-box;
-  padding: 0;
+  padding: 0 !important;
   overflow: auto;
 }
 .ho-settings-popup-body > .settings-popup-bar {
   position: sticky;
-  top: 0;
-  margin: 0;
-  padding: calc(14px + env(safe-area-inset-top)) 14px 14px;
+  top: 0 !important;
+  margin: 0 !important;
+  padding: calc(14px + env(safe-area-inset-top)) 14px 14px !important;
+  box-sizing: border-box;
 }
 .ho-settings-popup-body > .ho-manage,
 .ho-settings-popup-body > .ho-detail,
