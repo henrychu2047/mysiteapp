@@ -63,14 +63,17 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   }
   const openCompose = () => { setText(''); setPhotoId(''); setQuickEntryId(null); setShowCompose(true) }
   const closeCompose = () => { setText(''); setPhotoId(''); setQuickEntryId(null); setShowCompose(false) }
-  const handleTextChange = (value: string) => {
-    setText(value)
-    if (!quickMode || !value.trim()) return
+  const saveQuickEntry = (value: string, attachmentId: string) => {
+    if (!quickMode || (!value.trim() && !attachmentId)) return
     const id = quickEntryId || `${Date.now()}-${Math.random()}`
     if (!quickEntryId) setQuickEntryId(id)
     setEntries(current => quickEntryId
-      ? current.map(entry => entry.id === quickEntryId ? { ...entry, text: value, category, photoId: photoId || undefined } : entry)
-      : [{ id, text: value, category, done: false, pinned: false, createdAt: new Date().toISOString(), photoId: photoId || undefined }, ...current])
+      ? current.map(entry => entry.id === quickEntryId ? { ...entry, text: value, category, photoId: attachmentId || undefined } : entry)
+      : [{ id, text: value, category, done: false, pinned: false, createdAt: new Date().toISOString(), photoId: attachmentId || undefined }, ...current])
+  }
+  const handleTextChange = (value: string) => {
+    setText(value)
+    saveQuickEntry(value, photoId)
   }
   useEffect(() => {
     if (!quickMode || !quickEntryId) return
@@ -89,7 +92,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       {showCompose && <div className="notebook-modal-backdrop" onClick={closeCompose}><section className="notebook-compose notebook-modal" onClick={event => event.stopPropagation()}>
         <div className="notebook-modal-heading"><h2>新增記事</h2><button type="button" onClick={closeCompose}>×</button></div>
         <textarea autoFocus value={text} onChange={event => handleTextChange(event.target.value)} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !quickMode) addEntry() }} placeholder="快速記錄現場事項…" aria-label="記事內容" />
-        <div className="notebook-compose-row"><div className="notebook-compose-tools"><div className="notebook-category-quick-select" role="group" aria-label="記事分類快選">{categories.map(item => <button type="button" key={item} className={category === item ? 'chosen' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="notebook-media-actions"><button type="button" onClick={() => onSelectAlbumPhotos(ids => setPhotoId(ids[0] || ''))}>📎 從相簿選取</button><button type="button" onClick={() => onOpenCamera(setPhotoId)}>▣ 連續拍攝</button></div></div>{quickMode ? <span style={{ color: 'var(--blue)', fontSize: 12, fontWeight: 700 }}>輸入即自動保存</span> : <button className="primary-button" type="button" onClick={addEntry}>新增記事</button>}</div>
+        <div className="notebook-compose-row"><div className="notebook-compose-tools"><div className="notebook-category-quick-select" role="group" aria-label="記事分類快選">{categories.map(item => <button type="button" key={item} className={category === item ? 'chosen' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="notebook-media-actions"><button type="button" onClick={() => onSelectAlbumPhotos(ids => { const id = ids[0] || ''; setPhotoId(id); saveQuickEntry(text, id) })}>📎 從相簿選取</button><button type="button" onClick={() => onOpenCamera(photo => { setPhotoId(photo); saveQuickEntry(text, photo) })}>▣ 連續拍攝</button></div></div>{quickMode ? <span style={{ color: 'var(--blue)', fontSize: 12, fontWeight: 700 }}>輸入即自動保存</span> : <button className="primary-button" type="button" onClick={addEntry}>新增記事</button>}</div>
         {photoId && (pendingPhoto ? <div className="notebook-photo-preview"><img src={pendingPhoto} alt="待附加相片" /><button type="button" onClick={() => setPhotoId('')}>移除相片</button></div> : <div className="attachment-unavailable">相片已從相簿移除</div>)}
         <small className="notebook-hint">Ctrl / ⌘ + Enter 可快速新增</small>
       </section></div>}
