@@ -166,6 +166,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     setEntries(current => current.map(entry => entry.id === quickEntryId ? { ...entry, category, photoId: photoIds[0], photoIds } : entry))
   }, [category, photoIds, quickEntryId, quickMode])
   const toggle = (id: string, field: 'done' | 'pinned') => setEntries(current => current.map(entry => entry.id === id ? { ...entry, [field]: !entry[field] } : entry))
+  const deleteEntryImmediately = (id: string) => { setEntries(current => current.filter(entry => entry.id !== id)); resetEntrySwipe() }
   const remove = (id: string) => { if (confirm('確定刪除此記事？')) { setEntries(current => current.filter(entry => entry.id !== id)); swipeOffsetRef.current = 0; setSwipeEntryId(null); setSwipeOffset(0) } }
   const handleEntryTouchStart = (event: React.TouchEvent<HTMLElement>, id: string) => {
     if (showCompose || event.touches.length !== 1) return
@@ -196,12 +197,10 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     if (!start) return
     const finalOffset = swipeOffsetRef.current
     if (finalOffset >= 72) {
-      const entry = entries.find(item => item.id === start.id)
-      if (entry) editEntry(entry)
+      toggle(start.id, 'pinned')
+      resetEntrySwipe()
     } else if (finalOffset <= -72) {
-      swipeOffsetRef.current = -104
-      setSwipeOffset(-104)
-      setSwipeEntryId(start.id)
+      deleteEntryImmediately(start.id)
     } else {
       swipeOffsetRef.current = 0
       setSwipeOffset(0)
