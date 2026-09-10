@@ -3,7 +3,7 @@
 import { Component, useEffect, useRef, useState, type ErrorInfo, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { StandaloneToolbar } from '@/components/ui/standalone-toolbar'
-import { ArrowLeft, ChevronRight, FileText, Folder, Trash2, Upload, X } from 'lucide-react'
+import { ChevronRight, FileText, Folder, Trash2, Upload, X } from 'lucide-react'
 import { loadAllHandover, type Tower } from '@/components/handover/handover-data'
 import { renderPdfToPages } from '@/components/site-memo/memo-data'
 import { normalizeDatabaseFile, readDatabaseFiles, writeDatabaseFiles, type DatabaseFile, type FileAnnotation } from '@/lib/database-storage'
@@ -251,7 +251,6 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate, showNavig
   return <>
     <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
     <section className="content database-page">
-    <button className="back-link" onClick={onBack}><ArrowLeft size={16} /> 返回首頁</button>
     <div className="section-heading"><div><p className="eyebrow">PROJECT DATABASE</p><h2>資料庫</h2></div><span className="photo-total">{projectName}</span></div>
     <p className="settings-intro">管理目前 Project 的圖紙、Spec、照片及其它檔案。圖紙資料夾會跟隨制房資料自動更新。</p>
     <div className="database-layout">
