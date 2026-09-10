@@ -59,6 +59,7 @@ type Props = {
   initialView?: 'home' | 'settings' | 'manage'
   projectId: string
   projectName: string
+  onProjectNameChange?: (name: string) => void
   onOpenPhotoSettings?: (label?: string) => void
   onPhotoSettingsBack?: () => void
   onSettingsBack?: () => void
@@ -97,7 +98,7 @@ const expandRoomSuffixRange = (start: string, end: string) => {
   })
 }
 
-export function Handover({ onBack, onNavigate, projectId, projectName, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showToolbar = true, showNavigation = true, onOpenSettings }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, onProjectNameChange, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showToolbar = true, showNavigation = true, onOpenSettings }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -727,6 +728,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
               <p className="eyebrow">ROOM DATA</p>
               <h2>機房資料</h2>
             </div>
+            {onProjectNameChange && <label className="ho-field ho-project-name-field"><span>Project 名稱</span><input value={projectName} onChange={event => onProjectNameChange(event.target.value)} placeholder="輸入 Project 名稱" /></label>}
             {/* 批量產生 */}
             <button className="ho-gen-toggle" onClick={() => setShowGen(v => !v)}>
               <Wand2 size={18} />
