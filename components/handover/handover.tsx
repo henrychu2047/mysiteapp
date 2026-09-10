@@ -73,6 +73,7 @@ type Props = {
   showToolbar?: boolean
   showNavigation?: boolean
   onOpenSettings?: () => void
+  popup?: boolean
 }
 
 type View = 'home' | 'settings' | 'manage' | 'responsible-person' | 'flow-tower' | 'flow-floor' | 'flow-room' | 'detail' | 'stats' | 'status-list'
@@ -98,7 +99,7 @@ const expandRoomSuffixRange = (start: string, end: string) => {
   })
 }
 
-export function Handover({ onBack, onNavigate, projectId, projectName, onProjectNameChange, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showToolbar = true, showNavigation = true, onOpenSettings }: Props) {
+export function Handover({ onBack, onNavigate, projectId, projectName, onProjectNameChange, initialView = 'home', onOpenPhotoSettings, onPhotoSettingsBack, onSettingsBack, onStructureChange, onResponsibleEmailChange, isRegistered = false, onUpdateApp, photoSources, onSelectAlbumPhotos, onOpenCamera, showToolbar = true, showNavigation = true, onOpenSettings, popup = false }: Props) {
   const [towers, setTowers] = useState<Tower[]>([])
   const [responsiblePerson, setResponsiblePerson] = useState<ResponsiblePerson>(createResponsiblePerson)
   const [responsibleDraft, setResponsibleDraft] = useState<ResponsiblePerson>(createResponsiblePerson)
@@ -627,7 +628,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onProject
     <div className="app-shell ho-app">
       {showToolbar && <StandaloneToolbar projectName={projectName} onProjectClick={goBack} />}
 
-      <main className={`ho-body ${previousViewRef.current === 'settings' && view !== 'settings' ? 'ho-settings-popup-body' : ''}`}>
+      <main className={`ho-body ${popup && view === 'settings' ? 'ho-settings-popup-body' : ''} ${previousViewRef.current === 'settings' && view !== 'settings' ? 'ho-settings-popup-body' : ''}`}>
+      {popup && view === 'settings' && <div className="settings-popup-bar"><span className="settings-popup-bar-spacer" aria-hidden="true" /><strong>設定</strong><button onClick={goBack} aria-label="關閉">×</button></div>}
       {previousViewRef.current === 'settings' && view !== 'settings' && <div className="settings-popup-bar"><span className="settings-popup-bar-spacer" aria-hidden="true" /><strong>{view === 'manage' ? '機房資料' : '負責人'}</strong><button onClick={goBack} aria-label="關閉">×</button></div>}
       {view !== 'home' && view !== 'manage' && view !== 'settings' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
       {view !== 'home' && view !== 'manage' && view !== 'settings' && previousViewRef.current !== 'settings' && (
@@ -702,7 +704,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onProject
         {/* ===== 設定首頁 ===== */}
         {view === 'settings' && (
           <div className="ho-manage">
-            <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">返回</button>
+            {!popup && <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">返回</button>}
             <div className="ho-heading ho-manage-heading">
               <p className="eyebrow">APP SETTINGS</p>
               <h2>設定</h2>
