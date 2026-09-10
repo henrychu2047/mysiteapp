@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import './sticky-toolbars.css'
 
 export const metadata: Metadata = {
   title: '地盤相片記錄系統',
