@@ -82,13 +82,23 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     if (!isRegistered || !pullToAddEnabled || pullStartY.current === null || pullTriggered.current || event.currentTarget.scrollTop !== 0) return
     const distance = Math.max(0, event.touches[0].clientY - pullStartY.current)
     setPullDistance(Math.min(88, distance * 0.55))
-    if (distance < 72) return
+    if (distance < 60) return
     pullTriggered.current = true
     event.preventDefault()
     setPullDistance(88)
-    pullOpenTimer.current = setTimeout(() => { setPullDistance(0); openCompose() }, 120)
+    pullOpenTimer.current = setTimeout(() => {
+      pullOpenTimer.current = null
+      setPullDistance(0)
+      openCompose()
+    }, 50)
   }
-  const handlePullEnd = () => { pullStartY.current = null; pullTriggered.current = false; if (pullOpenTimer.current) { clearTimeout(pullOpenTimer.current); pullOpenTimer.current = null }; setPullDistance(0) }
+  const handlePullEnd = () => {
+    const triggered = pullTriggered.current
+    pullStartY.current = null
+    pullTriggered.current = false
+    if (!triggered && pullOpenTimer.current) { clearTimeout(pullOpenTimer.current); pullOpenTimer.current = null }
+    if (!triggered) setPullDistance(0)
+  }
   const saveQuickEntry = (value: string, attachmentIds: string[]) => {
     if (!quickMode || (!value.trim() && !attachmentIds.length)) return
     const id = quickEntryId || `${Date.now()}-${Math.random()}`
