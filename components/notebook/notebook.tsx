@@ -72,6 +72,10 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       ? current.map(entry => entry.id === quickEntryId ? { ...entry, text: value, category, photoId: photoId || undefined } : entry)
       : [{ id, text: value, category, done: false, pinned: false, createdAt: new Date().toISOString(), photoId: photoId || undefined }, ...current])
   }
+  useEffect(() => {
+    if (!quickMode || !quickEntryId) return
+    setEntries(current => current.map(entry => entry.id === quickEntryId ? { ...entry, category, photoId: photoId || undefined } : entry))
+  }, [category, photoId, quickEntryId, quickMode])
   const toggle = (id: string, field: 'done' | 'pinned') => setEntries(current => current.map(entry => entry.id === id ? { ...entry, [field]: !entry[field] } : entry))
   const remove = (id: string) => { if (confirm('確定刪除此記事？')) setEntries(current => current.filter(entry => entry.id !== id)) }
   const visible = useMemo(() => entries.filter(entry => filter === '全部' || entry.category === filter).filter(entry => !query.trim() || entry.text.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.pinned) - Number(a.pinned) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [entries, filter, query])
