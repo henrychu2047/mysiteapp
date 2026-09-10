@@ -249,7 +249,7 @@ function DatabaseContent({ projectId, projectName, onBack, onNavigate, showNavig
   }
 
   return <>
-    <StandaloneToolbar projectName={projectName} onProjectClick={onBack} onSettingsClick={onOpenSettings} />
+    <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
     <section className="content database-page">
     <button className="back-link" onClick={onBack}><ArrowLeft size={16} /> 返回首頁</button>
     <div className="section-heading"><div><p className="eyebrow">PROJECT DATABASE</p><h2>資料庫</h2></div><span className="photo-total">{projectName}</span></div>

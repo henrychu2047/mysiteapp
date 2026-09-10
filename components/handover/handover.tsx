@@ -625,7 +625,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, onProject
 
   return (
     <div className="app-shell ho-app">
-      {showToolbar && <StandaloneToolbar projectName={projectName} onProjectClick={goBack} onSettingsClick={onOpenSettings || onOpenPhotoSettings} showSettings={false} />}
+      {showToolbar && <StandaloneToolbar projectName={projectName} onProjectClick={goBack} />}
 
       <main className={`ho-body ${previousViewRef.current === 'settings' && view !== 'settings' ? 'ho-settings-popup-body' : ''}`}>
       {previousViewRef.current === 'settings' && view !== 'settings' && <div className="settings-popup-bar"><span className="settings-popup-bar-spacer" aria-hidden="true" /><strong>{view === 'manage' ? '機房資料' : '負責人'}</strong><button onClick={goBack} aria-label="關閉">×</button></div>}

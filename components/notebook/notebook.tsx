@@ -62,7 +62,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const pendingPhoto = resolveAttachmentPhoto(photoId, undefined, photoSources)
 
   return <div className="app-shell notebook-app">
-    <StandaloneToolbar projectName={projectName} onProjectClick={onBack} onSettingsClick={onOpenSettings} />
+    <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
     <main className="notebook-body">
       <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div></div>
       {saveError && <div className="save-toast error" role="alert">{saveError}</div>}

@@ -527,7 +527,7 @@ export function SiteMemo({ onBack, onNavigate, onOpenMachineData, onOpenMachineD
 
   return (
     <div className="app-shell memo-app">
-      <StandaloneToolbar projectName={projectName} onProjectClick={onBack} onSettingsClick={onOpenSettings} />
+      <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
 
       <main className="memo-body">
         <div className="memo-heading">
