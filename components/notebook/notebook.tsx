@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { StandaloneToolbar } from '@/components/ui/standalone-toolbar'
 import { Send, Settings2, Zap } from 'lucide-react'
@@ -84,8 +85,11 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     if (distance < 60) return
     pullTriggered.current = true
     event.preventDefault()
-    setPullDistance(0)
-    openCompose()
+    flushSync(() => {
+      setPullDistance(0)
+      openCompose()
+    })
+    composeTextareaRef.current?.focus({ preventScroll: true })
   }
   const handlePullEnd = () => {
     pullStartY.current = null
