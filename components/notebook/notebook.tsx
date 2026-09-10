@@ -32,6 +32,8 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const [showCompose, setShowCompose] = useState(false)
   const [quickMode, setQuickMode] = useState(false)
   const [quickEntryId, setQuickEntryId] = useState<string | null>(null)
+  const pullStartY = useRef<number | null>(null)
+  const pullTriggered = useRef(false)
   const [saveError, setSaveError] = useState('')
   const loadedProjectRef = useRef<string | null>(null)
 
@@ -63,6 +65,22 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   }
   const openCompose = () => { setText(''); setPhotoId(''); setQuickEntryId(null); setShowCompose(true) }
   const closeCompose = () => { setText(''); setPhotoId(''); setQuickEntryId(null); setShowCompose(false) }
+  const handlePullStart = (event: React.TouchEvent<HTMLElement>) => {
+    if (showCompose || event.currentTarget.scrollTop !== 0) return
+    const target = event.target as HTMLElement
+    if (target.closest('button, input, textarea, select, a')) return
+    pullStartY.current = event.touches[0]?.clientY ?? null
+    pullTriggered.current = false
+  }
+  const handlePullMove = (event: React.TouchEvent<HTMLElement>) => {
+    if (pullStartY.current === null || pullTriggered.current || event.currentTarget.scrollTop !== 0) return
+    const distance = event.touches[0].clientY - pullStartY.current
+    if (distance < 72) return
+    pullTriggered.current = true
+    event.preventDefault()
+    openCompose()
+  }
+  const handlePullEnd = () => { pullStartY.current = null; pullTriggered.current = false }
   const saveQuickEntry = (value: string, attachmentId: string) => {
     if (!quickMode || (!value.trim() && !attachmentId)) return
     const id = quickEntryId || `${Date.now()}-${Math.random()}`
@@ -86,7 +104,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
 
   return <div className="app-shell notebook-app">
     <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
-    <main className="notebook-body">
+    <main className="notebook-body" onTouchStart={handlePullStart} onTouchMove={handlePullMove} onTouchEnd={handlePullEnd} onTouchCancel={handlePullEnd}>
       <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div><button type="button" className="notebook-add-button" style={{ background: quickMode ? 'var(--blue)' : undefined, opacity: isRegistered ? 1 : .5 }} disabled={!isRegistered} onClick={() => setQuickMode(current => !current)} aria-pressed={quickMode} title={isRegistered ? '切換快速記事模式' : '註冊版專有功能'}>快速記事</button></div>
       {saveError && <div className="save-toast error" role="alert">{saveError}</div>}
       {showCompose && <div className="notebook-modal-backdrop" onClick={closeCompose}><section className="notebook-compose notebook-modal" onClick={event => event.stopPropagation()}>
