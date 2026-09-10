@@ -7,6 +7,7 @@ export type NotebookEntry = {
   createdAt: string
   photo?: string
   photoId?: string
+  photoIds?: string[]
 }
 
 const DEFAULT_PROJECT_ID = 'default-project'
@@ -18,6 +19,10 @@ function normalizeEntries(value: unknown): NotebookEntry[] {
     if (!item || typeof item !== 'object') return []
     const entry = item as Partial<NotebookEntry>
     if (typeof entry.id !== 'string' || typeof entry.text !== 'string') return []
+    const legacyPhotoId = typeof entry.photoId === 'string' ? entry.photoId : undefined
+    const photoIds = Array.isArray(entry.photoIds)
+      ? entry.photoIds.filter((photoId): photoId is string => typeof photoId === 'string' && Boolean(photoId))
+      : legacyPhotoId ? [legacyPhotoId] : []
     return [{
       id: entry.id,
       text: entry.text,
@@ -26,7 +31,8 @@ function normalizeEntries(value: unknown): NotebookEntry[] {
       pinned: Boolean(entry.pinned),
       createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : new Date(0).toISOString(),
       photo: typeof entry.photo === 'string' ? entry.photo : undefined,
-      photoId: typeof entry.photoId === 'string' ? entry.photoId : undefined,
+      photoId: photoIds[0],
+      photoIds,
     }]
   })
 }
