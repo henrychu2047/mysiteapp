@@ -85,17 +85,18 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     if (distance < 60) return
     pullTriggered.current = true
     event.preventDefault()
-    flushSync(() => {
-      setPullDistance(0)
-      openCompose()
-    })
-    composeTextareaRef.current?.focus({ preventScroll: true })
+    setPullDistance(88)
   }
   const handlePullEnd = () => {
+    const triggered = pullTriggered.current
     pullStartY.current = null
     pullTriggered.current = false
     setPullDistance(0)
+    if (!triggered) return
+    flushSync(() => openCompose())
+    composeTextareaRef.current?.focus({ preventScroll: true })
   }
+  const handlePullCancel = () => { pullStartY.current = null; pullTriggered.current = false; setPullDistance(0) }
   const saveQuickEntry = (value: string, attachmentIds: string[]) => {
     if (!quickMode || (!value.trim() && !attachmentIds.length)) return
     const id = quickEntryId || `${Date.now()}-${Math.random()}`
@@ -126,7 +127,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
 
   return <div className="app-shell notebook-app">
     <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
-    <main className="notebook-body" onTouchStart={handlePullStart} onTouchMove={handlePullMove} onTouchEnd={handlePullEnd} onTouchCancel={handlePullEnd}>
+    <main className="notebook-body" onTouchStart={handlePullStart} onTouchMove={handlePullMove} onTouchEnd={handlePullEnd} onTouchCancel={handlePullCancel}>
       <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><button type="button" disabled={!isRegistered} onClick={() => setQuickMode(current => !current)} aria-label="開／關快速記事保存功能；輸入後按鍵盤傳送或換行鍵保存" aria-pressed={quickMode} title={isRegistered ? '開／關快速記事保存功能' : '註冊版專有功能'} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--orange)', borderRadius: 8, background: quickMode ? 'var(--orange)' : '#fff', color: quickMode ? '#fff' : 'var(--navy)', opacity: isRegistered ? 1 : .5 }}><Send size={19} aria-hidden="true" /></button><button type="button" disabled={!isRegistered} onClick={() => setPullToAddEnabled(current => !current)} aria-label="開／關下拉新增記事功能" title={isRegistered ? '開／關下拉新增記事' : '註冊版專有功能'} aria-pressed={pullToAddEnabled} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--line)', borderRadius: 8, background: pullToAddEnabled ? 'var(--blue)' : '#fff', color: pullToAddEnabled ? '#fff' : 'var(--navy)', opacity: isRegistered ? 1 : .5 }}><Zap size={22} aria-hidden="true" /></button>{!showNavigation && onOpenSettings && <button type="button" onClick={onOpenSettings} aria-label="設定" title="設定" style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)', color: 'var(--foreground)' }}><Settings2 size={20} aria-hidden="true" /></button>}</div></div>
       {saveError && <div className="save-toast error" role="alert">{saveError}</div>}
       {pullDistance > 0 && <div className="notebook-pull-indicator" style={{ height: pullDistance, opacity: Math.min(1, pullDistance / 48) }} aria-hidden="true"><span>{pullDistance >= 40 ? '放開以新增記事' : '下拉新增記事'}</span></div>}
