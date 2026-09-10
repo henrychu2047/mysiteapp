@@ -584,7 +584,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       return returnToPreviousView()
     }
     if (view === 'flow-tower' || view === 'stats') return returnToPreviousView()
-        if (view === 'manage') return setView('settings')
+    if (view === 'manage' || view === 'responsible-person') return returnToPreviousView('settings')
         if (view === 'status-list') return setView('stats')
     if (view === 'detail') return setView('flow-room')
     if (view === 'flow-room') return setView('flow-floor')
@@ -707,8 +707,8 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
             </div>
             <div className="ho-home-grid">
               <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.()}><Pencil size={30} className="ho-home-icon" /><strong>設定</strong><span>{isRegistered ? '標籤類別及選項' : '註冊版專有功能'}</span></button>
-              <button className="ho-home-card" onClick={() => { setResponsibleDraft(responsiblePerson); setView('responsible-person') }}><UserRound size={30} className="ho-home-icon" /><strong>負責人</strong><span>Project 共用負責人資料</span></button>
-              <button className="ho-home-card" onClick={() => setView('manage')}><Building2 size={30} className="ho-home-icon" /><strong>機房資料</strong><span>座數、樓層及機房</span></button>
+              <button className="ho-home-card" onClick={() => { setResponsibleDraft(responsiblePerson); openView('responsible-person') }}><UserRound size={30} className="ho-home-icon" /><strong>負責人</strong><span>Project 共用負責人資料</span></button>
+              <button className="ho-home-card" onClick={() => openView('manage')}><Building2 size={30} className="ho-home-icon" /><strong>機房資料</strong><span>座數、樓層及機房</span></button>
               <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.('安全')}><AlertTriangle size={30} className="ho-home-icon" /><strong>安全事項</strong><span>{isRegistered ? '管理安全選項' : '註冊版專有功能'}</span></button>
               <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.('收貨相關')}><ClipboardList size={30} className="ho-home-icon" /><strong>收貨相關</strong><span>{isRegistered ? '管理收貨選項' : '註冊版專有功能'}</span></button>
               <button className="ho-home-card" disabled={!isRegistered} onClick={() => isRegistered && onOpenPhotoSettings?.('事項')}><Info size={30} className="ho-home-icon" /><strong>一般</strong><span>{isRegistered ? '管理事項選項' : '註冊版專有功能'}</span></button>
@@ -722,7 +722,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         {view === 'manage' && (
           <div className="ho-manage">
             <div className="ho-heading ho-manage-heading">
-              <button className="back-link" onClick={() => setView('settings')}>‹ 返回設定</button>
+              <button className="back-link" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
               <p className="eyebrow">ROOM DATA</p>
               <h2>機房資料</h2>
             </div>
