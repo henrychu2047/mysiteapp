@@ -629,7 +629,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
       <main className="ho-body">
       {view !== 'home' && view !== 'manage' && view !== 'settings' && <div className="ho-save-status" role="status">{saveState === 'saving' ? '正在保存…' : saveState === 'error' ? '保存失敗' : lastSavedAt ? `已保存 ${new Date(lastSavedAt).toLocaleString('zh-HK', { hour12: false })}` : '已保存'}</div>}
       {view !== 'home' && view !== 'manage' && view !== 'settings' && (
-          <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
+          <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">返回</button>
         )}
         {view !== 'home' && view !== 'manage' && view !== 'settings' && <p className="ho-crumb">{crumbs()}</p>}
 
@@ -700,7 +700,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         {/* ===== 設定首頁 ===== */}
         {view === 'settings' && (
           <div className="ho-manage">
-            <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
+            <button className="back-link ho-page-back" onClick={goBack} aria-label="返回上一頁">返回</button>
             <div className="ho-heading ho-manage-heading">
               <p className="eyebrow">APP SETTINGS</p>
               <h2>設定</h2>
@@ -722,7 +722,7 @@ export function Handover({ onBack, onNavigate, projectId, projectName, initialVi
         {view === 'manage' && (
           <div className="ho-manage">
             <div className="ho-heading ho-manage-heading">
-              <button className="back-link" onClick={goBack} aria-label="返回上一頁">‹ 返回</button>
+              <button className="back-link" onClick={goBack} aria-label="返回上一頁">返回</button>
               <p className="eyebrow">ROOM DATA</p>
               <h2>機房資料</h2>
             </div>
