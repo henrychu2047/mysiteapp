@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { StandaloneToolbar } from '@/components/ui/standalone-toolbar'
 import { Send, Settings2, Zap } from 'lucide-react'
@@ -109,11 +109,10 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
     if (!quickMode || !quickEntryId) return
     setEntries(current => current.map(entry => entry.id === quickEntryId ? { ...entry, category, photoId: photoIds[0], photoIds } : entry))
   }, [category, photoIds, quickEntryId, quickMode])
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!showCompose) return
-    const frame = requestAnimationFrame(() => {
-      composeTextareaRef.current?.focus()
-    })
+    composeTextareaRef.current?.focus({ preventScroll: true })
+    const frame = requestAnimationFrame(() => composeTextareaRef.current?.focus({ preventScroll: true }))
     return () => cancelAnimationFrame(frame)
   }, [showCompose])
   const toggle = (id: string, field: 'done' | 'pinned') => setEntries(current => current.map(entry => entry.id === id ? { ...entry, [field]: !entry[field] } : entry))
