@@ -565,3 +565,9 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(242, 107, 56
 .ho-settings-popup-body > .ho-status-list {
   padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
 }
+/* Notebook swipe actions */
+.notebook-entry-swipe-shell { position: relative; overflow: hidden; border-radius: var(--radius); touch-action: pan-y; }
+.notebook-entry-swipe-actions { position: absolute; inset: 0 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 8px; background: var(--navy); }
+.notebook-entry-swipe-actions button { min-width: 58px; min-height: 42px; padding: 0 8px; border: 1px solid rgba(255,255,255,.28); border-radius: 7px; background: transparent; color: white; font: inherit; font-size: 12px; font-weight: 700; }
+.notebook-entry { position: relative; z-index: 1; touch-action: pan-y; will-change: transform; }
+.notebook-entry.is-swiping { transition: none; }
