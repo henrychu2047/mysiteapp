@@ -27,6 +27,10 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .camera-settings-popup-overlay .ho-app { width: min(680px, 100%); min-height: 0; max-height: calc(100dvh - 32px); border-radius: 18px; overflow: auto; box-shadow: 0 18px 60px #0008; }
 .camera-settings-popup-overlay .ho-body { overflow: auto; }
 .ho-settings-popup-body, .settings-popup-page { position: fixed; z-index: 500; inset: 18px; width: min(620px, calc(100% - 36px)); max-height: calc(100dvh - 36px); margin: auto; overflow: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--background); box-shadow: 0 12px 40px rgba(0,0,0,.25), 0 0 0 100vmax rgba(21,33,43,.32); }
+.settings-popup-bar { position: sticky; top: -25px; z-index: 2; display: flex; align-items: center; justify-content: space-between; min-height: 72px; margin: -25px -18px 18px; padding: 14px; background: var(--navy); color: #fff; }
+.settings-popup-bar strong { font-size: 16px; }
+.settings-popup-bar button, .settings-popup-bar-spacer { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+.settings-popup-bar button { border: 0; background: transparent; color: #fff; font-size: 28px; line-height: 1; }
 .camera-settings-popup-close { position: fixed; z-index: 501; top: 24px; right: max(24px, calc((100vw - 680px) / 2 + 24px)); width: 42px; height: 42px; border: 0; border-radius: 50%; background: #15212bcc; color: white; font-size: 28px; line-height: 1; }
 .camera-sheet { position: relative; width: 100%; max-width: none; height: 100dvh; min-height: 100svh; background: #101820; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
 .camera-frame { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #05090c; }
