@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/ui/bottom-nav'
 import { StandaloneToolbar } from '@/components/ui/standalone-toolbar'
+import { Send } from 'lucide-react'
 import { resolveAttachmentPhoto, type PhotoSource } from '@/lib/photo-attachments'
 import { loadNotebook, saveNotebook, type NotebookEntry } from '@/lib/notebook-storage'
 
@@ -66,14 +67,14 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const openCompose = () => { setText(''); setPhotoId(''); setQuickEntryId(null); setShowCompose(true) }
   const closeCompose = () => { setText(''); setPhotoId(''); setQuickEntryId(null); setShowCompose(false) }
   const handlePullStart = (event: React.TouchEvent<HTMLElement>) => {
-    if (showCompose || event.currentTarget.scrollTop !== 0) return
+    if (!isRegistered || showCompose || event.currentTarget.scrollTop !== 0) return
     const target = event.target as HTMLElement
     if (target.closest('button, input, textarea, select, a')) return
     pullStartY.current = event.touches[0]?.clientY ?? null
     pullTriggered.current = false
   }
   const handlePullMove = (event: React.TouchEvent<HTMLElement>) => {
-    if (pullStartY.current === null || pullTriggered.current || event.currentTarget.scrollTop !== 0) return
+    if (!isRegistered || pullStartY.current === null || pullTriggered.current || event.currentTarget.scrollTop !== 0) return
     const distance = event.touches[0].clientY - pullStartY.current
     if (distance < 72) return
     pullTriggered.current = true
@@ -89,6 +90,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       ? current.map(entry => entry.id === quickEntryId ? { ...entry, text: value, category, photoId: attachmentId || undefined } : entry)
       : [{ id, text: value, category, done: false, pinned: false, createdAt: new Date().toISOString(), photoId: attachmentId || undefined }, ...current])
   }
+  const finishQuickEntry = () => { saveQuickEntry(text, photoId); closeCompose() }
   const handleTextChange = (value: string) => {
     setText(value)
     saveQuickEntry(value, photoId)
@@ -105,11 +107,11 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   return <div className="app-shell notebook-app">
     <StandaloneToolbar projectName={projectName} onProjectClick={onBack} />
     <main className="notebook-body" onTouchStart={handlePullStart} onTouchMove={handlePullMove} onTouchEnd={handlePullEnd} onTouchCancel={handlePullEnd}>
-      <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div><button type="button" className="notebook-add-button" style={{ background: quickMode ? 'var(--blue)' : undefined, opacity: isRegistered ? 1 : .5 }} disabled={!isRegistered} onClick={() => setQuickMode(current => !current)} aria-pressed={quickMode} title={isRegistered ? '切換快速記事模式' : '註冊版專有功能'}>快速記事</button></div>
+      <div className="section-heading"><div><p className="eyebrow">SITE NOTEBOOK</p><h2>記事簿</h2></div><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><button type="button" disabled={!isRegistered} onClick={() => { setQuickMode(true); openCompose() }} aria-label="開啟快速記事並使用傳送鍵保存" title={isRegistered ? '開啟快速記事' : '註冊版專有功能'} style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, padding: 0, border: '1px solid var(--orange)', borderRadius: 8, background: 'var(--card)', color: 'var(--orange)', opacity: isRegistered ? 1 : .5 }}><Send size={19} aria-hidden="true" /></button><button type="button" className="notebook-add-button" style={{ marginLeft: 0, background: quickMode ? 'var(--blue)' : undefined, opacity: isRegistered ? 1 : .5 }} disabled={!isRegistered} onClick={() => setQuickMode(current => !current)} aria-pressed={quickMode} title={isRegistered ? '切換快速記事模式' : '註冊版專有功能'}>快速記事</button></div></div>
       {saveError && <div className="save-toast error" role="alert">{saveError}</div>}
       {showCompose && <div className="notebook-modal-backdrop" onClick={closeCompose}><section className="notebook-compose notebook-modal" onClick={event => event.stopPropagation()}>
         <div className="notebook-modal-heading"><h2>新增記事</h2><button type="button" onClick={closeCompose}>×</button></div>
-        <textarea autoFocus value={text} onChange={event => handleTextChange(event.target.value)} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !quickMode) addEntry() }} placeholder="快速記錄現場事項…" aria-label="記事內容" />
+        <textarea autoFocus value={text} onChange={event => handleTextChange(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && quickMode && !event.shiftKey) { event.preventDefault(); finishQuickEntry() } else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !quickMode) addEntry() }} placeholder="快速記錄現場事項…" aria-label="記事內容" />
         <div className="notebook-compose-row"><div className="notebook-compose-tools"><div className="notebook-category-quick-select" role="group" aria-label="記事分類快選">{categories.map(item => <button type="button" key={item} className={category === item ? 'chosen' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="notebook-media-actions"><button type="button" onClick={() => onSelectAlbumPhotos(ids => { const id = ids[0] || ''; setPhotoId(id); saveQuickEntry(text, id) })}>📎 相簿</button><button type="button" onClick={() => onOpenCamera(photo => { setPhotoId(photo); saveQuickEntry(text, photo) })}>▣ 拍攝</button></div></div>{quickMode ? <span style={{ color: 'var(--blue)', fontSize: 12, fontWeight: 700 }}>輸入即自動保存</span> : <button className="primary-button" type="button" onClick={addEntry}>新增記事</button>}</div>
         {photoId && (pendingPhoto ? <div className="notebook-photo-preview"><img src={pendingPhoto} alt="待附加相片" /><button type="button" onClick={() => setPhotoId('')}>移除相片</button></div> : <div className="attachment-unavailable">相片已從相簿移除</div>)}
         <small className="notebook-hint">Ctrl / ⌘ + Enter 可快速新增</small>
