@@ -69,6 +69,12 @@ function displayToCanonical(point: DrawingPoint, rotation: number): DrawingPoint
   return point
 }
 
+function cloudPath(x: number, y: number, width: number, height: number) {
+  const w = Math.max(width, 0.001)
+  const h = Math.max(height, 0.001)
+  return `M ${x} ${y + h * .36} C ${x - w * .08} ${y + h * .1} ${x + w * .07} ${y - h * .02} ${x + w * .2} ${y + h * .12} C ${x + w * .24} ${y - h * .1} ${x + w * .43} ${y - h * .08} ${x + w * .47} ${y + h * .1} C ${x + w * .66} ${y - h * .08} ${x + w * .85} ${y + h * .01} ${x + w * .78} ${y + h * .2} C ${x + w * 1.04} ${y + h * .12} ${x + w * 1.04} ${y + h * .46} ${x + w * .84} ${y + h * .52} C ${x + w * 1.02} ${y + h * .67} ${x + w * .9} ${y + h * .94} ${x + w * .7} ${y + h * .82} C ${x + w * .6} ${y + h * 1.04} ${x + w * .42} ${y + h * 1.02} ${x + w * .37} ${y + h * .84} C ${x + w * .2} ${y + h * 1.02} ${x + w * .03} ${y + h * .9} ${x + w * .13} ${y + h * .7} C ${x - w * .08} ${y + h * .7} ${x - w * .08} ${y + h * .47} ${x} ${y + h * .36} Z`
+}
+
 function snapshot(annotations: DrawingAnnotation[]) {
   return structuredClone(annotations)
 }
@@ -573,11 +579,12 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     const drag = dragRef.current
     if (!drag) return
     dragRef.current = null
-    if (drag.kind === 'draw' && draftAnnotation) {
-      const size = Math.hypot(draftAnnotation.endX - draftAnnotation.x, draftAnnotation.endY - draftAnnotation.y)
-      if (size > 0.006 || draftAnnotation.kind === 'text') {
-        updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, draftAnnotation] }), true)
-        setSelectedAnnotationId(draftAnnotation.id)
+    if (drag.kind === 'draw' && drag.annotation) {
+      const completedAnnotation = draftAnnotation || { ...drag.annotation, endX: drag.latest.x, endY: drag.latest.y }
+      const size = Math.hypot(completedAnnotation.endX - completedAnnotation.x, completedAnnotation.endY - completedAnnotation.y)
+      if (size > 0.006 || completedAnnotation.kind === 'text') {
+        updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, completedAnnotation] }), true)
+        setSelectedAnnotationId(completedAnnotation.id)
         setTool('select')
       }
       setDraftAnnotation(null)
@@ -773,9 +780,10 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
                 const common = { stroke: annotation.color, strokeWidth: annotation.lineWidth, vectorEffect: 'non-scaling-stroke' as const, fill: 'none', 'data-annotation-id': annotation.id, className: selected ? styles.selectedShape : undefined }
                 return <g key={annotation.id}>
                   {(annotation.kind === 'line' || annotation.kind === 'arrow') && <line {...common} x1={start.x} y1={start.y} x2={end.x} y2={end.y} markerEnd={annotation.kind === 'arrow' ? 'url(#drawing-arrow)' : undefined} />}
-                  {(annotation.kind === 'rectangle' || annotation.kind === 'cloud') && <rect {...common} x={x} y={y} width={width} height={height} rx={annotation.kind === 'cloud' ? .018 : 0} strokeDasharray={annotation.kind === 'cloud' ? '.012 .008' : undefined} />}
+                  {annotation.kind === 'rectangle' && <rect {...common} x={x} y={y} width={width} height={height} />}
+                  {annotation.kind === 'cloud' && <path {...common} d={cloudPath(x, y, width, height)} strokeLinecap="round" strokeLinejoin="round" />}
                   {annotation.kind === 'ellipse' && <ellipse {...common} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} />}
-                  {annotation.kind === 'text' && <text data-annotation-id={annotation.id} x={start.x} y={start.y} fill={annotation.color} fontSize={annotation.fontSize / Math.max(scaledHeight, 1)} dominantBaseline="hanging" className={selected ? styles.selectedText : undefined}>{annotation.text}</text>}
+                  {annotation.kind === 'text' && <text data-annotation-id={annotation.id} x={start.x} y={start.y} fill={annotation.color} fontSize={annotation.fontSize / Math.max(canvasSize.height, 1)} dominantBaseline="hanging" className={selected ? styles.selectedText : undefined}>{annotation.text}</text>}
                   {selected && <><circle data-annotation-id={annotation.id} data-handle="start" cx={start.x} cy={start.y} r={7 / Math.max(scaledWidth, scaledHeight) * 2} className={styles.handle} /><circle data-annotation-id={annotation.id} data-handle="end" cx={end.x} cy={end.y} r={7 / Math.max(scaledWidth, scaledHeight) * 2} className={styles.handle} /></>}
                 </g>
               })}
