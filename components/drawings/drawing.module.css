@@ -98,6 +98,10 @@
 .toolbar { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 10px; overflow-x: auto; border-bottom: 1px solid var(--line); background: white; }
 .toolGroup { display: flex; align-items: center; gap: 3px; padding-right: 8px; border-right: 1px solid var(--line); }
 .toolGroup:last-child { border: 0; }
+.toolGroupToggle { height: 44px; min-width: 44px; display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; padding: 0 9px; border: 0; border-radius: 8px; color: #41504b; background: transparent; }
+.toolGroupToggle:hover { background: #eff4f2; }
+.toolGroupToggle.active { color: white; background: var(--accent); }
+.toolGroupToggle svg { width: 18px; height: 18px; }
 .toolGroup button { height: 36px; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 9px; border: 0; border-radius: 8px; color: #41504b; background: transparent; white-space: nowrap; font-size: 11px; font-weight: 700; }
 .toolGroup button:hover { background: #eff4f2; }
 .toolGroup button:disabled { opacity: .35; cursor: default; }
