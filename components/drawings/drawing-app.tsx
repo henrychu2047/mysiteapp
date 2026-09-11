@@ -300,10 +300,11 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   }, [page, pdf, rotation])
 
   useEffect(() => {
-    if (!fitMode || !viewportRef.current) return
+    if (!fitMode || !viewportRef.current || canvasSize.width <= 1) return
     const available = Math.max(260, viewportRef.current.clientWidth - 32)
     setZoom(clamp(available / Math.max(canvasSize.width, 1), 0.25, 3))
-  }, [canvasSize, fitMode, sidebarOpen, markerListOpen])
+    setFitMode(false)
+  }, [canvasSize, fitMode])
 
   const importPdfs = async (files: File[] | null) => {
     if (!files?.length) return
@@ -506,7 +507,6 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       }
       updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, annotation] }), true)
       setSelectedAnnotationId(annotation.id)
-      setTool('select')
       setToolSettingsOpen(true)
       return
     }
