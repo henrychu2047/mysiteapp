@@ -240,6 +240,12 @@
 .editor .toolbar { order: 3; flex-shrink: 0; margin: 8px 12px max(10px, env(safe-area-inset-bottom)); padding: 10px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.96); box-shadow: 0 4px 20px #12211d22; }
 .toolGroup { flex-shrink: 0; }
 .toolGroup button { min-height: 44px; min-width: 44px; }
+.editor .toolbar { min-height: 78px; padding: 12px 14px; gap: 10px; }
+.editor .toolbar .toolGroup { gap: 7px; padding-right: 10px; }
+.editor .toolbar .toolGroup button,
+.editor .toolbar .toolGroupToggle { min-width: 58px; height: 58px; min-height: 58px; border-radius: 14px; }
+.editor .toolbar .toolGroup button svg,
+.editor .toolbar .toolGroupToggle svg { width: 24px; height: 24px; }
 .pageBadge { position: absolute; z-index: 10; top: 14px; left: 14px; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 24px; background: #fffffff2; color: var(--ink); box-shadow: 0 3px 14px #12211d22; font-weight: 750 !important; }
 .panelDismiss { position: absolute; inset: 0; z-index: 19; border: 0; background: #12211d44; }
 .workspace .markers:not(.collapsed) { position: absolute; z-index: 20; top: 0; right: 0; bottom: 0; width: min(340px, 90%); padding: 42px 16px 16px; box-shadow: -8px 0 24px #12211d22; }
