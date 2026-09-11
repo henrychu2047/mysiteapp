@@ -296,7 +296,9 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     try {
       const { loadDrawingPdf } = await import('@/lib/drawing-pdf')
       for (const file of Array.from(files)) {
-        if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') throw new Error(`「${file.name}」不是 PDF 檔案`)
+        const fileNameLooksPdf = /\.pdf$/i.test(file.name)
+        const fileTypeLooksPdf = ['application/pdf', 'application/x-pdf', 'application/octet-stream', ''].includes(file.type)
+        if (!fileNameLooksPdf && !fileTypeLooksPdf) throw new Error(`「${file.name}」不是 PDF 檔案`)
         const immutablePdf = new Blob([await file.arrayBuffer()], { type: 'application/pdf' })
         const proxy = await loadDrawingPdf(immutablePdf)
         if (!proxy.numPages) throw new Error(`「${file.name}」沒有可用頁面`)

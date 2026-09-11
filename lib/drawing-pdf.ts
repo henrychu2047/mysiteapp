@@ -215,9 +215,9 @@ function ocrWords(data: Awaited<ReturnType<OcrWorker['recognize']>>['data']) {
 export async function loadDrawingPdf(blob: Blob): Promise<PDFDocumentProxy> {
   assertBrowser()
   if (!(blob instanceof Blob) || blob.size === 0) throw new Error('PDF 檔案是空白的，請重新選取圖紙')
-  if (blob.type && blob.type !== 'application/pdf' && blob.type !== 'application/x-pdf') {
-    throw new Error('請選擇 PDF 圖紙檔案')
-  }
+  // iOS Files and some document providers expose valid PDFs as
+  // application/octet-stream (or with an empty MIME type). Validate using the
+  // file signature below instead of rejecting based on Blob.type.
   const header = new TextDecoder('latin1').decode(await blob.slice(0, 1024).arrayBuffer())
   if (!header.includes('%PDF-')) throw new Error('檔案不是有效的 PDF，請重新匯出或選取圖紙')
 
@@ -225,14 +225,17 @@ export async function loadDrawingPdf(blob: Blob): Promise<PDFDocumentProxy> {
   const bytes = new Uint8Array(await blob.arrayBuffer())
   let loadingTask: ReturnType<PdfJs['getDocument']> | undefined
   try {
-    loadingTask = pdfjs.getDocument({ data: bytes, disableAutoFetch: true, stopAtErrors: true })
+    // Builder drawings often contain recoverable cross-reference or metadata
+    // warnings. PDF.js can still render these documents, so do not abort on
+    // every recoverable parser error.
+    loadingTask = pdfjs.getDocument({ data: bytes, disableAutoFetch: true, stopAtErrors: false })
     const pdf = await loadingTask.promise
     if (!Number.isInteger(pdf.numPages) || pdf.numPages < 1) {
       throw new Error('PDF 沒有可顯示的頁面')
     }
     return pdf
   } catch (error) {
-    await loadingTask?.destroy()
+    try { await loadingTask?.destroy() } catch { /* preserve the import error */ }
     if (error instanceof Error && error.name === 'PasswordException') {
       throw new Error('此 PDF 已加密，請先移除密碼後再匯入')
     }
