@@ -128,6 +128,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const [annotationColor, setAnnotationColor] = useState('#ef4444')
   const [annotationWidth, setAnnotationWidth] = useState(3)
   const [annotationFontSize, setAnnotationFontSize] = useState(18)
+  const [toolSettingsOpen, setToolSettingsOpen] = useState(false)
   const viewportRef = useRef<HTMLDivElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const canvasHostRef = useRef<HTMLDivElement>(null)
@@ -717,7 +718,8 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
             <button className={tool === 'pan' ? styles.active : ''} onClick={() => setTool('pan')} title="平移"><Grab /></button>
             <button className={tool === 'select' ? styles.active : ''} onClick={() => setTool('select')} title="選取"><MousePointer2 /></button>
             <button className={tool === 'marker' ? styles.active : ''} onClick={() => setTool('marker')} title="問題標記"><MapPin /></button>
-            {annotationTools.map(({ id, label, icon: Icon }) => <button key={id} className={tool === id ? styles.active : ''} onClick={() => setTool(id)} title={label}><Icon /></button>)}
+            {annotationTools.map(({ id, label, icon: Icon }) => <span key={id} className={styles.toolPair}><button className={tool === id ? styles.active : ''} onClick={() => { setTool(id); setSelectedAnnotationId(null); setToolSettingsOpen(false) }} title={label} aria-label={label} aria-pressed={tool === id}><Icon /></button>{tool === id && <button title={label + '設定'} aria-label={label + '設定'} aria-expanded={toolSettingsOpen} onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation?.color || annotationColor }} /></button>}</span>)}
+            {selectedAnnotation && !annotationTools.some(item => item.id === tool) && <button aria-label="註記設定" title="註記設定" onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation.color }} /></button>}
           </div>
           <div className={styles.toolGroup}>
             <button onClick={undo} disabled={!historyRef.current.length} title="復原"><Undo2 /></button>
@@ -736,13 +738,6 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
             <button onClick={() => setImportOpen(true)}><Ellipsis /></button>
           </div>
         </div>
-
-        {selectedAnnotation && <div className={styles.properties}>
-          <label>顏色<input type="color" value={selectedAnnotation.color} onChange={event => updateAnnotation(selectedAnnotation.id, { color: event.target.value })} /></label>
-          <label>線寬<input type="range" min="1" max="12" value={selectedAnnotation.lineWidth} onChange={event => updateAnnotation(selectedAnnotation.id, { lineWidth: Number(event.target.value) })} /></label>
-          {selectedAnnotation.kind === 'text' && <><label>文字<input value={selectedAnnotation.text || ''} onChange={event => updateAnnotation(selectedAnnotation.id, { text: event.target.value })} /></label><label>字體<input type="number" min="10" max="72" value={selectedAnnotation.fontSize} onChange={event => updateAnnotation(selectedAnnotation.id, { fontSize: Number(event.target.value) })} /></label></>}
-          <button onClick={removeSelectedAnnotation}><Trash2 />刪除註記</button>
-        </div>}
 
         <div className={styles.viewport} ref={viewportRef}>
           <div className={styles.surface} ref={surfaceRef} style={{ width: scaledWidth, height: scaledHeight }} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={cancelPointer}>
@@ -781,6 +776,16 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         {markerListOpen && <><div className={styles.markerHeading}><div><strong>問題標記</strong><small>{filteredMarkers.length} / {current.markers.length}</small></div><button onClick={() => setTool('marker')}><Plus /></button></div><label className={styles.search}><Search /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜尋房間、標籤、備註" /></label><div className={styles.filters}><select value={filterPage} onChange={event => setFilterPage(event.target.value === 'all' ? 'all' : Number(event.target.value))}><option value="all">全部頁面</option>{Array.from({ length: current.pageCount }, (_, index) => <option key={index + 1} value={index + 1}>第 {index + 1} 頁</option>)}</select><select value={filterCategory} onChange={event => setFilterCategory(event.target.value)}><option value="">全部類別</option>{categories.map(category => <option key={category}>{category}</option>)}</select></div><div className={styles.markerList}>{filteredMarkers.map(marker => <button key={marker.id} onClick={() => jumpToMarker(marker)}><b>{marker.number}</b><span><strong>{marker.roomName || '未指定房間'}</strong><small>第 {marker.page} 頁 · {marker.category || '未分類'} · {marker.photoIds.length} 張相片</small></span></button>)}{!filteredMarkers.length && <p>未找到標記。選擇圖釘工具後點按圖紙即可新增。</p>}</div></>}
       </aside>
     </div>}
+
+    {toolSettingsOpen && <div className={styles.modalBackdrop} onClick={() => setToolSettingsOpen(false)}><section className={styles.toolSettings} role="dialog" aria-modal="true" aria-label="工具設定" onClick={event => event.stopPropagation()}>
+      <header><h2>工具設定</h2><button aria-label="關閉工具設定" onClick={() => setToolSettingsOpen(false)}>×</button></header>
+      <svg viewBox="0 0 300 70" className={styles.stylePreview} aria-label="樣式預覽"><path d="M20 45 Q85 0 150 35 T280 25" fill="none" stroke={selectedAnnotation?.color || annotationColor} strokeWidth={selectedAnnotation?.lineWidth ?? annotationWidth} /></svg>
+      <label>線粗 <output>{selectedAnnotation?.lineWidth ?? annotationWidth}</output><input aria-label="線粗" type="range" min="1" max="12" value={selectedAnnotation?.lineWidth ?? annotationWidth} onChange={event => { const value = Number(event.target.value); setAnnotationWidth(value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { lineWidth: value }) }} /></label>
+      <label>顏色<input aria-label="顏色" type="color" value={selectedAnnotation?.color || annotationColor} onChange={event => { setAnnotationColor(event.target.value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { color: event.target.value }) }} /></label>
+      {(selectedAnnotation?.kind || tool) === 'text' && <label>文字大小<input aria-label="文字大小" type="range" min="10" max="72" value={selectedAnnotation?.fontSize ?? annotationFontSize} onChange={event => { const value = Number(event.target.value); setAnnotationFontSize(value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { fontSize: value }) }} /><output>{selectedAnnotation?.fontSize ?? annotationFontSize}</output></label>}
+      {selectedAnnotation?.kind === 'text' && <label>文字<input value={selectedAnnotation.text || ''} onChange={event => updateAnnotation(selectedAnnotation.id, { text: event.target.value })} /></label>}
+      {selectedAnnotation && <button className={styles.danger} onClick={() => { removeSelectedAnnotation(); setToolSettingsOpen(false) }}>刪除註記</button>}
+    </section></div>}
 
     {sidebarOpen && current && <div className={styles.modalBackdrop} onClick={() => setSidebarOpen(false)}><section className={`${styles.manager} ${styles.pagePicker}`} role="dialog" aria-modal="true" aria-label="頁面快選與預覽" onClick={event => event.stopPropagation()}>
       <header><h2>頁面預覽</h2><button aria-label="關閉頁面預覽" onClick={() => setSidebarOpen(false)}>×</button></header>
