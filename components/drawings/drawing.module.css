@@ -169,6 +169,7 @@
 .formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 17px 18px; }
 .formGrid label { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 750; }
 .formGrid input, .formGrid textarea { width: 100%; min-height: 39px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; outline: 0; color: var(--ink); background: white; font-size: 13px; }
+.formGrid select { width: 100%; min-height: 39px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; outline: 0; color: var(--ink); background: white; font-size: 13px; }
 .formGrid input:focus, .formGrid textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(8,127,91,.1); }
 .formGrid .full { grid-column: 1 / -1; }
 .roomSuggestions { display: flex; flex-direction: row !important; align-items: center; flex-wrap: wrap; }
@@ -230,6 +231,7 @@
   .header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .headerActions .primary { width: 38px; padding: 0; font-size: 0; }
   .formGrid { grid-template-columns: 1fr; }
+  .markerEditor .formGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .formGrid .full { grid-column: auto; }
   .markerEditor { align-self: end; max-height: 91vh; border-radius: 17px 17px 0 0; }
   .modalBackdrop { padding: 18px; }
