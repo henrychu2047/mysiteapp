@@ -493,6 +493,16 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       dragRef.current = { kind: tool === 'marker' ? 'marker-tap' : 'pan', start, latest: start, clientX: event.clientX, clientY: event.clientY, moved: false }
       return
     }
+    if (tool === 'text') {
+      const annotation: DrawingAnnotation = {
+        id: createId(), page, kind: 'text', x: start.x, y: start.y, endX: start.x, endY: start.y,
+        text: '文字', color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
+      }
+      updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, annotation] }), true)
+      setSelectedAnnotationId(annotation.id)
+      setTool('select')
+      return
+    }
     if (tool === 'select') {
       const id = target?.dataset.annotationId
       if (!id) {
@@ -512,7 +522,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     }
     const annotation: DrawingAnnotation = {
       id: createId(), page, kind: tool, x: start.x, y: start.y, endX: start.x, endY: start.y,
-      text: tool === 'text' ? '文字' : undefined, color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
+      text: undefined, color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
     }
     dragRef.current = { kind: 'draw', start, latest: start, clientX: event.clientX, clientY: event.clientY, annotation, moved: false }
     setDraftAnnotation(annotation)
