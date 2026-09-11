@@ -141,6 +141,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const viewportRef = useRef<HTMLDivElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const canvasHostRef = useRef<HTMLDivElement>(null)
+  const textInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const restoreInputRef = useRef<HTMLInputElement>(null)
   const currentRef = useRef<DrawingDocument | null>(null)
@@ -159,6 +160,11 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const currentAnnotations = useMemo(() => current?.annotations.filter(annotation => annotation.page === page) || [], [current, page])
   const currentMarkers = useMemo(() => current?.markers.filter(marker => marker.page === page) || [], [current, page])
   const selectedAnnotation = current?.annotations.find(annotation => annotation.id === selectedAnnotationId) || null
+
+  useEffect(() => {
+    if (!toolSettingsOpen || selectedAnnotation?.kind !== 'text') return
+    requestAnimationFrame(() => textInputRef.current?.focus())
+  }, [toolSettingsOpen, selectedAnnotation])
 
   useEffect(() => { currentRef.current = current }, [current])
 
@@ -501,6 +507,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, annotation] }), true)
       setSelectedAnnotationId(annotation.id)
       setTool('select')
+      setToolSettingsOpen(true)
       return
     }
     if (tool === 'select') {
@@ -823,7 +830,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       <label>線粗 <output>{selectedAnnotation?.lineWidth ?? annotationWidth}</output><input aria-label="線粗" type="range" min="1" max="12" value={selectedAnnotation?.lineWidth ?? annotationWidth} onChange={event => { const value = Number(event.target.value); setAnnotationWidth(value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { lineWidth: value }) }} /></label>
       <label>顏色<input aria-label="顏色" type="color" value={selectedAnnotation?.color || annotationColor} onChange={event => { setAnnotationColor(event.target.value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { color: event.target.value }) }} /></label>
       {(selectedAnnotation?.kind || tool) === 'text' && <label>文字大小<input aria-label="文字大小" type="range" min="10" max="72" value={selectedAnnotation?.fontSize ?? annotationFontSize} onChange={event => { const value = Number(event.target.value); setAnnotationFontSize(value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { fontSize: value }) }} /><output>{selectedAnnotation?.fontSize ?? annotationFontSize}</output></label>}
-      {selectedAnnotation?.kind === 'text' && <label>文字<input value={selectedAnnotation.text || ''} onChange={event => updateAnnotation(selectedAnnotation.id, { text: event.target.value })} /></label>}
+      {selectedAnnotation?.kind === 'text' && <label>文字<input ref={textInputRef} value={selectedAnnotation.text || ''} onChange={event => updateAnnotation(selectedAnnotation.id, { text: event.target.value })} /></label>}
       {selectedAnnotation && <button className={styles.danger} onClick={() => { removeSelectedAnnotation(); setToolSettingsOpen(false) }}>刪除註記</button>}
     </section></div>}
 
