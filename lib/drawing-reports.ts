@@ -357,7 +357,57 @@ function reportItemElement(item: ReportItem, projectName: string, drawingName: s
   return section
 }
 
-async function exportReportPdf(items: ReportItem[], projectName: string, drawingName: string) {
+type ReportTemplate = 'detail-crop-photo' | 'detail-photo-crop' | 'table'
+
+function reportPages(items: ReportItem[], projectName: string, drawingName: string, template: ReportTemplate) {
+  const pages: HTMLElement[] = []
+  const perPage = template === 'table' ? 3 : 1
+  for (let offset = 0; offset < items.length; offset += perPage) {
+    const page = document.createElement('section')
+    page.style.cssText = 'width:1000px;height:1440px;box-sizing:border-box;padding:28px;background:white;color:#17212b;font-family:Arial,"Microsoft JhengHei",sans-serif;display:flex;flex-direction:column;gap:16px;'
+    const heading = document.createElement('h2')
+    heading.textContent = `圖紙標記報告 · ${projectName} · ${drawingName}　${pages.length + 1} / ${Math.ceil(items.length / perPage)}`
+    heading.style.cssText = 'font-size:22px;margin:0;overflow-wrap:anywhere;'
+    page.append(heading)
+    if (template === 'table') {
+      const labels = document.createElement('div'); labels.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);font-weight:bold;background:#e8edf0;padding:12px;'
+      for (const label of ['Detail 信息', '相片', 'PDF 截圖']) { const cell = document.createElement('span'); cell.textContent = label; labels.append(cell) }
+      page.append(labels)
+    }
+    for (const item of items.slice(offset, offset + perPage)) {
+      const old = reportItemElement(item, projectName, drawingName)
+      const detail = old.children[1] as HTMLElement
+      const crop = old.children[2] as HTMLImageElement
+      const photos = old.children[4] as HTMLElement
+      const row = document.createElement('div')
+      row.style.cssText = `display:grid;min-height:0;flex:1;gap:0;grid-template-columns:repeat(${template === 'table' ? 3 : 2},minmax(0,1fr));${template === 'table' ? '' : 'grid-template-rows:1fr 1fr;'}`
+      detail.style.cssText = 'display:flex;flex-direction:column;gap:8px;font-size:18px;white-space:pre-wrap;overflow-wrap:anywhere;'
+      crop.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain;'
+      photos.style.cssText = `display:grid;grid-template-columns:repeat(${item.photos.length > 1 ? 2 : 1},minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:8px;height:100%;`
+      photos.querySelectorAll('article').forEach(card => { card.style.cssText = 'min-height:0;display:flex;flex-direction:column;font-size:12px;'; const image = card.querySelector('img'); if (image) image.style.cssText = 'width:100%;height:0;min-height:0;flex:1;object-fit:contain;'; })
+      const cells = template === 'detail-crop-photo' ? [detail, crop, photos] : [detail, photos, crop]
+      cells.forEach((content, index) => { const cell = document.createElement('div'); cell.style.cssText = `min-width:0;min-height:0;border:1px solid #9caab4;padding:12px;${template !== 'table' && index === 2 ? 'grid-column:1/-1;' : ''}`; cell.append(content); row.append(cell) })
+      page.append(row)
+    }
+    pages.push(page)
+  }
+  return pages
+}
+
+function fitReportCells(page: HTMLElement) {
+  for (const row of Array.from(page.children)) {
+    if (!(row instanceof HTMLElement) || row.style.flex !== '1 1 0%') continue
+    for (const cell of Array.from(row.children)) {
+      const content = cell.firstElementChild as HTMLElement | null
+      if (!(cell instanceof HTMLElement) || !content) continue
+      const available = cell.clientHeight - 24
+      const height = Math.max(content.scrollHeight, content.getBoundingClientRect().height)
+      if (height > available && available > 0) { content.style.transformOrigin = 'top left'; content.style.transform = `scale(${available / height})` }
+    }
+  }
+}
+
+async function exportReportPdf(items: ReportItem[], projectName: string, drawingName: string, template: ReportTemplate) {
   const [{ default: html2canvas }, { jsPDF: JsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')])
   const reportRoot = document.createElement('div')
   reportRoot.style.cssText = 'position:absolute;left:-100000px;top:0;width:1000px;visibility:visible;background:#fff;z-index:999999;pointer-events:none;'
@@ -366,10 +416,10 @@ async function exportReportPdf(items: ReportItem[], projectName: string, drawing
     const pdf = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true })
     const pageWidth = pdf.internal.pageSize.getWidth(); const pageHeight = pdf.internal.pageSize.getHeight(); const margin = 8
     let firstPage = true
-    for (const item of items) {
-      const section = reportItemElement(item, projectName, drawingName)
+    for (const section of reportPages(items, projectName, drawingName, template)) {
       reportRoot.replaceChildren(section)
       await Promise.all(Array.from(section.querySelectorAll('img')).map(waitForImage))
+      fitReportCells(section)
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       const canvas = await html2canvas(section, { scale: 1.25, backgroundColor: '#fff', useCORS: true, allowTaint: true, width: 1000, windowWidth: 1000 })
       const pixelsPerMm = canvas.width / (pageWidth - margin * 2)
@@ -410,27 +460,25 @@ function wordImage(image: WordImage, width: number, height: number, description:
   return `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="100"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${image.id.replace(/\D/g, '')}" name="${escapeXml(description)}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="${escapeXml(image.fileName)}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${image.id}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`
 }
 
-async function exportReportWord(items: ReportItem[], projectName: string, drawingName: string) {
+async function exportReportWord(items: ReportItem[], projectName: string, drawingName: string, template: ReportTemplate) {
   const { default: JSZip } = await import('jszip')
   const zip = new JSZip(); const images: WordImage[] = []; const body: string[] = []
-  body.push(wordParagraph('圖紙標記報告', { bold: true, size: 30 }), wordParagraph(`項目：${projectName}`), wordParagraph(`工程圖：${drawingName}`))
-  for (const [index, item] of items.entries()) {
-    body.push(wordParagraph(markerSummary(item.marker), { bold: true, size: 24, pageBreakBefore: index > 0 }))
-    body.push(wordParagraph(`裁切比例：${item.marker.cropScale.toFixed(2)}`))
-    try { const image = await loadWordImage(item.crop.toDataURL('image/jpeg', 0.93), images.length + 1); images.push(image); body.push(wordImage(image, 620, 410, `標記 ${item.marker.number} 圖紙裁切`)) } catch { body.push(wordParagraph('圖紙裁切無法載入')) }
-    if (!item.photos.length) body.push(wordParagraph('沒有關聯相片（此項目仍保留）。'))
-    for (const [photoIndex, entry] of item.photos.entries()) {
-      body.push(wordParagraph(`相片 ${photoIndex + 1}`, { bold: true }))
-      if (entry.photo) {
-        body.push(wordParagraph(`類別：${entry.photo.category}`))
-        const tagText = Object.entries(entry.photo.tags || {}).filter(([, value]) => value && value !== 'N/A').map(([key, value]) => `${key}: ${value}`).join('；')
-        if (tagText) body.push(wordParagraph(`標籤：${tagText}`))
-        if (entry.photo.note) body.push(wordParagraph(`備註：${entry.photo.note}`))
-      }
-      if (entry.source) { try { const image = await loadWordImage(entry.source, images.length + 1); images.push(image); body.push(wordImage(image, 470, 300, `標記 ${item.marker.number} 相片 ${photoIndex + 1}`)) } catch { body.push(wordParagraph('相片檔案無法載入')) } }
-      else body.push(wordParagraph(`⚠ ${entry.missingReason || '相片檔案無法使用'}`))
+  const { default: html2canvas } = await import('html2canvas')
+  const host = document.createElement('div')
+  host.style.cssText = 'position:absolute;left:-100000px;top:0;width:1000px;background:white;'
+  document.body.append(host)
+  try {
+    for (const [index, page] of reportPages(items, projectName, drawingName, template).entries()) {
+      host.replaceChildren(page)
+      await Promise.all(Array.from(page.querySelectorAll('img')).map(waitForImage))
+      fitReportCells(page)
+      const canvas = await html2canvas(page, { scale: 1.25, backgroundColor: '#fff', width: 1000, windowWidth: 1000 })
+      const image = await loadWordImage(canvas.toDataURL('image/jpeg', .93), images.length + 1)
+      images.push(image)
+      if (index) body.push(wordParagraph('', { pageBreakBefore: true, size: 2 }))
+      body.push(wordImage(image, 630, 907.2, '圖紙標記報告'))
     }
-  }
+  } finally { host.remove() }
   const relationships = images.map(image => `<Relationship Id="${image.id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${image.fileName}"/>`).join('')
   const defaults = Array.from(new Map(images.map(image => [image.fileName.split('.').pop(), image.contentType])).entries()).map(([extension, contentType]) => `<Default Extension="${extension}" ContentType="${contentType}"/>`).join('')
   zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${defaults}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`)
@@ -492,6 +540,10 @@ export async function openDrawingReportPreview(drawing: DrawingDocument, markers
   const controls = document.createElement('div'); controls.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 0 16px;border-bottom:1px solid #d4dde3;'; panel.appendChild(controls)
   const filter = document.createElement('input'); filter.type = 'search'; filter.placeholder = '篩選編號、頁碼、房間或類別'; filter.setAttribute('aria-label', '篩選標記'); filter.style.cssText = 'min-width:260px;flex:1;border:1px solid #aab7c1;border-radius:6px;padding:9px;font:inherit;'; controls.appendChild(filter)
   const selectAll = makeButton('全選'); const clearAll = makeButton('清除選取'); controls.append(selectAll, clearAll)
+  const templateSelect = document.createElement('select'); templateSelect.setAttribute('aria-label', '報告範本'); templateSelect.style.cssText = 'max-width:100%;min-height:44px;font-size:16px;'
+  for (const [value, label] of [['detail-crop-photo', '範本 1：上方 Detail／PDF，下方相片'], ['detail-photo-crop', '範本 2：上方 Detail／相片，下方 PDF'], ['table', '範本 3：Detail／相片／PDF，多標記表格']]) { const option = document.createElement('option'); option.value = value; option.textContent = label; templateSelect.append(option) }
+  controls.append(templateSelect)
+  const templateNote = document.createElement('p'); templateNote.textContent = '範本 1、2 每頁一個標記；範本 3 每頁最多三個標記，每頁附標題。Word 以整頁圖片保留版面。'; controls.append(templateNote)
   const exportReport = makeButton('匯出報告 PDF'); const exportWord = makeButton('匯出 Word'); const exportMarked = makeButton('匯出已標記圖紙 PDF'); controls.append(exportReport, exportWord, exportMarked)
   const status = document.createElement('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); status.style.cssText = 'min-height:22px;margin:12px 0;color:#405765;'; panel.appendChild(status)
   const list = document.createElement('div'); list.style.cssText = 'display:grid;gap:12px;'; panel.appendChild(list)
@@ -526,8 +578,8 @@ export async function openDrawingReportPreview(drawing: DrawingDocument, markers
   }
   list.addEventListener('change', event => { const target = event.target; if (target instanceof HTMLInputElement && target.type === 'range') void refreshCropPreviews() })
   const chosenItems = async () => { const chosen = workingMarkers.filter(marker => selected.has(marker.id)); if (!chosen.length) throw new Error('請至少選取一個標記') ; return buildReportItems(drawing, chosen, photos, setStatus) }
-  exportReport.addEventListener('click', () => void (async () => { try { exportReport.disabled = true; setStatus('正在建立 PDF 報告…'); const items = await chosenItems(); const blob = await exportReportPdf(items, projectName, drawing.name || drawing.fileName); await shareOrDownload(blob, `${drawing.name || '圖紙'}-標記報告.pdf`, '圖紙標記報告 PDF'); setStatus('PDF 報告已準備完成') } catch (error) { setStatus(`PDF 報告匯出失敗：${error instanceof Error ? error.message : '未知錯誤'}`, true) } finally { exportReport.disabled = false } })())
-  exportWord.addEventListener('click', () => void (async () => { try { exportWord.disabled = true; setStatus('正在建立 Word 報告…'); const items = await chosenItems(); const blob = await exportReportWord(items, projectName, drawing.name || drawing.fileName); await shareOrDownload(blob, `${drawing.name || '圖紙'}-標記報告.docx`, '圖紙標記報告 Word'); setStatus('Word 報告已準備完成') } catch (error) { setStatus(`Word 報告匯出失敗：${error instanceof Error ? error.message : '未知錯誤'}`, true) } finally { exportWord.disabled = false } })())
+  exportReport.addEventListener('click', () => void (async () => { try { exportReport.disabled = true; setStatus('正在建立 PDF 報告…'); const items = await chosenItems(); const blob = await exportReportPdf(items, projectName, drawing.name || drawing.fileName, templateSelect.value as ReportTemplate); await shareOrDownload(blob, `${drawing.name || '圖紙'}-標記報告.pdf`, '圖紙標記報告 PDF'); setStatus('PDF 報告已準備完成') } catch (error) { setStatus(`PDF 報告匯出失敗：${error instanceof Error ? error.message : '未知錯誤'}`, true) } finally { exportReport.disabled = false } })())
+  exportWord.addEventListener('click', () => void (async () => { try { exportWord.disabled = true; setStatus('正在建立 Word 報告…'); const items = await chosenItems(); const blob = await exportReportWord(items, projectName, drawing.name || drawing.fileName, templateSelect.value as ReportTemplate); await shareOrDownload(blob, `${drawing.name || '圖紙'}-標記報告.docx`, '圖紙標記報告 Word'); setStatus('Word 報告已準備完成') } catch (error) { setStatus(`Word 報告匯出失敗：${error instanceof Error ? error.message : '未知錯誤'}`, true) } finally { exportWord.disabled = false } })())
   exportMarked.addEventListener('click', () => void (async () => { try { exportMarked.disabled = true; setStatus('正在建立已標記圖紙…'); await exportMarkedDrawingPdf(drawing); setStatus('已標記圖紙 PDF 已準備完成') } catch (error) { setStatus(`已標記圖紙匯出失敗：${error instanceof Error ? error.message : '未知錯誤'}`, true) } finally { exportMarked.disabled = false } })())
   const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') removePreview() }
   removePreview = () => { window.removeEventListener('keydown', onKey); preview.remove() }
