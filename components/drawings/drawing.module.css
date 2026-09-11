@@ -157,9 +157,13 @@
 .empty > div button { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; border: 0; color: var(--accent); background: transparent; font-weight: 750; }
 .empty > div svg { width: 16px; }
 
-.modalBackdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(8,20,16,.58); backdrop-filter: blur(4px); }
+.modalBackdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(21,33,43,.32); }
 .markerEditor, .manager, .actionSheet { width: min(680px, 100%); max-height: min(88vh, 820px); overflow: auto; border-radius: 17px; background: white; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .markerEditor > header, .manager > header, .actionSheet > header { position: sticky; z-index: 2; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.97); }
+.markerEditor { width: min(620px, 100%); max-height: calc(100dvh - 36px); overflow: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--background, white); box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.markerEditor > header { position: static; min-height: 72px; padding: calc(14px + env(safe-area-inset-top)) 14px 14px; border-bottom: 0; background: var(--navy, #182a38); color: white; }
+.markerEditor > header p { color: #aebbc4; }
+.markerEditor > header > button { width: 44px; height: 44px; border: 0; border-radius: 50%; color: white; background: transparent; font-size: 30px; }
 .markerEditor h2, .manager h2, .actionSheet h2 { margin: 2px 0 0; font-size: 18px; }
 .markerEditor header > button, .manager header > button, .actionSheet header > button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #edf2f0; font-size: 22px; }
 .formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 17px 18px; }
@@ -228,7 +232,7 @@
   .formGrid { grid-template-columns: 1fr; }
   .formGrid .full { grid-column: auto; }
   .markerEditor { align-self: end; max-height: 91vh; border-radius: 17px 17px 0 0; }
-  .modalBackdrop { padding: 0; }
+  .modalBackdrop { padding: 18px; }
   .manager, .actionSheet { width: calc(100% - 20px); }
   .photoActions { display: grid; grid-template-columns: 1fr 1fr; }
   .photoActions button { justify-content: center; }
