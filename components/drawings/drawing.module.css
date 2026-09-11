@@ -1,0 +1,214 @@
+.app {
+  --ink: #12211d;
+  --muted: #60706a;
+  --line: #d9e1de;
+  --paper: #fff;
+  --accent: #087f5b;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ink);
+  background: #edf1ef;
+  font-family: inherit;
+}
+
+.app button,
+.app input,
+.app select,
+.app textarea { font: inherit; }
+
+.app button { cursor: pointer; }
+
+.header {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 2px 12px rgba(18,33,29,.06);
+}
+
+.header > div:nth-child(2) { min-width: 0; }
+.header p, .markerEditor p, .manager p { margin: 0; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.header h1 { margin: 1px 0 0; font-size: 19px; line-height: 1.1; }
+.header span { display: block; max-width: 240px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.headerActions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.headerActions button, .primary, .app button.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: white;
+  font-weight: 750;
+}
+.headerActions button svg, .primary svg { width: 17px; height: 17px; }
+.headerActions .primary, .primary, .app button.primary { border-color: var(--accent); color: white; background: var(--accent); }
+.iconButton { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: white; }
+.iconButton svg { width: 20px; }
+.headerActions .saveState { min-height: 30px; display: inline-flex !important; align-items: center; gap: 5px; padding: 0 5px; border: 0; color: var(--muted) !important; background: transparent; font-size: 11px !important; }
+.headerActions .saveState:disabled { opacity: 1; cursor: default; }
+.saveState svg { width: 14px; height: 14px; }
+.saveState.error { color: #b42318 !important; }
+
+.workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 122px minmax(0,1fr) 286px; }
+.pages, .markers { position: relative; min-width: 0; overflow: hidden; border-right: 1px solid var(--line); background: #f9fbfa; }
+.markers { border-right: 0; border-left: 1px solid var(--line); }
+.pages.collapsed, .markers.collapsed { width: 28px; }
+.pages { padding: 13px 9px; }
+.pages > strong, .pages > small { display: block; padding-right: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pages > strong { font-size: 12px; }
+.pages > small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.collapse { position: absolute; z-index: 3; top: 6px; right: 3px; width: 24px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; color: var(--muted); background: transparent; }
+.markers .collapse { right: auto; left: 3px; }
+.collapse svg { width: 15px; }
+.thumbnailList { height: calc(100% - 44px); margin-top: 12px; display: flex; flex-direction: column; gap: 10px; overflow: auto; scrollbar-width: thin; }
+.thumbnail { position: relative; padding: 4px; border: 2px solid transparent; border-radius: 7px; background: white; box-shadow: 0 1px 4px rgba(0,0,0,.11); }
+.thumbnail div { min-height: 80px; display: grid; place-items: center; overflow: hidden; background: #e7ebe9; }
+.thumbnail canvas { max-width: 100%; height: auto; display: block; }
+.thumbnail span { position: absolute; right: 6px; bottom: 5px; min-width: 20px; padding: 2px 5px; border-radius: 9px; color: white; background: rgba(0,0,0,.65); font-size: 10px; }
+.activeThumbnail { border-color: var(--accent); }
+
+.editor { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.toolbar { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 10px; overflow-x: auto; border-bottom: 1px solid var(--line); background: white; }
+.toolGroup { display: flex; align-items: center; gap: 3px; padding-right: 8px; border-right: 1px solid var(--line); }
+.toolGroup:last-child { border: 0; }
+.toolGroup button { height: 36px; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 9px; border: 0; border-radius: 8px; color: #41504b; background: transparent; white-space: nowrap; font-size: 11px; font-weight: 700; }
+.toolGroup button:hover { background: #eff4f2; }
+.toolGroup button:disabled { opacity: .35; cursor: default; }
+.toolGroup button.active { color: white; background: var(--accent); }
+.toolGroup svg { width: 18px; height: 18px; }
+.properties { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 5px 12px; overflow-x: auto; border-bottom: 1px solid var(--line); background: #f8faf9; }
+.properties label { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; font-size: 11px; font-weight: 700; }
+.properties input[type="text"], .properties input:not([type]) { width: 140px; }
+.properties button { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 0; color: #b42318; background: transparent; font-size: 11px; font-weight: 750; }
+.properties button svg { width: 15px; }
+.viewport { position: relative; flex: 1; min-height: 0; overflow: auto; padding: 18px; background-color: #cfd6d3; background-image: radial-gradient(#aab6b1 1px, transparent 1px); background-size: 16px 16px; overscroll-behavior: contain; }
+.surface { position: relative; margin: 0 auto; overflow: hidden; background: white; box-shadow: 0 8px 30px rgba(18,33,29,.24); transform-origin: top left; touch-action: none; user-select: none; }
+.canvasHost, .canvasHost canvas { width: 100%; height: 100%; display: block; }
+.overlay { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.selectedShape { filter: drop-shadow(0 0 2px rgba(8,127,91,.9)); }
+.selectedText { paint-order: stroke; stroke: white; stroke-width: .0015; }
+.handle { fill: white; stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; cursor: nwse-resize; }
+.marker { cursor: pointer; }
+.marker circle { fill: #dc2626; stroke: white; stroke-width: 2px; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+.marker text { pointer-events: none; fill: white; font-weight: 900; }
+.busy { position: sticky; left: 50%; bottom: 12px; width: max-content; display: flex; align-items: center; gap: 8px; margin: -42px auto 0; padding: 9px 12px; border-radius: 20px; color: white; background: rgba(18,33,29,.9); font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.busy span { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .8s linear infinite; }
+.busy button { border: 0; color: white; background: transparent; text-decoration: underline; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pageControls { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 16px; border-top: 1px solid var(--line); background: white; color: var(--muted); font-size: 11px; font-weight: 750; }
+.pageControls button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 8px; color: var(--ink); background: #edf2f0; }
+.pageControls button:disabled { opacity: .35; }
+.pageControls svg { width: 16px; }
+
+.markers { padding: 14px 12px 12px 18px; }
+.markerHeading { display: flex; align-items: center; justify-content: space-between; }
+.markerHeading > div { display: flex; flex-direction: column; }
+.markerHeading strong { font-size: 14px; }
+.markerHeading small { color: var(--muted); font-size: 10px; }
+.markerHeading button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; color: white; background: var(--accent); }
+.markerHeading svg { width: 16px; }
+.search { height: 37px; display: flex; align-items: center; gap: 7px; margin-top: 12px; padding: 0 9px; border: 1px solid var(--line); border-radius: 9px; background: white; }
+.search svg { width: 15px; color: var(--muted); }
+.search input { min-width: 0; flex: 1; border: 0; outline: 0; font-size: 11px; }
+.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 7px; }
+.filters select { min-width: 0; height: 32px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: white; font-size: 10px; }
+.markerList { height: calc(100% - 115px); display: flex; flex-direction: column; gap: 7px; margin-top: 10px; overflow: auto; }
+.markerList > button { width: 100%; display: flex; align-items: center; gap: 9px; padding: 9px; border: 1px solid var(--line); border-radius: 9px; text-align: left; background: white; }
+.markerList > button > b { width: 27px; height: 27px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 50%; color: white; background: #dc2626; font-size: 11px; }
+.markerList > button > span { min-width: 0; display: flex; flex-direction: column; }
+.markerList strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.markerList small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.markerList > p { padding: 20px 7px; color: var(--muted); text-align: center; font-size: 11px; line-height: 1.55; }
+
+.empty { flex: 1; display: grid; place-content: center; justify-items: center; padding: 30px; text-align: center; }
+.empty > svg { width: 54px; height: 54px; color: var(--accent); }
+.empty h2 { margin: 16px 0 5px; font-size: 21px; }
+.empty p { max-width: 450px; margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.empty > div button { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; border: 0; color: var(--accent); background: transparent; font-weight: 750; }
+.empty > div svg { width: 16px; }
+
+.modalBackdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(8,20,16,.58); backdrop-filter: blur(4px); }
+.markerEditor, .manager, .actionSheet { width: min(680px, 100%); max-height: min(88vh, 820px); overflow: auto; border-radius: 17px; background: white; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.markerEditor > header, .manager > header, .actionSheet > header { position: sticky; z-index: 2; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.97); }
+.markerEditor h2, .manager h2, .actionSheet h2 { margin: 2px 0 0; font-size: 18px; }
+.markerEditor header > button, .manager header > button, .actionSheet header > button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #edf2f0; font-size: 22px; }
+.formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 17px 18px; }
+.formGrid label { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 750; }
+.formGrid input, .formGrid textarea { width: 100%; min-height: 39px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; outline: 0; color: var(--ink); background: white; font-size: 13px; }
+.formGrid input:focus, .formGrid textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(8,127,91,.1); }
+.formGrid .full { grid-column: 1 / -1; }
+.roomSuggestions { display: flex; flex-direction: row !important; align-items: center; flex-wrap: wrap; }
+.roomSuggestions small { margin-right: 4px; }
+.roomSuggestions button { padding: 5px 8px; border: 1px solid #a7d9c8; border-radius: 14px; color: #076147; background: #e8f7f1; font-size: 10px; }
+.photoLinks { margin: 0 18px 15px; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: #f8faf9; }
+.photoLinks > div:first-child { display: flex; justify-content: space-between; font-size: 12px; }
+.photoLinks > div:first-child span { color: var(--muted); }
+.linkedPhotos { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
+.linkedPhotos figure { position: relative; width: 70px; height: 70px; flex: 0 0 auto; margin: 0; display: grid; place-items: center; overflow: visible; border-radius: 8px; color: #b42318; background: #e5e9e7; font-size: 9px; }
+.linkedPhotos img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.linkedPhotos button { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border: 0; border-radius: 50%; color: white; background: #b42318; }
+.photoActions { display: flex; gap: 8px; margin-top: 10px; }
+.photoActions button { display: inline-flex; align-items: center; gap: 5px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: white; font-size: 11px; font-weight: 750; }
+.photoActions svg { width: 16px; }
+.markerEditor > footer { display: flex; justify-content: space-between; gap: 10px; padding: 13px 18px max(13px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.markerEditor > footer > div { display: flex; gap: 8px; margin-left: auto; }
+.markerEditor > footer button { min-height: 38px; display: inline-flex; align-items: center; gap: 5px; padding: 0 13px; border: 1px solid var(--line); border-radius: 9px; background: white; font-weight: 750; }
+.markerEditor > footer svg { width: 16px; }
+.app button.danger, .danger { color: #b42318; }
+
+.manager { width: min(560px, 100%); }
+.drawingList { max-height: 54vh; padding: 10px 16px; overflow: auto; }
+.drawingList article { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.drawingList article > button:first-child { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 8px; border: 0; text-align: left; background: transparent; }
+.drawingList strong, .drawingList small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawingList strong { font-size: 13px; }
+.drawingList small { color: var(--muted); font-size: 10px; }
+.drawingList article > button:last-child { width: 36px; border: 0; background: transparent; }
+.drawingList svg { width: 17px; }
+.manager > .primary { margin: 5px 16px 17px; }
+.actionSheet { width: min(420px, 100%); }
+.actionSheet > button { width: calc(100% - 28px); min-height: 48px; display: flex; align-items: center; gap: 10px; margin: 8px 14px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: white; font-weight: 700; }
+.actionSheet > button:last-child { margin-bottom: 16px; }
+.actionSheet svg { width: 18px; color: var(--accent); }
+.notice { position: fixed; z-index: 140; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); width: min(520px, calc(100% - 30px)); display: flex; align-items: center; justify-content: space-between; gap: 10px; transform: translateX(-50%); padding: 12px 14px; border-radius: 11px; color: white; background: #263a33; box-shadow: 0 8px 28px rgba(0,0,0,.25); font-size: 12px; }
+.notice button { border: 0; color: white; background: transparent; font-size: 18px; }
+
+@media (max-width: 900px) {
+  .header { min-height: 60px; padding-left: 9px; padding-right: 9px; }
+  .headerActions > button:not(.primary), .saveState { display: none !important; }
+  .headerActions .primary { padding: 0 10px; font-size: 11px; }
+  .workspace { grid-template-columns: 28px minmax(0,1fr) 28px; }
+  .pages:not(.collapsed), .markers:not(.collapsed) { position: absolute; z-index: 20; top: 60px; bottom: 0; width: min(280px, 82vw); box-shadow: 8px 0 24px rgba(0,0,0,.18); }
+  .markers:not(.collapsed) { right: 0; box-shadow: -8px 0 24px rgba(0,0,0,.18); }
+  .editor { grid-column: 2; }
+  .toolbar { min-height: 48px; padding: 5px; }
+  .toolGroup { padding-right: 3px; }
+  .toolGroup button { min-width: 34px; height: 34px; padding: 0 7px; font-size: 10px; }
+  .toolGroup svg { width: 17px; }
+  .viewport { padding: 9px; }
+  .properties { position: absolute; z-index: 12; top: 108px; left: 28px; right: 28px; box-shadow: 0 4px 10px rgba(0,0,0,.12); }
+}
+
+@media (max-width: 600px) {
+  .header h1 { font-size: 16px; }
+  .header p, .header > div:nth-child(2) > span { display: none; }
+  .headerActions .primary { width: 38px; padding: 0; font-size: 0; }
+  .formGrid { grid-template-columns: 1fr; }
+  .formGrid .full { grid-column: auto; }
+  .markerEditor { align-self: end; max-height: 91vh; border-radius: 17px 17px 0 0; }
+  .modalBackdrop { padding: 0; }
+  .manager, .actionSheet { width: calc(100% - 20px); }
+  .photoActions { display: grid; grid-template-columns: 1fr 1fr; }
+  .photoActions button { justify-content: center; }
+}
