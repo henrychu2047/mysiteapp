@@ -120,7 +120,8 @@
 .selectedText { paint-order: stroke; stroke: white; stroke-width: .0015; }
 .textAnnotation { position: absolute; z-index: 3; display: block; min-width: 1px; color: inherit; line-height: 1.1; white-space: pre; pointer-events: auto; user-select: none; }
 .textEditorInput { position: absolute; z-index: 4; width: max-content; min-width: 72px; max-width: min(280px, 70vw); padding: 3px 5px; border: 1px solid var(--accent); border-radius: 4px; outline: 2px solid #ffffffcc; background: #ffffffee; line-height: 1.1; }
-.selectedTextAnnotation { text-shadow: 0 0 0 white, 0 0 2px white; }
+.selectedTextAnnotation { outline: 2px dashed var(--accent); outline-offset: 4px; background: #ffffff99; }
+.textAnnotation::before { content: ''; position: absolute; inset: -12px; }
 .handle { fill: white; stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; cursor: nwse-resize; }
 .marker { cursor: pointer; }
 .marker circle { fill: #dc2626; stroke: white; stroke-width: 2px; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }

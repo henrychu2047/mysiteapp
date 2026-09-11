@@ -788,6 +788,10 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       <section className={styles.editor}>
         <button className={styles.pageBadge} aria-label={`第 ${page} 頁，共 ${current.pageCount} 頁；開啟頁面預覽`} aria-expanded={sidebarOpen} onClick={() => { setSidebarOpen(true); setMarkerListOpen(false) }}>{page} / {current.pageCount}</button>
         <div className={styles.toolbar}>
+          {selectedAnnotation && <div className={styles.toolGroup}>
+            <button aria-label="編輯選取的註記" title="編輯" onClick={() => { if (selectedAnnotation.kind === 'text') setEditingTextId(selectedAnnotation.id); else setToolSettingsOpen(true) }}><PencilLine /></button>
+            <button aria-label="刪除選取的註記" title="刪除" onClick={removeSelectedAnnotation}><Trash2 /></button>
+          </div>}
           {openToolGroup !== null && <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(null)} title="返回工具組" aria-label="返回工具組"><ArrowLeft /></button>}
           {openToolGroup === null && <>
             <button className={`${styles.toolGroupToggle} ${tool === 'pan' ? styles.active : ''}`} onClick={() => setTool('pan')} title="平移"><Grab /></button>
@@ -828,7 +832,11 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
                 const width = Math.abs(end.x - start.x); const height = Math.abs(end.y - start.y)
                 const selected = annotation.id === selectedAnnotationId
                 const common = { stroke: annotation.color, strokeWidth: annotation.lineWidth, vectorEffect: 'non-scaling-stroke' as const, fill: 'none', 'data-annotation-id': annotation.id, className: selected ? styles.selectedShape : undefined }
+                const hit = { 'data-annotation-id': annotation.id, stroke: 'transparent', strokeWidth: Math.max(28, annotation.lineWidth), vectorEffect: 'non-scaling-stroke' as const, fill: 'transparent', pointerEvents: 'all' as const }
                 return <g key={annotation.id}>
+                  {(annotation.kind === 'line' || annotation.kind === 'arrow') && <line {...hit} x1={start.x} y1={start.y} x2={end.x} y2={end.y} />}
+                  {(annotation.kind === 'rectangle' || annotation.kind === 'cloud') && <rect {...hit} x={x} y={y} width={width} height={height} />}
+                  {annotation.kind === 'ellipse' && <ellipse {...hit} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} />}
                   {(annotation.kind === 'line' || annotation.kind === 'arrow') && <line {...common} x1={start.x} y1={start.y} x2={end.x} y2={end.y} markerEnd={annotation.kind === 'arrow' ? 'url(#drawing-arrow)' : undefined} />}
                   {annotation.kind === 'rectangle' && <rect {...common} x={x} y={y} width={width} height={height} />}
                   {annotation.kind === 'cloud' && <path {...common} d={cloudPath(x, y, width, height)} strokeLinecap="round" strokeLinejoin="round" />}
@@ -838,7 +846,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
               })}
               {currentMarkers.map(marker => {
                 const point = canonicalToDisplay(marker, viewRotation)
-                return <g key={marker.id} data-marker-id={marker.id} className={styles.marker} transform={`translate(${point.x} ${point.y})`}><circle r={15 / Math.max(scaledWidth, scaledHeight) * 2} /><text textAnchor="middle" dominantBaseline="central" fontSize={12 / Math.max(scaledHeight, 1)}>{marker.number}</text></g>
+                return <g key={marker.id} data-marker-id={marker.id} className={styles.marker} transform={`translate(${point.x} ${point.y})`}><ellipse rx={24 / scaledWidth} ry={24 / scaledHeight} fill="transparent" pointerEvents="all" /><circle r={15 / Math.max(scaledWidth, scaledHeight) * 2} /><text textAnchor="middle" dominantBaseline="central" fontSize={12 / Math.max(scaledHeight, 1)}>{marker.number}</text></g>
               })}
             </svg>
             {renderedAnnotations.filter(annotation => annotation.kind === 'text').map(annotation => {
