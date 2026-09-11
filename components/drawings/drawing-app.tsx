@@ -4,7 +4,7 @@ import {
   ArrowLeft, Camera, Circle, Cloud, Download, Ellipsis,
   FileArchive, FileDown, FilePlus2, Grab, Images, MapPin, Minus, MousePointer2,
   PencilLine, Plus, Redo2, RotateCw, Save, ScanText, Search, Square, Tags, Trash2, Type,
-  Undo2, ZoomIn, ZoomOut, ListChecks,
+  Undo2, ListChecks,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api'
@@ -740,10 +740,6 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
           <div className={styles.toolGroup}>
             <button onClick={undo} disabled={!historyRef.current.length} title="復原"><Undo2 /></button>
             <button onClick={redo} disabled={!redoRef.current.length} title="重做"><Redo2 /></button>
-            <button onClick={() => { setFitMode(false); setZoom(value => clamp(value / 1.2, .25, 4)) }} title="縮小"><ZoomOut /></button>
-            <button onClick={() => { setFitMode(true) }}>符合寬度</button>
-            <button onClick={() => { setFitMode(false); setZoom(1) }}>100%</button>
-            <button onClick={() => { setFitMode(false); setZoom(value => clamp(value * 1.2, .25, 4)) }} title="放大"><ZoomIn /></button>
             <button onClick={() => setRotation(value => normalizeRotation(value + 90))} title="順時針旋轉"><RotateCw /></button>
           </div>
           <div className={styles.toolGroup}>
