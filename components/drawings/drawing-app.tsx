@@ -731,26 +731,32 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       <section className={styles.editor}>
         <button className={styles.pageBadge} aria-label={`第 ${page} 頁，共 ${current.pageCount} 頁；開啟頁面預覽`} aria-expanded={sidebarOpen} onClick={() => { setSidebarOpen(true); setMarkerListOpen(false) }}>{page} / {current.pageCount}</button>
         <div className={styles.toolbar}>
-          <button className={`${styles.toolGroupToggle} ${tool === 'pan' ? styles.active : ''}`} onClick={() => { setTool('pan'); setOpenToolGroup(null) }} title="平移"><Grab /></button>
-          {openToolGroup === 1 ? <div className={styles.toolGroup}>
+          {openToolGroup !== null && <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(null)} title="返回工具組" aria-label="返回工具組"><ArrowLeft /></button>}
+          {openToolGroup === null && <>
+            <button className={`${styles.toolGroupToggle} ${tool === 'pan' ? styles.active : ''}`} onClick={() => setTool('pan')} title="平移"><Grab /></button>
+            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(1)} title="標記工具組"><MousePointer2 /></button>
+            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(2)} title="編輯工具組"><Undo2 /></button>
+            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(3)} title="OCR 及匯出工具組"><ScanText /></button>
+          </>}
+          {openToolGroup === 1 && <div className={styles.toolGroup}>
             <button className={tool === 'select' ? styles.active : ''} onClick={() => setTool('select')} title="選取"><MousePointer2 /></button>
             <button className={tool === 'marker' && markerMode === 'camera' ? styles.active : ''} onClick={() => { setTool('marker'); setMarkerMode('camera') }} title="相機問題標記" aria-label="相機問題標記" aria-pressed={tool === 'marker' && markerMode === 'camera'}><Camera /></button>
             <button className={tool === 'marker' && markerMode === 'smart' ? styles.active : ''} onClick={() => { setTool('marker'); setMarkerMode('smart') }} title="Smart Tag 問題標記" aria-label="Smart Tag 問題標記" aria-pressed={tool === 'marker' && markerMode === 'smart'}><Tags /></button>
             {annotationTools.map(({ id, label, icon: Icon }) => <span key={id} className={styles.toolPair}><button className={tool === id ? styles.active : ''} onClick={() => { setTool(id); setSelectedAnnotationId(null); setToolSettingsOpen(false) }} title={label} aria-label={label} aria-pressed={tool === id}><Icon /></button>{tool === id && <button title={label + '設定'} aria-label={label + '設定'} aria-expanded={toolSettingsOpen} onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation?.color || annotationColor }} /></button>}</span>)}
             {selectedAnnotation && !annotationTools.some(item => item.id === tool) && <button aria-label="註記設定" title="註記設定" onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation.color }} /></button>}
-          </div> : <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(1)} title="標記工具組"><MousePointer2 /></button>}
-          {openToolGroup === 2 ? <div className={styles.toolGroup}>
+          </div>}
+          {openToolGroup === 2 && <div className={styles.toolGroup}>
             <button onClick={undo} disabled={!historyRef.current.length} title="復原"><Undo2 /></button>
             <button onClick={redo} disabled={!redoRef.current.length} title="重做"><Redo2 /></button>
             <button onClick={() => setRotation(value => normalizeRotation(value + 90))} title="順時針旋轉"><RotateCw /></button>
-          </div> : <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(2)} title="編輯工具組"><Undo2 /></button>}
-          {openToolGroup === 3 ? <div className={styles.toolGroup}>
+          </div>}
+          {openToolGroup === 3 && <div className={styles.toolGroup}>
             <button onClick={() => void extractRooms(false)}><ScanText />讀取文字</button>
             <button onClick={() => void extractRooms(true)}><ScanText />OCR</button>
             <button onClick={exportMarkedPdf}><FileDown />標記 PDF</button>
             <button onClick={openIssueReport}><Download />問題報告</button>
             <button onClick={() => setImportOpen(true)}><Ellipsis /></button>
-          </div> : <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(3)} title="OCR 及匯出工具組"><ScanText /></button>}
+          </div>}
         </div>
 
         <div className={styles.viewport} ref={viewportRef}>
