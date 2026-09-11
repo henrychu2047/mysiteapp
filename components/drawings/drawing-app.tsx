@@ -289,13 +289,13 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     setZoom(clamp(available / Math.max(canvasSize.width, 1), 0.25, 3))
   }, [canvasSize, fitMode, sidebarOpen, markerListOpen])
 
-  const importPdfs = async (files: FileList | null) => {
+  const importPdfs = async (files: File[] | null) => {
     if (!files?.length) return
     setBusy('正在驗證 PDF…')
     const imported: DrawingDocument[] = []
     try {
       const { loadDrawingPdf } = await import('@/lib/drawing-pdf')
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         const fileNameLooksPdf = /\.pdf$/i.test(file.name)
         const fileTypeLooksPdf = ['application/pdf', 'application/x-pdf', 'application/octet-stream', ''].includes(file.type)
         if (!fileNameLooksPdf && !fileTypeLooksPdf) throw new Error(`「${file.name}」不是 PDF 檔案`)
@@ -697,7 +697,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         <button className={`${styles.saveState} ${saveState === 'error' ? styles.error : ''}`} onClick={() => void flushSave().catch(() => undefined)} disabled={!dirtyRef.current || saveState === 'saving' || saveState === 'loading'} title={saveState === 'error' ? '按此重試保存' : undefined}><Save />{saveState === 'loading' ? '載入中' : saveState === 'saving' ? '保存中' : saveState === 'error' ? '保存失敗（重試）' : '已保存'}</button>
         <button onClick={() => setManagerOpen(true)}>管理圖紙</button>
         <button className={styles.primary} onClick={() => fileInputRef.current?.click()}><FilePlus2 />匯入 PDF</button>
-        <input ref={fileInputRef} hidden type="file" accept="application/pdf,.pdf" multiple onChange={event => { void importPdfs(event.target.files); event.target.value = '' }} />
+        <input ref={fileInputRef} hidden type="file" accept="application/pdf,.pdf" multiple onChange={event => { const files = event.target.files ? Array.from(event.target.files) : []; event.target.value = ''; void importPdfs(files) }} />
       </div>
     </header>
 
