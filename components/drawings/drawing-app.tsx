@@ -138,6 +138,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const [toolSettingsOpen, setToolSettingsOpen] = useState(false)
   const [markerMode, setMarkerMode] = useState<'camera' | 'smart'>('camera')
   const [openToolGroup, setOpenToolGroup] = useState<1 | 2 | 3 | null>(null)
+  const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const canvasHostRef = useRef<HTMLDivElement>(null)
@@ -162,9 +163,9 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const selectedAnnotation = current?.annotations.find(annotation => annotation.id === selectedAnnotationId) || null
 
   useEffect(() => {
-    if (!toolSettingsOpen || selectedAnnotation?.kind !== 'text') return
+    if (!editingTextId && (!toolSettingsOpen || selectedAnnotation?.kind !== 'text')) return
     requestAnimationFrame(() => textInputRef.current?.focus())
-  }, [toolSettingsOpen, selectedAnnotation])
+  }, [editingTextId, toolSettingsOpen, selectedAnnotation])
 
   useEffect(() => { currentRef.current = current }, [current])
 
@@ -507,7 +508,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       }
       updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, annotation] }), true)
       setSelectedAnnotationId(annotation.id)
-      setToolSettingsOpen(true)
+      setEditingTextId(annotation.id)
       return
     }
     if (tool === 'select') {
@@ -609,6 +610,8 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       void openNewMarker(drag.start)
     } else if (drag.kind === 'marker-move' && drag.marker && !drag.moved) {
       openExistingMarker(drag.marker)
+    } else if (drag.kind === 'move' && drag.annotation?.kind === 'text' && !drag.moved) {
+      setEditingTextId(drag.annotation.id)
     } else if ((drag.kind === 'move' || drag.kind.startsWith('resize')) && drag.annotation && drag.moved) {
       historyRef.current.push(current ? snapshot(current.annotations.map(annotation => annotation.id === drag.annotation?.id ? drag.annotation : annotation)) : [])
       historyRef.current = historyRef.current.slice(-50)
@@ -810,7 +813,8 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
             </svg>
             {renderedAnnotations.filter(annotation => annotation.kind === 'text').map(annotation => {
               const start = canonicalToDisplay(annotation, viewRotation)
-              return <span key={`text-${annotation.id}`} data-annotation-id={annotation.id} className={`${styles.textAnnotation} ${annotation.id === selectedAnnotationId ? styles.selectedTextAnnotation : ''}`} style={{ left: `${start.x * 100}%`, top: `${start.y * 100}%`, color: annotation.color, fontSize: `${annotation.fontSize}px` }}>{annotation.text}</span>
+              const editing = annotation.id === editingTextId
+              return editing ? <input key={`text-${annotation.id}`} ref={textInputRef} data-annotation-id={annotation.id} className={styles.textEditorInput} value={annotation.text || ''} onPointerDown={event => event.stopPropagation()} onChange={event => updateAnnotation(annotation.id, { text: event.target.value }, false)} onBlur={() => setEditingTextId(null)} style={{ left: `${start.x * 100}%`, top: `${start.y * 100}%`, color: annotation.color, fontSize: `${annotation.fontSize}px` }} aria-label="編輯文字" /> : <span key={`text-${annotation.id}`} data-annotation-id={annotation.id} className={`${styles.textAnnotation} ${annotation.id === selectedAnnotationId ? styles.selectedTextAnnotation : ''}`} style={{ left: `${start.x * 100}%`, top: `${start.y * 100}%`, color: annotation.color, fontSize: `${annotation.fontSize}px` }}>{annotation.text}</span>
             })}
           </div>
           {busy && <div className={styles.busy} role="status"><span />{busy}{ocrProgress !== null && ` ${Math.round(ocrProgress <= 1 ? ocrProgress * 100 : ocrProgress)}%`}{ocrProgress !== null && <button onClick={() => ocrAbortRef.current?.abort()}>取消</button>}</div>}

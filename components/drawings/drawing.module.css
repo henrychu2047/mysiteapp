@@ -119,6 +119,7 @@
 .selectedShape { filter: drop-shadow(0 0 2px rgba(8,127,91,.9)); }
 .selectedText { paint-order: stroke; stroke: white; stroke-width: .0015; }
 .textAnnotation { position: absolute; z-index: 3; display: block; min-width: 1px; color: inherit; line-height: 1.1; white-space: pre; pointer-events: auto; user-select: none; }
+.textEditorInput { position: absolute; z-index: 4; width: max-content; min-width: 72px; max-width: min(280px, 70vw); padding: 3px 5px; border: 1px solid var(--accent); border-radius: 4px; outline: 2px solid #ffffffcc; background: #ffffffee; line-height: 1.1; }
 .selectedTextAnnotation { text-shadow: 0 0 0 white, 0 0 2px white; }
 .handle { fill: white; stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; cursor: nwse-resize; }
 .marker { cursor: pointer; }
