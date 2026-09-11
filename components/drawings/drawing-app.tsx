@@ -793,7 +793,6 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
                   {annotation.kind === 'rectangle' && <rect {...common} x={x} y={y} width={width} height={height} />}
                   {annotation.kind === 'cloud' && <path {...common} d={cloudPath(x, y, width, height)} strokeLinecap="round" strokeLinejoin="round" />}
                   {annotation.kind === 'ellipse' && <ellipse {...common} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} />}
-                  {annotation.kind === 'text' && <text data-annotation-id={annotation.id} x={start.x} y={start.y} fill={annotation.color} fontSize={annotation.fontSize / Math.max(scaledHeight, 1)} dominantBaseline="hanging" className={selected ? styles.selectedText : undefined}>{annotation.text}</text>}
                   {selected && annotation.kind !== 'text' && <><circle data-annotation-id={annotation.id} data-handle="start" cx={start.x} cy={start.y} r={7 / Math.max(scaledWidth, scaledHeight) * 2} className={styles.handle} /><circle data-annotation-id={annotation.id} data-handle="end" cx={end.x} cy={end.y} r={7 / Math.max(scaledWidth, scaledHeight) * 2} className={styles.handle} /></>}
                 </g>
               })}
@@ -802,6 +801,10 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
                 return <g key={marker.id} data-marker-id={marker.id} className={styles.marker} transform={`translate(${point.x} ${point.y})`}><circle r={15 / Math.max(scaledWidth, scaledHeight) * 2} /><text textAnchor="middle" dominantBaseline="central" fontSize={12 / Math.max(scaledHeight, 1)}>{marker.number}</text></g>
               })}
             </svg>
+            {renderedAnnotations.filter(annotation => annotation.kind === 'text').map(annotation => {
+              const start = canonicalToDisplay(annotation, viewRotation)
+              return <span key={`text-${annotation.id}`} data-annotation-id={annotation.id} className={`${styles.textAnnotation} ${annotation.id === selectedAnnotationId ? styles.selectedTextAnnotation : ''}`} style={{ left: `${start.x * 100}%`, top: `${start.y * 100}%`, color: annotation.color, fontSize: `${annotation.fontSize}px` }}>{annotation.text}</span>
+            })}
           </div>
           {busy && <div className={styles.busy} role="status"><span />{busy}{ocrProgress !== null && ` ${Math.round(ocrProgress <= 1 ? ocrProgress * 100 : ocrProgress)}%`}{ocrProgress !== null && <button onClick={() => ocrAbortRef.current?.abort()}>取消</button>}</div>}
         </div>

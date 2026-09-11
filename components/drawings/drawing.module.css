@@ -118,6 +118,8 @@
 .overlay { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .selectedShape { filter: drop-shadow(0 0 2px rgba(8,127,91,.9)); }
 .selectedText { paint-order: stroke; stroke: white; stroke-width: .0015; }
+.textAnnotation { position: absolute; z-index: 3; display: block; min-width: 1px; color: inherit; line-height: 1.1; white-space: pre; pointer-events: auto; user-select: none; }
+.selectedTextAnnotation { text-shadow: 0 0 0 white, 0 0 2px white; }
 .handle { fill: white; stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; cursor: nwse-resize; }
 .marker { cursor: pointer; }
 .marker circle { fill: #dc2626; stroke: white; stroke-width: 2px; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
