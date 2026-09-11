@@ -113,7 +113,7 @@ function validAnnotation(value: unknown): value is DrawingAnnotation {
   if (!isFinitePoint(value)) return false
   const annotation = value as Partial<DrawingAnnotation>
   return typeof annotation.id === 'string' && Number.isInteger(annotation.page) && Number(annotation.page) > 0
-    && ['cloud', 'line', 'arrow', 'text', 'rectangle', 'ellipse'].includes(String(annotation.kind))
+    && ['cloud', 'line', 'arrow', 'text', 'rectangle', 'ellipse', 'callout'].includes(String(annotation.kind))
     && typeof annotation.endX === 'number' && Number.isFinite(annotation.endX) && annotation.endX >= 0 && annotation.endX <= 1
     && typeof annotation.endY === 'number' && Number.isFinite(annotation.endY) && annotation.endY >= 0 && annotation.endY <= 1
     && typeof annotation.color === 'string' && typeof annotation.lineWidth === 'number' && typeof annotation.fontSize === 'number'

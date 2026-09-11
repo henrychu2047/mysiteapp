@@ -120,6 +120,20 @@ function drawAnnotation(context: CanvasRenderingContext2D, annotation: DrawingAn
   context.lineCap = 'round'
   context.lineJoin = 'round'
   switch (annotation.kind) {
+    case 'callout': {
+      context.beginPath(); context.moveTo(end.x, end.y); context.lineTo(start.x, start.y); context.stroke()
+      drawArrowHead(context, start.x, start.y, Math.atan2(start.y - end.y, start.x - end.x), Math.max(10, lineWidth * 4))
+      const size = clamp(finite(annotation.fontSize, 22) * Math.max(1, Math.min(canvas.width, canvas.height) / 900), 12, 96)
+      context.font = `600 ${size}px Arial, "Microsoft JhengHei", sans-serif`
+      const lines = String(annotation.text || '').split(/\r?\n/)
+      const width = Math.max(60, ...lines.map(line => context.measureText(line).width)) + 8
+      context.fillStyle = '#ffffff'
+      context.fillRect(end.x, end.y, width, size * 1.25 * lines.length + 8)
+      context.strokeRect(end.x, end.y, width, size * 1.25 * lines.length + 8)
+      context.fillStyle = color; context.textBaseline = 'top'
+      lines.forEach((line, index) => context.fillText(line, end.x + 4, end.y + 4 + index * size * 1.25))
+      break
+    }
     case 'line':
     case 'arrow': {
       context.beginPath(); context.moveTo(start.x, start.y); context.lineTo(end.x, end.y); context.stroke()

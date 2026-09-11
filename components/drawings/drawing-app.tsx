@@ -4,7 +4,7 @@ import {
   ArrowLeft, Camera, Circle, Cloud, Download, Ellipsis,
   FileArchive, FileDown, FilePlus2, Grab, Images, Minus, MousePointer2,
   PencilLine, Plus, Redo2, RotateCw, Save, ScanText, Search, Square, Tags, Trash2, Type,
-  Undo2, ListChecks,
+  Undo2, ListChecks, MessageSquareText,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api'
@@ -44,6 +44,7 @@ type DragState = {
 }
 
 const annotationTools: Array<{ id: DrawingAnnotation['kind']; label: string; icon: typeof PencilLine }> = [
+  { id: 'callout', label: '引線文字標註', icon: MessageSquareText },
   { id: 'cloud', label: '雲線', icon: Cloud },
   { id: 'line', label: '直線', icon: Minus },
   { id: 'arrow', label: '箭咀', icon: PencilLine },
@@ -561,7 +562,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     }
     const annotation: DrawingAnnotation = {
       id: createId(), page, kind: tool, x: start.x, y: start.y, endX: start.x, endY: start.y,
-      text: undefined, color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
+      text: tool === 'callout' ? '' : undefined, color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
     }
     dragRef.current = { kind: 'draw', start, latest: start, clientX: event.clientX, clientY: event.clientY, annotation, moved: false }
     setDraftAnnotation(annotation)
@@ -637,13 +638,14 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, completedAnnotation] }), true)
         setSelectedAnnotationId(completedAnnotation.id)
         setTool('select')
+        if (completedAnnotation.kind === 'callout') setEditingTextId(completedAnnotation.id)
       }
       setDraftAnnotation(null)
     } else if (drag.kind === 'marker-tap' && !drag.moved) {
       void openNewMarker(drag.start)
     } else if (drag.kind === 'marker-move' && drag.marker && !drag.moved) {
       openExistingMarker(drag.marker)
-    } else if (drag.kind === 'move' && drag.annotation?.kind === 'text' && !drag.moved) {
+    } else if (drag.kind === 'move' && (drag.annotation?.kind === 'text' || drag.annotation?.kind === 'callout') && !drag.moved) {
       setEditingTextId(drag.annotation.id)
     } else if ((drag.kind === 'move' || drag.kind.startsWith('resize')) && drag.annotation && drag.moved) {
       historyRef.current.push(current ? snapshot(current.annotations.map(annotation => annotation.id === drag.annotation?.id ? drag.annotation : annotation)) : [])
@@ -789,7 +791,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         <button className={styles.pageBadge} aria-label={`第 ${page} 頁，共 ${current.pageCount} 頁；開啟頁面預覽`} aria-expanded={sidebarOpen} onClick={() => { setSidebarOpen(true); setMarkerListOpen(false) }}>{page} / {current.pageCount}</button>
         <div className={styles.toolbar}>
           {selectedAnnotation && <div className={styles.toolGroup}>
-            <button aria-label="編輯選取的註記" title="編輯" onClick={() => { if (selectedAnnotation.kind === 'text') setEditingTextId(selectedAnnotation.id); else setToolSettingsOpen(true) }}><PencilLine /></button>
+            <button aria-label="編輯選取的註記" title="編輯" onClick={() => { if ((selectedAnnotation.kind === 'text' || selectedAnnotation.kind === 'callout')) setEditingTextId(selectedAnnotation.id); else setToolSettingsOpen(true) }}><PencilLine /></button>
             <button aria-label="刪除選取的註記" title="刪除" onClick={removeSelectedAnnotation}><Trash2 /></button>
           </div>}
           {openToolGroup !== null && <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(null)} title="返回工具組" aria-label="返回工具組"><ArrowLeft /></button>}
@@ -834,6 +836,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
                 const common = { stroke: annotation.color, strokeWidth: annotation.lineWidth, vectorEffect: 'non-scaling-stroke' as const, fill: 'none', 'data-annotation-id': annotation.id, className: selected ? styles.selectedShape : undefined }
                 const hit = { 'data-annotation-id': annotation.id, stroke: 'transparent', strokeWidth: Math.max(28, annotation.lineWidth), vectorEffect: 'non-scaling-stroke' as const, fill: 'transparent', pointerEvents: 'all' as const }
                 return <g key={annotation.id}>
+                  {annotation.kind === 'callout' && <><line {...hit} x1={end.x} y1={end.y} x2={start.x} y2={start.y} /><line {...common} x1={end.x} y1={end.y} x2={start.x} y2={start.y} markerEnd="url(#drawing-arrow)" /></>}
                   {(annotation.kind === 'line' || annotation.kind === 'arrow') && <line {...hit} x1={start.x} y1={start.y} x2={end.x} y2={end.y} />}
                   {(annotation.kind === 'rectangle' || annotation.kind === 'cloud') && <rect {...hit} x={x} y={y} width={width} height={height} />}
                   {annotation.kind === 'ellipse' && <ellipse {...hit} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} />}
@@ -849,10 +852,10 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
                 return <g key={marker.id} data-marker-id={marker.id} className={styles.marker} transform={`translate(${point.x} ${point.y})`}><ellipse rx={Math.max(24, 15 * zoom) / scaledWidth} ry={Math.max(24, 15 * zoom) / scaledHeight} fill="transparent" pointerEvents="all" /><g transform={`scale(${1 / canvasSize.width} ${1 / canvasSize.height})`}><circle r={15} style={{ vectorEffect: 'none' }} /><text textAnchor="middle" dominantBaseline="central" fontSize={12}>{marker.number}</text></g></g>
               })}
             </svg>
-            {renderedAnnotations.filter(annotation => annotation.kind === 'text').map(annotation => {
-              const start = canonicalToDisplay(annotation, viewRotation)
+            {renderedAnnotations.filter(annotation => annotation.kind === 'text' || annotation.kind === 'callout').map(annotation => {
+              const start = canonicalToDisplay(annotation.kind === 'callout' ? { x: annotation.endX, y: annotation.endY } : annotation, viewRotation)
               const editing = annotation.id === editingTextId
-              const textStyle = { left: `${start.x * 100}%`, top: `${start.y * 100}%`, color: annotation.color, fontSize: `${annotation.fontSize * zoom}px` }
+              const textStyle = { left: `${start.x * 100}%`, top: `${start.y * 100}%`, color: annotation.color, fontSize: `${annotation.fontSize * zoom}px`, ...(annotation.kind === 'callout' ? { border: `${annotation.lineWidth * zoom}px solid ${annotation.color}`, background: '#ffffffdd', padding: `${4 * zoom}px`, minWidth: `${60 * zoom}px` } : {}) }
 return editing ? <input key={`text-${annotation.id}`} ref={textInputRef} data-annotation-id={annotation.id} className={styles.textEditorInput} value={annotation.text || ''} onPointerDown={event => event.stopPropagation()} onChange={event => updateAnnotation(annotation.id, { text: event.target.value }, false)} onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229) event.currentTarget.blur() }} onBlur={() => { setEditingTextId(null); setTool('select') }} style={textStyle} aria-label="編輯文字" /> : <span key={`text-${annotation.id}`} data-annotation-id={annotation.id} className={`${styles.textAnnotation} ${annotation.id === selectedAnnotationId ? styles.selectedTextAnnotation : ''}`} style={textStyle}>{annotation.text}</span>
             })}
           </div>
@@ -872,7 +875,7 @@ return editing ? <input key={`text-${annotation.id}`} ref={textInputRef} data-an
       <svg viewBox="0 0 300 70" className={styles.stylePreview} aria-label="樣式預覽"><path d="M20 45 Q85 0 150 35 T280 25" fill="none" stroke={selectedAnnotation?.color || annotationColor} strokeWidth={selectedAnnotation?.lineWidth ?? annotationWidth} /></svg>
       <label>線粗 <output>{selectedAnnotation?.lineWidth ?? annotationWidth}</output><input aria-label="線粗" type="range" min="1" max="12" value={selectedAnnotation?.lineWidth ?? annotationWidth} onChange={event => { const value = Number(event.target.value); setAnnotationWidth(value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { lineWidth: value }) }} /></label>
       <label>顏色<input aria-label="顏色" type="color" value={selectedAnnotation?.color || annotationColor} onChange={event => { setAnnotationColor(event.target.value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { color: event.target.value }) }} /></label>
-      {(selectedAnnotation?.kind || tool) === 'text' && <label>文字大小<input aria-label="文字大小" type="range" min="10" max="72" value={selectedAnnotation?.fontSize ?? annotationFontSize} onChange={event => { const value = Number(event.target.value); setAnnotationFontSize(value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { fontSize: value }) }} /><output>{selectedAnnotation?.fontSize ?? annotationFontSize}</output></label>}
+      {['text', 'callout'].includes(selectedAnnotation?.kind || tool) && <label>文字大小<input aria-label="文字大小" type="range" min="10" max="72" value={selectedAnnotation?.fontSize ?? annotationFontSize} onChange={event => { const value = Number(event.target.value); setAnnotationFontSize(value); if (selectedAnnotation) updateAnnotation(selectedAnnotation.id, { fontSize: value }) }} /><output>{selectedAnnotation?.fontSize ?? annotationFontSize}</output></label>}
       {selectedAnnotation?.kind === 'text' && <label>文字<input ref={textInputRef} value={selectedAnnotation.text || ''} onChange={event => updateAnnotation(selectedAnnotation.id, { text: event.target.value })} /></label>}
       {selectedAnnotation && <button className={styles.danger} onClick={() => { removeSelectedAnnotation(); setToolSettingsOpen(false) }}>刪除註記</button>}
     </section></div>}

@@ -13,7 +13,7 @@ export type DrawingMarker = DrawingPoint & {
   createdAt: string; updatedAt: string; cropScale?: number
 }
 export type DrawingAnnotation = DrawingPoint & {
-  id: string; page: number; kind: 'cloud' | 'line' | 'arrow' | 'text' | 'rectangle' | 'ellipse'
+  id: string; page: number; kind: 'cloud' | 'line' | 'arrow' | 'text' | 'rectangle' | 'ellipse' | 'callout'
   endX: number; endY: number; text?: string; color: string; lineWidth: number; fontSize: number
 }
 export type DrawingDocument = {
