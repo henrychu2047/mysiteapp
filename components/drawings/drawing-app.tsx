@@ -466,11 +466,42 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     setSelectedAnnotationId(null)
   }
 
+  const resetGesture = useCallback(() => {
+    pointersRef.current.clear()
+    pinchRef.current = null
+    dragRef.current = null
+    setDraftAnnotation(null)
+  }, [])
+
+  useEffect(() => {
+    resetGesture()
+  }, [tool, markerDraft !== null, toolSettingsOpen, editingTextId, sidebarOpen, markerListOpen, drawingId, page, resetGesture])
+
+  useEffect(() => {
+    const endOutside = (event: PointerEvent) => {
+      if (pointersRef.current.has(event.pointerId)) resetGesture()
+    }
+    const onVisibility = () => { if (document.hidden) resetGesture() }
+    window.addEventListener('pointerup', endOutside)
+    window.addEventListener('pointercancel', endOutside)
+    window.addEventListener('blur', resetGesture)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pointerup', endOutside)
+      window.removeEventListener('pointercancel', endOutside)
+      window.removeEventListener('blur', resetGesture)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [resetGesture])
+
   const pointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!current) return
+    // A new primary touch means the previous physical touch sequence has ended.
+    // Discard missed releases before they can masquerade as a second finger.
+    if (event.isPrimary) resetGesture()
     event.currentTarget.setPointerCapture(event.pointerId)
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
-    if (pointersRef.current.size === 2) {
+    if (event.pointerType === 'touch' && pointersRef.current.size === 2) {
       dragRef.current = null
       setDraftAnnotation(null)
       const [a, b] = [...pointersRef.current.values()]
@@ -479,7 +510,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       const localX = (a.x + b.x) / 2 - (rect?.left || 0)
       const localY = (a.y + b.y) / 2 - (rect?.top || 0)
       pinchRef.current = {
-        distance: Math.hypot(a.x - b.x, a.y - b.y),
+        distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
         zoom,
         focusX: ((viewport?.scrollLeft || 0) + localX) / Math.max(scaledWidth, 1),
         focusY: ((viewport?.scrollTop || 0) + localY) / Math.max(scaledHeight, 1),
@@ -537,8 +568,9 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   }
 
   const pointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return
     if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
-    if (pointersRef.current.size >= 2 && pinchRef.current) {
+    if (event.pointerType === 'touch' && pointersRef.current.size === 2 && pinchRef.current) {
       const [a, b] = [...pointersRef.current.values()]
       const distance = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y))
       const nextZoom = clamp(pinchRef.current.zoom * distance / pinchRef.current.distance, 0.25, 4)
@@ -546,6 +578,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       setZoom(nextZoom)
       const pinch = pinchRef.current
       requestAnimationFrame(() => {
+        if (pinchRef.current !== pinch) return
         const viewport = viewportRef.current
         if (!viewport) return
         viewport.scrollLeft = pinch.focusX * canvasSize.width * nextZoom - pinch.localX
@@ -620,10 +653,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   }
 
   const cancelPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
-    pointersRef.current.delete(event.pointerId)
-    pinchRef.current = null
-    dragRef.current = null
-    setDraftAnnotation(null)
+    if (pointersRef.current.has(event.pointerId)) resetGesture()
   }
 
   const extractRooms = async (ocr: boolean) => {
@@ -787,7 +817,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         </div>
 
         <div className={styles.viewport} ref={viewportRef}>
-          <div className={styles.surface} ref={surfaceRef} style={{ width: scaledWidth, height: scaledHeight }} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={cancelPointer}>
+          <div className={styles.surface} ref={surfaceRef} style={{ width: scaledWidth, height: scaledHeight }} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={cancelPointer} onLostPointerCapture={cancelPointer}>
             <div className={styles.canvasHost} ref={canvasHostRef} />
             <svg className={styles.overlay} viewBox="0 0 1 1" preserveAspectRatio="none" aria-label={`第 ${page} 頁標記層`}>
               <defs><marker id="drawing-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 z" fill="context-stroke" /></marker></defs>
