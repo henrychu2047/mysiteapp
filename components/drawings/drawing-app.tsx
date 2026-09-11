@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  ArrowLeft, Camera, ChevronLeft, ChevronRight, Circle, Cloud, Download, Ellipsis,
+  ArrowLeft, Camera, Circle, Cloud, Download, Ellipsis,
   FileArchive, FileDown, FilePlus2, Grab, Images, MapPin, Minus, MousePointer2,
   PencilLine, Plus, Redo2, RotateCw, Save, ScanText, Search, Square, Trash2, Type,
   Undo2, ZoomIn, ZoomOut, ListChecks,
@@ -693,8 +693,11 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
 
   return <main className={styles.app}>
     <header className={styles.header}>
+      <div className={styles.headerIdentity}>
       <button className={styles.iconButton} onClick={() => void flushSave().then(onBack).catch(() => undefined)} aria-label="返回首頁"><ArrowLeft /></button>
       <div><p>DRAWING MARKUP</p><h1>圖紙標記</h1><span>{projectName}</span></div>
+      </div>
+      <output className={styles.zoomReadout} aria-label="圖紙縮放比例">{current ? `${Math.round(zoom * 100)}%` : ''}</output>
       <div className={styles.headerActions}>
         {current && <button className={styles.markerToggle} aria-label="問題標記" title="問題標記" aria-expanded={markerListOpen} onClick={() => { setMarkerListOpen(value => !value); setSidebarOpen(false) }}><ListChecks /></button>}
         <button className={`${styles.saveState} ${saveState === 'error' ? styles.error : ''}`} onClick={() => void flushSave().catch(() => undefined)} disabled={!dirtyRef.current || saveState === 'saving' || saveState === 'loading'} title={saveState === 'error' ? '按此重試保存' : undefined}><Save />{saveState === 'loading' ? '載入中' : saveState === 'saving' ? '保存中' : saveState === 'error' ? '保存失敗（重試）' : '已保存'}</button>
@@ -767,7 +770,6 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
           </div>
           {busy && <div className={styles.busy} role="status"><span />{busy}{ocrProgress !== null && ` ${Math.round(ocrProgress <= 1 ? ocrProgress * 100 : ocrProgress)}%`}{ocrProgress !== null && <button onClick={() => ocrAbortRef.current?.abort()}>取消</button>}</div>}
         </div>
-        <div className={styles.pageControls}><button disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft /></button><span>第 {page} / {current.pageCount} 頁 · {Math.round(zoom * 100)}%</span><button disabled={page >= current.pageCount} onClick={() => setPage(value => value + 1)}><ChevronRight /></button></div>
       </section>
 
       {markerListOpen && <button className={styles.panelDismiss} aria-label="關閉問題標記" onClick={() => setMarkerListOpen(false)} />}

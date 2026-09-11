@@ -35,7 +35,8 @@
 
 .header {
   min-height: 68px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   padding: max(10px, env(safe-area-inset-top)) 16px 10px;
@@ -44,11 +45,14 @@
   box-shadow: 0 2px 12px rgba(18,33,29,.06);
 }
 
-.header > div:nth-child(2) { min-width: 0; }
+.headerIdentity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.headerIdentity > div { min-width: 0; }
+.headerIdentity .iconButton { flex-shrink: 0; }
+.zoomReadout { text-align: center; white-space: nowrap; font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
 .header p, .markerEditor p, .manager p { margin: 0; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
 .header h1 { margin: 1px 0 0; font-size: 19px; line-height: 1.1; }
 .header span { display: block; max-width: 240px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.headerActions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.headerActions { min-width: 0; margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
 .headerActions button, .primary, .app button.primary {
   display: inline-flex;
   align-items: center;
@@ -117,10 +121,6 @@
 .busy span { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .8s linear infinite; }
 .busy button { border: 0; color: white; background: transparent; text-decoration: underline; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.pageControls { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 16px; border-top: 1px solid var(--line); background: white; color: var(--muted); font-size: 11px; font-weight: 750; }
-.pageControls button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 8px; color: var(--ink); background: #edf2f0; }
-.pageControls button:disabled { opacity: .35; }
-.pageControls svg { width: 16px; }
 
 .markers { padding: 14px 12px 12px 18px; }
 .markerHeading { display: flex; align-items: center; justify-content: space-between; }
@@ -213,7 +213,9 @@
 
 @media (max-width: 600px) {
   .header h1 { font-size: 16px; }
-  .header p, .header > div:nth-child(2) > span { display: none; }
+  .header p, .headerIdentity > div > span { display: none; }
+  .header, .headerIdentity { gap: 6px; }
+  .header h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .headerActions .primary { width: 38px; padding: 0; font-size: 0; }
   .formGrid { grid-template-columns: 1fr; }
   .formGrid .full { grid-column: auto; }
@@ -230,7 +232,6 @@
 .markerToggle[aria-expanded="true"] { color: var(--accent); background: #e8f7f1; }
 .editor .viewport { order: 0; padding-top: 64px; }
 .editor .properties { position: static; order: 1; flex-shrink: 0; }
-.editor .pageControls { order: 2; flex-shrink: 0; }
 .editor .toolbar { order: 3; flex-shrink: 0; margin: 8px 12px max(10px, env(safe-area-inset-bottom)); padding: 10px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.96); box-shadow: 0 4px 20px #12211d22; }
 .toolGroup { flex-shrink: 0; }
 .toolGroup button { min-height: 44px; min-width: 44px; }
