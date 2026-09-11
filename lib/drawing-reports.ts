@@ -1,22 +1,13 @@
 import type { DrawingAnnotation, DrawingDocument, DrawingMarker } from '@/lib/drawing-types'
 import type { Photo } from '@/lib/photo-storage'
+import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 
-type DrawingPdfPage = {
-  rotate?: number
-  getViewport: (options: { scale: number; rotation?: number }) => { width: number; height: number }
-  cleanup?: () => void
-}
-
-type DrawingPdf = {
-  numPages: number
-  getPage: (pageNumber: number) => Promise<DrawingPdfPage>
-  cleanup?: () => void
-  destroy?: () => Promise<void> | void
-}
+type DrawingPdf = PDFDocumentProxy
+type DrawingPdfPage = PDFPageProxy
 
 type DrawingPdfTools = {
   loadDrawingPdf: (blob: Blob) => Promise<DrawingPdf>
-  renderDrawingPage: (pdf: DrawingPdf, page: DrawingPdfPage, options?: { maxDimension?: number; rotation?: number; signal?: AbortSignal }) => Promise<HTMLCanvasElement>
+  renderDrawingPage: (pdf: DrawingPdf, page: number, options?: { maxDimension?: number; rotation?: number; signal?: AbortSignal }) => Promise<HTMLCanvasElement>
 }
 
 type ReportMarker = DrawingMarker & { cropScale: number }
@@ -200,7 +191,8 @@ function toNaturalOrientation(canonical: HTMLCanvasElement, rotation: number) {
 
 async function drawingPdfTools() {
   // Terra's drawing-pdf module owns PDF.js worker configuration and page rendering.
-  return import('@/lib/drawing-pdf') as Promise<DrawingPdfTools>
+  const tools = await import('@/lib/drawing-pdf')
+  return { loadDrawingPdf: tools.loadDrawingPdf, renderDrawingPage: tools.renderDrawingPage } satisfies DrawingPdfTools
 }
 
 function downloadBlob(blob: Blob, fileName: string) {
@@ -220,7 +212,7 @@ async function shareOrDownload(blob: Blob, fileName: string, title: string) {
 
 async function renderCanonicalPage(pdf: DrawingPdf, pageNumber: number, tools: DrawingPdfTools) {
   const page = await pdf.getPage(pageNumber)
-  const canvas = await tools.renderDrawingPage(pdf, page, { maxDimension: MAX_PAGE_RENDER, rotation: 0 })
+  const canvas = await tools.renderDrawingPage(pdf, pageNumber, { maxDimension: MAX_PAGE_RENDER, rotation: 0 })
   const viewport = page.getViewport({ scale: 1, rotation: 0 })
   return { page, canvas, width: viewport.width, height: viewport.height }
 }
@@ -311,7 +303,7 @@ async function buildReportItems(drawing: DrawingDocument, markers: ReportMarker[
     return items
   } finally {
     pages.forEach(value => value.page.cleanup?.())
-    await pdf.destroy?.()
+    pdf.cleanup()
   }
 }
 
@@ -459,7 +451,7 @@ async function exportMarkedDrawingPdfBlob(drawing: DrawingDocument, status?: (va
     }
     if (!output) throw new Error('圖紙沒有可匯出的頁面')
     return output.output('blob') as Blob
-  } finally { await pdf.destroy?.() }
+  } finally { pdf.cleanup() }
 }
 
 export async function exportMarkedDrawingPdf(drawing: DrawingDocument): Promise<void> {
