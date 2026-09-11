@@ -1,5 +1,6 @@
 allowBuilds:
   core-js: false
+  tesseract.js: false
 overrides:
   browserslist: 4.28.7
   nanoid: 3.3.18
