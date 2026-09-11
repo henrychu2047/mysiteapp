@@ -3,13 +3,14 @@
 import {
   ArrowLeft, Camera, Circle, Cloud, Download, Ellipsis,
   FileArchive, FileDown, FilePlus2, Grab, Images, MapPin, Minus, MousePointer2,
-  PencilLine, Plus, Redo2, RotateCw, Save, ScanText, Search, Square, Trash2, Type,
+  PencilLine, Plus, Redo2, RotateCw, Save, ScanText, Search, Square, Tags, Trash2, Type,
   Undo2, ZoomIn, ZoomOut, ListChecks,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api'
 import type { DrawingAnnotation, DrawingDocument, DrawingMarker, DrawingPoint, DrawingRoomLabel } from '@/lib/drawing-types'
 import { createId, hydratePhoto, saveStoredPhoto, type Photo } from '@/lib/photo-storage'
+import type { PhotoSource } from '@/lib/photo-attachments'
 import { deleteDrawing, describeDrawingStorageError, loadProjectDrawings, saveDrawing, saveDrawings } from '@/lib/drawing-storage'
 import { SMART_TAG_KEYS } from '@/lib/project-settings'
 import styles from './drawing.module.css'
@@ -25,7 +26,7 @@ type Props = {
   defaultTags: Record<string, string>
   photos: Photo[]
   onSelectAlbumPhotos: (onSelect: (photoIds: string[]) => void) => void
-  onOpenCamera: (onCapture: (photoId: string) => void, initialCategory?: string) => void
+  onOpenCamera: (onCapture: (photo: PhotoSource) => void, initialCategory?: string) => void
   onRestorePhotos: (photos: Photo[]) => void
   onBack: () => void
 }
@@ -129,6 +130,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const [annotationWidth, setAnnotationWidth] = useState(3)
   const [annotationFontSize, setAnnotationFontSize] = useState(18)
   const [toolSettingsOpen, setToolSettingsOpen] = useState(false)
+  const [markerMode, setMarkerMode] = useState<'camera' | 'smart'>('camera')
   const viewportRef = useRef<HTMLDivElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const canvasHostRef = useRef<HTMLDivElement>(null)
@@ -367,7 +369,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     return displayToCanonical({ x: clamp((event.clientX - rect.left) / rect.width), y: clamp((event.clientY - rect.top) / rect.height) }, viewRotation)
   }
 
-  const openNewMarker = async (point: DrawingPoint) => {
+  const openNewMarker = async (point: DrawingPoint, mode = markerMode) => {
     if (!current) return
     let suggestions: DrawingRoomLabel[] = []
     try {
@@ -375,7 +377,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       suggestions = suggestDrawingRooms(current.roomLabels, page, point, 5)
     } catch { /* marker creation remains available without suggestions */ }
     setNearbyRooms(suggestions)
-    setMarkerDraft({
+    const draft: MarkerDraft = {
       ...point,
       page,
       roomName: suggestions[0]?.text || '',
@@ -384,7 +386,18 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       note: '',
       photoIds: [],
       cropScale: 1,
-    })
+    }
+    if (mode === 'camera') {
+      onOpenCamera(photo => setMarkerDraft(currentDraft => ({
+        ...(currentDraft || draft),
+        photoIds: Array.from(new Set([...(currentDraft?.photoIds || draft.photoIds), photo.id])),
+        category: photo.category || draft.category,
+        tags: { ...draft.tags, ...photo.tags },
+        note: photo.note || draft.note,
+      })), draft.category)
+      return
+    }
+    setMarkerDraft(draft)
   }
 
   const openExistingMarker = (marker: DrawingMarker) => {
@@ -720,7 +733,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
           <div className={styles.toolGroup}>
             <button className={tool === 'pan' ? styles.active : ''} onClick={() => setTool('pan')} title="平移"><Grab /></button>
             <button className={tool === 'select' ? styles.active : ''} onClick={() => setTool('select')} title="選取"><MousePointer2 /></button>
-            <button className={tool === 'marker' ? styles.active : ''} onClick={() => setTool('marker')} title="問題標記"><MapPin /></button>
+            <span className={styles.toolPair}><button className={tool === 'marker' ? styles.active : ''} onClick={() => { setTool('marker'); setMarkerMode('camera') }} title="拍攝問題標記"><MapPin /></button>{tool === 'marker' && <button title="直接輸入 Smart Tag" aria-label="直接輸入 Smart Tag" onClick={() => { setMarkerMode('smart'); setNotice('請點按圖紙位置輸入 Smart Tag') }}><Tags /></button>}</span>
             {annotationTools.map(({ id, label, icon: Icon }) => <span key={id} className={styles.toolPair}><button className={tool === id ? styles.active : ''} onClick={() => { setTool(id); setSelectedAnnotationId(null); setToolSettingsOpen(false) }} title={label} aria-label={label} aria-pressed={tool === id}><Icon /></button>{tool === id && <button title={label + '設定'} aria-label={label + '設定'} aria-expanded={toolSettingsOpen} onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation?.color || annotationColor }} /></button>}</span>)}
             {selectedAnnotation && !annotationTools.some(item => item.id === tool) && <button aria-label="註記設定" title="註記設定" onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation.color }} /></button>}
           </div>
@@ -807,7 +820,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         {SMART_TAG_KEYS.map(key => <label key={key}>{key}<input list={`drawing-tag-${key}`} value={markerDraft.tags[key] || ''} onChange={event => setMarkerDraft(value => value && ({ ...value, tags: { ...value.tags, [key]: event.target.value } }))} placeholder="選擇或輸入自訂項目" /><datalist id={`drawing-tag-${key}`}>{(key === '位置' && markerDraft.tags['樓層'] ? smartTagOptions[`位置:${markerDraft.tags['樓層']}`] || smartTagOptions[key] : smartTagOptions[key] || []).map(option => <option key={option} value={option} />)}<option value="N/A" /></datalist></label>)}
         <label className={styles.full}>文字備註<textarea value={markerDraft.note} onChange={event => setMarkerDraft(value => value && ({ ...value, note: event.target.value }))} rows={3} /></label>
       </div>
-      <div className={styles.photoLinks}><div><strong>已連結相片</strong><span>{markerDraft.photoIds.length} 張</span></div><div className={styles.linkedPhotos}>{markerDraft.photoIds.map(id => { const photo = photos.find(item => item.id === id); return <figure key={id}>{photo ? <img src={photo.src} alt={photo.category} /> : <span>相片遺失</span>}<button onClick={() => setMarkerDraft(value => value && ({ ...value, photoIds: value.photoIds.filter(photoId => photoId !== id) }))}>×</button></figure> })}</div><div className={styles.photoActions}><button onClick={() => onOpenCamera(id => setMarkerDraft(value => value && ({ ...value, photoIds: value.photoIds.includes(id) ? value.photoIds : [...value.photoIds, id] })), markerDraft.category)}><Camera />拍攝補充</button><button onClick={() => onSelectAlbumPhotos(ids => setMarkerDraft(value => value && ({ ...value, photoIds: [...new Set([...value.photoIds, ...ids])] })))}><Images />從相簿選取</button></div></div>
+      <div className={styles.photoLinks}><div><strong>已連結相片</strong><span>{markerDraft.photoIds.length} 張</span></div><div className={styles.linkedPhotos}>{markerDraft.photoIds.map(id => { const photo = photos.find(item => item.id === id); return <figure key={id}>{photo ? <img src={photo.src} alt={photo.category} /> : <span>相片遺失</span>}<button onClick={() => setMarkerDraft(value => value && ({ ...value, photoIds: value.photoIds.filter(photoId => photoId !== id) }))}>×</button></figure> })}</div><div className={styles.photoActions}><button onClick={() => onOpenCamera(photo => setMarkerDraft(value => value && ({ ...value, photoIds: value.photoIds.includes(photo.id) ? value.photoIds : [...value.photoIds, photo.id], category: photo.category || value.category, tags: { ...value.tags, ...photo.tags }, note: photo.note || value.note })), markerDraft.category)}><Camera />拍攝補充</button><button onClick={() => onSelectAlbumPhotos(ids => setMarkerDraft(value => value && ({ ...value, photoIds: [...new Set([...value.photoIds, ...ids])] })))}><Images />從相簿選取</button></div></div>
       <footer>{markerDraft.id ? <button className={styles.danger} onClick={deleteMarkerRecord}><Trash2 />刪除標記</button> : <span />}<div><button onClick={() => setMarkerDraft(null)}>取消</button><button className={styles.primary} onClick={saveMarker}>保存標記</button></div></footer>
     </section></div>}
 
