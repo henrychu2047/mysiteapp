@@ -793,7 +793,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
                   {annotation.kind === 'rectangle' && <rect {...common} x={x} y={y} width={width} height={height} />}
                   {annotation.kind === 'cloud' && <path {...common} d={cloudPath(x, y, width, height)} strokeLinecap="round" strokeLinejoin="round" />}
                   {annotation.kind === 'ellipse' && <ellipse {...common} cx={x + width / 2} cy={y + height / 2} rx={width / 2} ry={height / 2} />}
-                  {annotation.kind === 'text' && <text data-annotation-id={annotation.id} x={start.x} y={start.y} fill={annotation.color} fontSize={annotation.fontSize / Math.max(canvasSize.height, 1)} dominantBaseline="hanging" className={selected ? styles.selectedText : undefined}>{annotation.text}</text>}
+                  {annotation.kind === 'text' && <text data-annotation-id={annotation.id} x={start.x} y={start.y} fill={annotation.color} fontSize={annotation.fontSize / Math.max(scaledHeight, 1)} dominantBaseline="hanging" className={selected ? styles.selectedText : undefined}>{annotation.text}</text>}
                   {selected && annotation.kind !== 'text' && <><circle data-annotation-id={annotation.id} data-handle="start" cx={start.x} cy={start.y} r={7 / Math.max(scaledWidth, scaledHeight) * 2} className={styles.handle} /><circle data-annotation-id={annotation.id} data-handle="end" cx={end.x} cy={end.y} r={7 / Math.max(scaledWidth, scaledHeight) * 2} className={styles.handle} /></>}
                 </g>
               })}
