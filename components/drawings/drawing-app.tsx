@@ -4,7 +4,7 @@ import {
   ArrowLeft, Camera, ChevronLeft, ChevronRight, Circle, Cloud, Download, Ellipsis,
   FileArchive, FileDown, FilePlus2, Grab, Images, MapPin, Minus, MousePointer2,
   PencilLine, Plus, Redo2, RotateCw, Save, ScanText, Search, Square, Trash2, Type,
-  Undo2, ZoomIn, ZoomOut,
+  Undo2, ZoomIn, ZoomOut, ListChecks,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api'
@@ -121,8 +121,8 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState('')
   const [ocrProgress, setOcrProgress] = useState<number | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [markerListOpen, setMarkerListOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [markerListOpen, setMarkerListOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [managerOpen, setManagerOpen] = useState(false)
   const [annotationColor, setAnnotationColor] = useState('#ef4444')
@@ -622,6 +622,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   }, [current, filterCategory, filterPage, query])
 
   const jumpToMarker = (marker: DrawingMarker) => {
+    setMarkerListOpen(false)
     setPage(marker.page)
     setTool('marker')
     window.setTimeout(() => openExistingMarker(marker), 100)
@@ -694,6 +695,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       <button className={styles.iconButton} onClick={() => void flushSave().then(onBack).catch(() => undefined)} aria-label="返回首頁"><ArrowLeft /></button>
       <div><p>DRAWING MARKUP</p><h1>圖紙標記</h1><span>{projectName}</span></div>
       <div className={styles.headerActions}>
+        {current && <button className={styles.markerToggle} aria-label="問題標記" title="問題標記" aria-expanded={markerListOpen} onClick={() => { setMarkerListOpen(value => !value); setSidebarOpen(false) }}><ListChecks /></button>}
         <button className={`${styles.saveState} ${saveState === 'error' ? styles.error : ''}`} onClick={() => void flushSave().catch(() => undefined)} disabled={!dirtyRef.current || saveState === 'saving' || saveState === 'loading'} title={saveState === 'error' ? '按此重試保存' : undefined}><Save />{saveState === 'loading' ? '載入中' : saveState === 'saving' ? '保存中' : saveState === 'error' ? '保存失敗（重試）' : '已保存'}</button>
         <button onClick={() => setManagerOpen(true)}>管理圖紙</button>
         <button className={styles.primary} onClick={() => fileInputRef.current?.click()}><FilePlus2 />匯入 PDF</button>
@@ -708,12 +710,8 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       <button className={styles.primary} onClick={() => fileInputRef.current?.click()}>選擇 PDF</button>
       <div><button onClick={() => restoreInputRef.current?.click()}><FileArchive />從圖紙 ZIP 還原</button></div>
     </section> : <div className={styles.workspace}>
-      <aside className={`${styles.pages} ${sidebarOpen ? '' : styles.collapsed}`}>
-        <button className={styles.collapse} onClick={() => setSidebarOpen(value => !value)}>{sidebarOpen ? <ChevronLeft /> : <ChevronRight />}</button>
-        {sidebarOpen && <><strong>{current.name}</strong><small>{current.pageCount} 頁</small><div className={styles.thumbnailList}>{pdf && Array.from({ length: current.pageCount }, (_, index) => <Thumbnail key={index + 1} pdf={pdf} page={index + 1} active={page === index + 1} onClick={() => setPage(index + 1)} />)}</div></>}
-      </aside>
-
       <section className={styles.editor}>
+        <button className={styles.pageBadge} aria-label={`第 ${page} 頁，共 ${current.pageCount} 頁；開啟頁面預覽`} aria-expanded={sidebarOpen} onClick={() => { setSidebarOpen(true); setMarkerListOpen(false) }}>{page} / {current.pageCount}</button>
         <div className={styles.toolbar}>
           <div className={styles.toolGroup}>
             <button className={tool === 'pan' ? styles.active : ''} onClick={() => setTool('pan')} title="平移"><Grab /></button>
@@ -777,11 +775,20 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         <div className={styles.pageControls}><button disabled={page <= 1} onClick={() => setPage(value => value - 1)}><ChevronLeft /></button><span>第 {page} / {current.pageCount} 頁 · {Math.round(zoom * 100)}%</span><button disabled={page >= current.pageCount} onClick={() => setPage(value => value + 1)}><ChevronRight /></button></div>
       </section>
 
-      <aside className={`${styles.markers} ${markerListOpen ? '' : styles.collapsed}`}>
-        <button className={styles.collapse} onClick={() => setMarkerListOpen(value => !value)}>{markerListOpen ? <ChevronRight /> : <ChevronLeft />}</button>
+      {markerListOpen && <button className={styles.panelDismiss} aria-label="關閉問題標記" onClick={() => setMarkerListOpen(false)} />}
+      <aside className={`${styles.markers} ${markerListOpen ? '' : styles.collapsed}`} aria-label="問題標記列表">
+        <button className={styles.collapse} aria-label="關閉問題標記" onClick={() => setMarkerListOpen(false)}>×</button>
         {markerListOpen && <><div className={styles.markerHeading}><div><strong>問題標記</strong><small>{filteredMarkers.length} / {current.markers.length}</small></div><button onClick={() => setTool('marker')}><Plus /></button></div><label className={styles.search}><Search /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜尋房間、標籤、備註" /></label><div className={styles.filters}><select value={filterPage} onChange={event => setFilterPage(event.target.value === 'all' ? 'all' : Number(event.target.value))}><option value="all">全部頁面</option>{Array.from({ length: current.pageCount }, (_, index) => <option key={index + 1} value={index + 1}>第 {index + 1} 頁</option>)}</select><select value={filterCategory} onChange={event => setFilterCategory(event.target.value)}><option value="">全部類別</option>{categories.map(category => <option key={category}>{category}</option>)}</select></div><div className={styles.markerList}>{filteredMarkers.map(marker => <button key={marker.id} onClick={() => jumpToMarker(marker)}><b>{marker.number}</b><span><strong>{marker.roomName || '未指定房間'}</strong><small>第 {marker.page} 頁 · {marker.category || '未分類'} · {marker.photoIds.length} 張相片</small></span></button>)}{!filteredMarkers.length && <p>未找到標記。選擇圖釘工具後點按圖紙即可新增。</p>}</div></>}
       </aside>
     </div>}
+
+    {sidebarOpen && current && <div className={styles.modalBackdrop} onClick={() => setSidebarOpen(false)}><section className={`${styles.manager} ${styles.pagePicker}`} role="dialog" aria-modal="true" aria-label="頁面快選與預覽" onClick={event => event.stopPropagation()}>
+      <header><h2>頁面預覽</h2><button aria-label="關閉頁面預覽" onClick={() => setSidebarOpen(false)}>×</button></header>
+      <form className={styles.pageJump} onSubmit={event => { event.preventDefault(); const value = Number(new FormData(event.currentTarget).get('page')); if (Number.isInteger(value) && value >= 1 && value <= current.pageCount) { setPage(value); setSidebarOpen(false) } }}>
+        <label>前往頁數<input name="page" type="number" inputMode="numeric" min="1" max={current.pageCount} defaultValue={page} required /></label><span>/ {current.pageCount}</span><button className={styles.primary} type="submit">前往</button>
+      </form>
+      <div className={styles.previewGrid}>{pdf && Array.from({ length: current.pageCount }, (_, index) => <Thumbnail key={index + 1} pdf={pdf} page={index + 1} active={page === index + 1} onClick={() => { setPage(index + 1); setSidebarOpen(false) }} />)}</div>
+    </section></div>}
 
     {markerDraft && <div className={styles.modalBackdrop} onClick={() => setMarkerDraft(null)}><section className={styles.markerEditor} onClick={event => event.stopPropagation()}>
       <header><div><p>ISSUE MARKER</p><h2>{markerDraft.id ? '編輯問題標記' : '新增問題標記'}</h2></div><button onClick={() => setMarkerDraft(null)}>×</button></header>

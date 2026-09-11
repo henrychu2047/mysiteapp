@@ -21,6 +21,7 @@
 .app textarea { font: inherit; }
 
 .app button { cursor: pointer; }
+.app button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 .header {
   min-height: 68px;
@@ -60,7 +61,7 @@
 .saveState svg { width: 14px; height: 14px; }
 .saveState.error { color: #b42318 !important; }
 
-.workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 122px minmax(0,1fr) 286px; }
+.workspace { position: relative; flex: 1; min-height: 0; display: flex; }
 .pages, .markers { position: relative; min-width: 0; overflow: hidden; border-right: 1px solid var(--line); background: #f9fbfa; }
 .markers { border-right: 0; border-left: 1px solid var(--line); }
 .pages.collapsed, .markers.collapsed { width: 28px; }
@@ -78,7 +79,7 @@
 .thumbnail span { position: absolute; right: 6px; bottom: 5px; min-width: 20px; padding: 2px 5px; border-radius: 9px; color: white; background: rgba(0,0,0,.65); font-size: 10px; }
 .activeThumbnail { border-color: var(--accent); }
 
-.editor { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.editor { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .toolbar { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 10px; overflow-x: auto; border-bottom: 1px solid var(--line); background: white; }
 .toolGroup { display: flex; align-items: center; gap: 3px; padding-right: 8px; border-right: 1px solid var(--line); }
 .toolGroup:last-child { border: 0; }
@@ -186,7 +187,7 @@
 
 @media (max-width: 900px) {
   .header { min-height: 60px; padding-left: 9px; padding-right: 9px; }
-  .headerActions > button:not(.primary), .saveState { display: none !important; }
+  .headerActions > button:not(.primary):not(.markerToggle), .saveState { display: none !important; }
   .headerActions .primary { padding: 0 10px; font-size: 11px; }
   .workspace { grid-template-columns: 28px minmax(0,1fr) 28px; }
   .pages:not(.collapsed), .markers:not(.collapsed) { position: absolute; z-index: 20; top: 60px; bottom: 0; width: min(280px, 82vw); box-shadow: 8px 0 24px rgba(0,0,0,.18); }
@@ -212,3 +213,28 @@
   .photoActions { display: grid; grid-template-columns: 1fr 1fr; }
   .photoActions button { justify-content: center; }
 }
+
+/* Keep document navigation above the canvas and tools docked below it. */
+.header { flex-shrink: 0; }
+.headerActions .markerToggle { display: inline-flex !important; width: 40px; padding: 0; }
+.markerToggle[aria-expanded="true"] { color: var(--accent); background: #e8f7f1; }
+.editor .viewport { order: 0; padding-top: 64px; }
+.editor .properties { position: static; order: 1; flex-shrink: 0; }
+.editor .pageControls { order: 2; flex-shrink: 0; }
+.editor .toolbar { order: 3; flex-shrink: 0; margin: 8px 12px max(10px, env(safe-area-inset-bottom)); padding: 10px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.96); box-shadow: 0 4px 20px #12211d22; }
+.toolGroup { flex-shrink: 0; }
+.toolGroup button { min-height: 44px; min-width: 44px; }
+.pageBadge { position: absolute; z-index: 10; top: 14px; left: 14px; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 24px; background: #fffffff2; color: var(--ink); box-shadow: 0 3px 14px #12211d22; font-weight: 750 !important; }
+.panelDismiss { position: absolute; inset: 0; z-index: 19; border: 0; background: #12211d44; }
+.workspace .markers:not(.collapsed) { position: absolute; z-index: 20; top: 0; right: 0; bottom: 0; width: min(340px, 90%); padding: 42px 16px 16px; box-shadow: -8px 0 24px #12211d22; }
+.workspace .markers.collapsed { display: none; }
+.markers .collapse { left: auto; right: 10px; width: 34px; height: 34px; font-size: 24px; }
+.pagePicker { display: flex; flex-direction: column; max-height: 85dvh; }
+.pageJump { display: flex; align-items: center; flex-shrink: 0; gap: 10px; padding: 16px; }
+.pageJump label { display: flex; align-items: center; gap: 8px; }
+.pageJump input { width: 72px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 16px; }
+.previewGrid { min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 14px; padding: 16px; overscroll-behavior: contain; }
+.previewGrid .thumbnail { min-height: 140px; }
+.previewGrid .thumbnail div { height: 140px; }
+.previewGrid canvas { max-height: 140px; width: auto; }
+.notice { bottom: max(100px, calc(env(safe-area-inset-bottom) + 90px)); }
