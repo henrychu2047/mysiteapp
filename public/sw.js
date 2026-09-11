@@ -34,6 +34,18 @@ self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
   const isDocument = request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')
+  // Fixed worker URLs must be refreshed online so updated PDF.js bundles do not
+  // run against an older worker. Keep the last successful copy for offline use.
+  if (new URL(request.url).pathname.startsWith('/drawing/')) {
+    event.respondWith(fetch(request, { cache: 'no-cache' }).then(async (response) => {
+      if (response.ok) {
+        const cache = await caches.open(CACHE_NAME)
+        await cache.put(request, response.clone())
+      }
+      return response
+    }).catch(async () => (await caches.match(request)) || Response.error()))
+    return
+  }
   const isStaticResource = STATIC_RESOURCE.test(new URL(request.url).pathname) || new URL(request.url).pathname === '/manifest.webmanifest'
   if (isDocument) {
     event.respondWith(
