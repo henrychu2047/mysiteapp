@@ -2,7 +2,7 @@
 
 import {
   ArrowLeft, Camera, Circle, Cloud, Download, Ellipsis,
-  FileArchive, FileDown, FilePlus2, Grab, Images, MapPin, Minus, MousePointer2,
+  FileArchive, FileDown, FilePlus2, Grab, Images, Minus, MousePointer2,
   PencilLine, Plus, Redo2, RotateCw, Save, ScanText, Search, Square, Tags, Trash2, Type,
   Undo2, ListChecks,
 } from 'lucide-react'
@@ -733,7 +733,8 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
           <div className={styles.toolGroup}>
             <button className={tool === 'pan' ? styles.active : ''} onClick={() => setTool('pan')} title="平移"><Grab /></button>
             <button className={tool === 'select' ? styles.active : ''} onClick={() => setTool('select')} title="選取"><MousePointer2 /></button>
-            <span className={styles.toolPair}><button className={tool === 'marker' ? styles.active : ''} onClick={() => { setTool('marker'); setMarkerMode('camera') }} title="拍攝問題標記"><MapPin /></button>{tool === 'marker' && <button title="直接輸入 Smart Tag" aria-label="直接輸入 Smart Tag" onClick={() => { setMarkerMode('smart'); setNotice('請點按圖紙位置輸入 Smart Tag') }}><Tags /></button>}</span>
+            <button className={tool === 'marker' && markerMode === 'camera' ? styles.active : ''} onClick={() => { setTool('marker'); setMarkerMode('camera') }} title="相機問題標記" aria-label="相機問題標記" aria-pressed={tool === 'marker' && markerMode === 'camera'}><Camera /></button>
+            <button className={tool === 'marker' && markerMode === 'smart' ? styles.active : ''} onClick={() => { setTool('marker'); setMarkerMode('smart'); setNotice('請點按圖紙位置輸入 Smart Tag') }} title="Smart Tag 問題標記" aria-label="Smart Tag 問題標記" aria-pressed={tool === 'marker' && markerMode === 'smart'}><Tags /></button>
             {annotationTools.map(({ id, label, icon: Icon }) => <span key={id} className={styles.toolPair}><button className={tool === id ? styles.active : ''} onClick={() => { setTool(id); setSelectedAnnotationId(null); setToolSettingsOpen(false) }} title={label} aria-label={label} aria-pressed={tool === id}><Icon /></button>{tool === id && <button title={label + '設定'} aria-label={label + '設定'} aria-expanded={toolSettingsOpen} onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation?.color || annotationColor }} /></button>}</span>)}
             {selectedAnnotation && !annotationTools.some(item => item.id === tool) && <button aria-label="註記設定" title="註記設定" onClick={() => setToolSettingsOpen(true)}><span className={styles.colorDot} style={{ backgroundColor: selectedAnnotation.color }} /></button>}
           </div>
