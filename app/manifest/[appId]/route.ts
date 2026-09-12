@@ -25,7 +25,10 @@ export function GET(_request: Request, context: { params: Promise<{ appId: strin
       background_color: '#eef2f4',
       theme_color: '#15212b',
       description: '離線使用的地盤工程記錄工具',
-      icons: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any maskable' }],
-    })
+      icons: [
+        { src: '/apple-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any maskable' },
+        { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      ],
+    }, { headers: { 'Content-Type': 'application/manifest+json' } })
   })
 }

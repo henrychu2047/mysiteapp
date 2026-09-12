@@ -54,7 +54,7 @@
 ### 離線及版本更新
 - Service Worker 支援離線載入。
 - HTML 採 Network First；Next.js 靜態資源採 Cache First。
-- 每次部署更新 Cache 名稱並清理舊快取。
+- 使用固定快取名稱配合內容雜湊資源；Service Worker 啟用時會清理其他舊快取。
 - 偵測到新版本時顯示提示；「資料」頁的「更新 App」會先備份，再更新快取及重新載入。
 
 ## 技術架構

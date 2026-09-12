@@ -45,7 +45,8 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   const swipeOffsetRef = useRef(0)
   const [swipeEntryId, setSwipeEntryId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState(0)
-  const loadedProjectRef = useRef<string | null>(null)
+  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null)
+  const notebookLoadFailedRef = useRef(false)
   const preferencesLoadPendingRef = useRef(false)
 
   useEffect(() => {
@@ -72,15 +73,20 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
   }, [projectId, quickMode, pullToAddEnabled])
 
   useEffect(() => {
+    setLoadedProjectId(null)
+    notebookLoadFailedRef.current = false
     try {
       setEntries(loadNotebook(projectId))
       setSaveError('')
-    } catch { setEntries([]) }
-    loadedProjectRef.current = projectId
+      setLoadedProjectId(projectId)
+    } catch {
+      notebookLoadFailedRef.current = true
+      setSaveError('記事簿資料讀取失敗，為保護原有資料暫停自動保存')
+    }
   }, [projectId])
 
   useEffect(() => {
-    if (loadedProjectRef.current !== projectId) return
+    if (loadedProjectId !== projectId || notebookLoadFailedRef.current) return
     try {
       saveNotebook(projectId, entries)
       setSaveError('')
@@ -88,7 +94,7 @@ export function Notebook({ projectId, projectName, onBack, onNavigate, photoSour
       console.error('記事簿保存失敗:', error)
       setSaveError('記事簿保存失敗，請檢查裝置儲存空間')
     }
-  }, [entries, projectId])
+  }, [entries, loadedProjectId, projectId])
 
   const addEntry = () => {
     const value = text.trim()

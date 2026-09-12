@@ -54,6 +54,11 @@ function initialModeForApp(appId: keyof typeof APP_MANIFESTS) {
   return appId === 'site-memo' ? 'memo' : appId === 'handover' ? 'handover' : appId === 'notebook' ? 'notebook' : appId === 'database' ? 'database' : appId === 'camera' ? 'photo' : 'home'
 }
 
+function formatStorageSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function Page() {
   const pathname = usePathname()
   const APP_ID = getAppIdFromPath(pathname) || DEFAULT_APP_ID
@@ -93,6 +98,7 @@ export default function Page() {
   const [newOption, setNewOption] = useState<Record<string, string>>({})
   const [settingsReady, setSettingsReady] = useState(false)
   const [projectsLoaded, setProjectsLoaded] = useState(false)
+  const [projectsLoadFailed, setProjectsLoadFailed] = useState(false)
   const [tags, setTags] = useState<Record<string, string>>({})
   const [note, setNote] = useState('')
   const [noteHistory, setNoteHistory] = useState<string[]>([])
@@ -169,12 +175,16 @@ export default function Page() {
         localStorage.removeItem('site-photo-memory'); localStorage.removeItem('site-photo-options'); localStorage.removeItem('site-photo-note-history')
       }
       if (!localStorage.getItem(PROJECTS_KEY)) setFirstLaunch(true)
-    } catch { /* 儲存空間不可用時仍可繼續拍攝 */ }
+    } catch {
+      setProjectsLoadFailed(true)
+      setSaveState('error')
+      setSaveToast('本機 Project 資料無法讀取，為保護原有資料暫停自動保存')
+    }
     setProjectsLoaded(true)
     setSettingsReady(true)
   }, [])
   useEffect(() => {
-    if (!settingsReady || !photosReady || !projectsLoaded) return
+    if (!settingsReady || !photosReady || !projectsLoaded || projectsLoadFailed) return
     try {
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects))
       localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId)
@@ -187,7 +197,7 @@ export default function Page() {
       setSaveToast(describePhotoStorageError(error))
       window.setTimeout(() => setSaveToast(''), 4000)
     }
-  }, [settingsReady, photosReady, projectsLoaded, projects, currentProjectId])
+  }, [settingsReady, photosReady, projectsLoaded, projectsLoadFailed, projects, currentProjectId])
   useEffect(() => { photosRef.current = photos }, [photos])
   useEffect(() => () => releasePhotoUrls(photosRef.current), [])
   useEffect(() => {
@@ -491,7 +501,7 @@ export default function Page() {
   return <>
     {renameProjectId && <RenameProjectDialog name={renameProjectName} onNameChange={setRenameProjectName} onClose={() => setRenameProjectId(null)} onSave={renameCurrentProject} />}
     {firstLaunch && <FirstProjectSetup projectName={setupProjectName} towers={setupTowers} towerPrefix={setupTowerPrefix} floors={setupFloors} floorPrefix={setupFloorPrefix} floorSuffix={setupFloorSuffix} compactFloors={setupCompactFloors} rooms={setupRooms} roomSuffixStart={setupRoomSuffixStart} roomSuffixEnd={setupRoomSuffixEnd} onProjectNameChange={setSetupProjectName} onTowersChange={setSetupTowers} onTowerPrefixChange={setSetupTowerPrefix} onFloorsChange={setSetupFloors} onFloorPrefixChange={setSetupFloorPrefix} onFloorSuffixChange={setSetupFloorSuffix} onCompactFloorsChange={setSetupCompactFloors} onRoomsChange={setSetupRooms} onRoomSuffixStartChange={setSetupRoomSuffixStart} onRoomSuffixEndChange={setSetupRoomSuffixEnd} onComplete={() => void completeFirstLaunch()} />}
-    {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機</div>}
+    {isOffline && <div className="offline-banner" role="status">目前為離線模式，資料會儲存在本機{storageUsage && storageUsage.quota > 0 ? `；${storageStatus} ${formatStorageSize(storageUsage.usage)} / ${formatStorageSize(storageUsage.quota)}` : ''}</div>}
     <main className={`app-shell app-${APP_MANIFEST.id} shell-${APP_MANIFEST.shell}`} data-app-id={APP_MANIFEST.id}>
       <header className="topbar">
         <div className="brand-mark" aria-hidden="true">▦</div><button className="project-trigger" onClick={() => setProjectPanel(true)} aria-label="選擇 Project"><strong>{currentProject.name}</strong><span>⌄</span></button>

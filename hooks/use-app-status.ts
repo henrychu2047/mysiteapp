@@ -40,14 +40,48 @@ export function useAppStatus() {
     try {
       const registration = await navigator.serviceWorker?.getRegistration('/sw.js')
       if (!registration) { alert('程式已更新'); window.location.reload(); return }
-      registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
-      if (registration.waiting) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => { alert('程式已更新'); window.location.reload() }, { once: true })
-      } else {
-        await registration.update()
+      const hasWaitingWorker = await new Promise<boolean>((resolve, reject) => {
+        let settled = false
+        let timeout = 0
+        const finish = (value: boolean, error?: unknown) => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(timeout)
+          registration.removeEventListener('updatefound', onUpdateFound)
+          if (error) reject(error)
+          else resolve(value)
+        }
+        const inspect = () => {
+          if (registration.waiting) finish(true)
+          else if (registration.installing?.state === 'redundant') finish(false)
+        }
+        const watch = (worker: ServiceWorker | null) => {
+          if (!worker) return
+          worker.addEventListener('statechange', inspect)
+          inspect()
+        }
+        const onUpdateFound = () => watch(registration.installing)
+        registration.addEventListener('updatefound', onUpdateFound)
+        if (registration.waiting) finish(true)
+        else {
+          watch(registration.installing)
+          registration.update().then(() => {
+            if (registration.waiting) finish(true)
+            else if (!registration.installing) finish(false)
+          }).catch(error => finish(false, error))
+          timeout = window.setTimeout(() => finish(false), 20000)
+        }
+      })
+      if (hasWaitingWorker && registration.waiting) {
+        const controllerChanged = new Promise<void>((resolve, reject) => {
+          const timeout = window.setTimeout(() => reject(new Error('新版本啟用逾時')), 10000)
+          navigator.serviceWorker.addEventListener('controllerchange', () => { window.clearTimeout(timeout); resolve() }, { once: true })
+        })
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+        await controllerChanged
         alert('程式已更新')
         window.location.reload()
-      }
+      } else alert('目前已是最新版本')
     } catch (error) {
       alert(`更新失敗：${error instanceof Error ? error.message : '請稍後再試'}`)
     }
