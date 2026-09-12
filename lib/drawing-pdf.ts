@@ -270,13 +270,17 @@ export async function renderDrawingPage(
 }
 
 /** Extracts selectable PDF text in canonical, CropBox-relative coordinates. */
-export async function extractDrawingRoomLabels(pdf: PDFDocumentProxy, page: number): Promise<DrawingRoomLabel[]> {
+export async function extractDrawingRoomLabels(pdf: PDFDocumentProxy, page: number, options: { signal?: AbortSignal } = {}): Promise<DrawingRoomLabel[]> {
   assertBrowser()
   assertPageNumber(pdf, page)
+  throwIfAborted(options.signal)
   const pdfPage = await pdf.getPage(page)
+  throwIfAborted(options.signal)
   const viewport = pdfPage.getViewport({ scale: 1, rotation: 0 })
   const content = await pdfPage.getTextContent()
+  throwIfAborted(options.signal)
   return content.items.flatMap((item, index) => {
+    if (options.signal?.aborted) throw abortError(options.signal.reason)
     if (!('str' in item)) return []
     const textItem = item as PdfTextItem
     const bounds = textItemBounds(textItem, viewport)

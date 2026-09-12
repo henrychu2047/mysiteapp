@@ -11,7 +11,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api'
 import type { DrawingAnnotation, DrawingDocument, DrawingMarker, DrawingPoint, DrawingRoomLabel } from '@/lib/drawing-types'
 import { createId, hydratePhoto, saveStoredPhoto, type Photo } from '@/lib/photo-storage'
 import type { PhotoSource } from '@/lib/photo-attachments'
-import { deleteDrawing, describeDrawingStorageError, loadProjectDrawings, saveDrawing, saveDrawings } from '@/lib/drawing-storage'
+import { deleteDrawing, describeDrawingStorageError, loadProjectDrawings, saveDrawingMetadata, saveDrawings } from '@/lib/drawing-storage'
 import { SMART_TAG_KEYS } from '@/lib/project-settings'
 import styles from './drawing.module.css'
 
@@ -38,6 +38,8 @@ type DragState = {
   latest: DrawingPoint
   clientX: number
   clientY: number
+  lastClientX: number
+  lastClientY: number
   annotation?: DrawingAnnotation
   marker?: DrawingMarker
   moved: boolean
@@ -129,6 +131,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState('')
   const [ocrProgress, setOcrProgress] = useState<number | null>(null)
+  const [extracting, setExtracting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [markerListOpen, setMarkerListOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -147,15 +150,24 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const fileInputRef = useRef<HTMLInputElement>(null)
   const restoreInputRef = useRef<HTMLInputElement>(null)
   const currentRef = useRef<DrawingDocument | null>(null)
+  const markerDraftBaselineRef = useRef<MarkerDraft | null>(null)
+  const markerSessionRef = useRef(0)
   const loadedProjectRef = useRef('')
+  const [projectLoadAttempt, setProjectLoadAttempt] = useState(0)
+  const [projectLoadError, setProjectLoadError] = useState('')
   const dirtyRef = useRef(false)
+  const saveRevisionRef = useRef(0)
+  const saveInFlightRef = useRef<Promise<void> | null>(null)
   const saveTimerRef = useRef<number | null>(null)
   const historyRef = useRef<DrawingAnnotation[][]>([])
   const redoRef = useRef<DrawingAnnotation[][]>([])
   const dragRef = useRef<DragState | null>(null)
   const pointersRef = useRef(new Map<number, { x: number; y: number }>())
-  const pinchRef = useRef<{ distance: number; zoom: number; focusX: number; focusY: number; localX: number; localY: number } | null>(null)
+  const pinchRef = useRef<{ distance: number; latestDistance: number; zoom: number; focusX: number; focusY: number; localX: number; localY: number } | null>(null)
+  const pinchRafRef = useRef<number | null>(null)
   const ocrAbortRef = useRef<AbortController | null>(null)
+  const extractionTaskRef = useRef<{ id: number; controller: AbortController; drawingId: string; page: number } | null>(null)
+  const extractionIdRef = useRef(0)
 
   const current = drawings.find(drawing => drawing.id === drawingId) || null
   const viewRotation = normalizeRotation(intrinsicRotation + rotation)
@@ -170,28 +182,55 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
 
   useEffect(() => { currentRef.current = current }, [current])
 
+  useEffect(() => {
+    if (!viewportRef.current) return
+    viewportRef.current.scrollLeft = 0
+    viewportRef.current.scrollTop = 0
+  }, [current?.id, page])
+
   const flushSave = useCallback(async () => {
     const drawing = currentRef.current
     if (!drawing || !dirtyRef.current) return
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+    if (saveInFlightRef.current) {
+      await saveInFlightRef.current
+      if (dirtyRef.current) await flushSave()
+      return
+    }
+    const revision = saveRevisionRef.current
     setSaveState('saving')
-    try {
-      await saveDrawing(drawing)
-      dirtyRef.current = false
-      setSaveState('saved')
-    } catch (error) {
+    const task = saveDrawingMetadata(drawing).then(() => {
+      if (revision === saveRevisionRef.current) {
+        dirtyRef.current = false
+        setSaveState('saved')
+      }
+    }).catch(error => {
       setSaveState('error')
       setNotice(describeDrawingStorageError(error))
       throw error
-    }
+    })
+    saveInFlightRef.current = task
+    try { await task } finally { if (saveInFlightRef.current === task) saveInFlightRef.current = null }
+    if (dirtyRef.current) await flushSave()
   }, [])
 
   useEffect(() => {
     let cancelled = false
     const changeProject = async () => {
       if (loadedProjectRef.current && loadedProjectRef.current !== projectId) {
-        try { await flushSave() } catch { return }
+        try { await flushSave() } catch {
+          if (!cancelled) {
+            setProjectLoadError('上一個 Project 的圖紙尚未成功保存。原有畫面已保留，請重試保存後再切換。')
+            setSaveState('error')
+          }
+          return
+        }
       }
+      if (cancelled) return
+      setProjectLoadError('')
+      setDrawings([])
+      setDrawingId(null)
+      setPdf(null)
       setSaveState('loading')
       try {
         const stored = await loadProjectDrawings(projectId)
@@ -200,17 +239,23 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
         setDrawings(stored)
         setDrawingId(stored[0]?.id || null)
         setPage(1)
+        dirtyRef.current = false
+        saveRevisionRef.current = 0
         setSaveState('saved')
       } catch (error) {
         if (!cancelled) {
           setSaveState('error')
-          setNotice(describeDrawingStorageError(error))
+          const message = describeDrawingStorageError(error)
+          setProjectLoadError(message)
+          setNotice(message)
         }
+      } finally {
+        if (!cancelled) setBusy('')
       }
     }
     void changeProject()
     return () => { cancelled = true }
-  }, [flushSave, projectId])
+  }, [flushSave, projectId, projectLoadAttempt])
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -226,7 +271,25 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   useEffect(() => () => {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
     ocrAbortRef.current?.abort()
+    extractionTaskRef.current?.controller.abort()
   }, [])
+
+  useEffect(() => {
+    markerSessionRef.current += 1
+    markerDraftBaselineRef.current = null
+    setMarkerDraft(null)
+    setNearbyRooms([])
+  }, [projectId, drawingId, page])
+
+  useEffect(() => {
+    const task = extractionTaskRef.current
+    if (!task) return
+    task.controller.abort()
+    extractionTaskRef.current = null
+    ocrAbortRef.current = null
+    setExtracting(false)
+    setOcrProgress(null)
+  }, [projectId, drawingId, page])
 
   const updateCurrent = useCallback((change: (drawing: DrawingDocument) => DrawingDocument, withAnnotationHistory = false) => {
     setDrawings(items => items.map(item => {
@@ -241,6 +304,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       return next
     }))
     dirtyRef.current = true
+    saveRevisionRef.current += 1
     setSaveState('saving')
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
     saveTimerRef.current = window.setTimeout(() => void flushSave().catch(() => undefined), 700)
@@ -251,8 +315,11 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     let loadedProxy: PDFDocumentProxy | null = null
     if (!current) {
       setPdf(null)
+      canvasHostRef.current?.replaceChildren()
       return
     }
+    setPdf(null)
+    canvasHostRef.current?.replaceChildren()
     setBusy('正在開啟圖紙…')
     void import('@/lib/drawing-pdf').then(({ loadDrawingPdf }) => loadDrawingPdf(current.pdf)).then(proxy => {
       if (cancelled) {
@@ -279,6 +346,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     if (!pdf || !canvasHostRef.current) return
     const controller = new AbortController()
     setBusy('正在繪製頁面…')
+    canvasHostRef.current.replaceChildren()
     void pdf.getPage(page).then(pdfPage => {
       const nativeRotation = normalizeRotation(pdfPage.rotate)
       setIntrinsicRotation(nativeRotation)
@@ -387,39 +455,64 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
 
   const openNewMarker = async (point: DrawingPoint, mode = markerMode) => {
     if (!current) return
-    let suggestions: DrawingRoomLabel[] = []
-    try {
-      const { suggestDrawingRooms } = await import('@/lib/drawing-pdf')
-      suggestions = suggestDrawingRooms(current.roomLabels, page, point, 5)
-    } catch { /* marker creation remains available without suggestions */ }
-    setNearbyRooms(suggestions)
+    const session = ++markerSessionRef.current
     const draft: MarkerDraft = {
       ...point,
       page,
-      roomName: suggestions[0]?.text || '',
+      roomName: '',
       category: categories[0] || '',
       tags: Object.fromEntries(SMART_TAG_KEYS.map(key => [key, defaultTags[key] || ''])),
       note: '',
       photoIds: [],
       cropScale: 1,
     }
-    if (mode === 'camera') {
-      onOpenCamera(photo => setMarkerDraft(currentDraft => ({
-        ...(currentDraft || draft),
-        photoIds: Array.from(new Set([...(currentDraft?.photoIds || draft.photoIds), photo.id])),
-        category: photo.category || draft.category,
-        tags: { ...draft.tags, ...photo.tags },
-        note: photo.note || draft.note,
-      })), draft.category)
-      return
-    }
+    setNearbyRooms([])
+    markerDraftBaselineRef.current = structuredClone(draft)
     setMarkerDraft(draft)
+    if (mode === 'camera') {
+      onOpenCamera(photo => setMarkerDraft(currentDraft => {
+        if (markerSessionRef.current !== session || !currentDraft) return currentDraft
+        return {
+          ...currentDraft,
+          photoIds: Array.from(new Set([...currentDraft.photoIds, photo.id])),
+          category: photo.category || currentDraft.category,
+          tags: { ...currentDraft.tags, ...photo.tags },
+          note: photo.note || currentDraft.note,
+        }
+      }), draft.category)
+    }
+    try {
+      const { suggestDrawingRooms } = await import('@/lib/drawing-pdf')
+      const suggestions = suggestDrawingRooms(current.roomLabels, page, point, 5)
+      if (markerSessionRef.current !== session) return
+      setNearbyRooms(suggestions)
+      setMarkerDraft(currentDraft => {
+        const suggestedRoom = suggestions[0]?.text || ''
+        if (markerSessionRef.current !== session || !currentDraft || currentDraft.roomName || !suggestedRoom) return currentDraft
+        const baseline = markerDraftBaselineRef.current
+        if (baseline && !baseline.roomName) markerDraftBaselineRef.current = { ...baseline, roomName: suggestedRoom }
+        return { ...currentDraft, roomName: suggestedRoom }
+      })
+    } catch { /* marker creation remains available without suggestions */ }
   }
 
   const openExistingMarker = (marker: DrawingMarker) => {
+    ++markerSessionRef.current
     const suggestions = current?.roomLabels.filter(room => room.page === marker.page).sort((a, b) => Math.hypot(a.x - marker.x, a.y - marker.y) - Math.hypot(b.x - marker.x, b.y - marker.y)).slice(0, 5) || []
     setNearbyRooms(suggestions)
-    setMarkerDraft({ ...structuredClone(marker), id: marker.id })
+    const draft = { ...structuredClone(marker), id: marker.id }
+    markerDraftBaselineRef.current = structuredClone(draft)
+    setMarkerDraft(draft)
+  }
+
+  const closeMarkerDraft = () => {
+    if (!markerDraft) return
+    const baseline = markerDraftBaselineRef.current
+    const changed = !baseline || JSON.stringify(markerDraft) !== JSON.stringify(baseline)
+    if (changed && !window.confirm('目前的標記資料尚未保存，確定放棄修改？')) return
+    ++markerSessionRef.current
+    markerDraftBaselineRef.current = null
+    setMarkerDraft(null)
   }
 
   const saveMarker = () => {
@@ -432,12 +525,16 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       const marker: DrawingMarker = { ...markerDraft, id: createId(), number: drawing.nextMarkerNumber, createdAt: now, updatedAt: now }
       return { ...drawing, nextMarkerNumber: drawing.nextMarkerNumber + 1, markers: [...drawing.markers, marker] }
     })
+    ++markerSessionRef.current
+    markerDraftBaselineRef.current = null
     setMarkerDraft(null)
   }
 
   const deleteMarkerRecord = () => {
     if (!markerDraft?.id || !confirm('確定刪除此標記？已連結的相片仍會保留在 Project 相簿。')) return
     updateCurrent(drawing => ({ ...drawing, markers: drawing.markers.filter(marker => marker.id !== markerDraft.id) }))
+    ++markerSessionRef.current
+    markerDraftBaselineRef.current = null
     setMarkerDraft(null)
   }
 
@@ -470,6 +567,10 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const resetGesture = useCallback(() => {
     pointersRef.current.clear()
     pinchRef.current = null
+    if (pinchRafRef.current !== null) {
+      cancelAnimationFrame(pinchRafRef.current)
+      pinchRafRef.current = null
+    }
     dragRef.current = null
     setDraftAnnotation(null)
   }, [])
@@ -512,6 +613,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       const localY = (a.y + b.y) / 2 - (rect?.top || 0)
       pinchRef.current = {
         distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+        latestDistance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
         zoom,
         focusX: ((viewport?.scrollLeft || 0) + localX) / Math.max(scaledWidth, 1),
         focusY: ((viewport?.scrollTop || 0) + localY) / Math.max(scaledHeight, 1),
@@ -525,18 +627,18 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     const markerTarget = (event.target as Element).closest<SVGElement>('[data-marker-id]')
     if (markerTarget?.dataset.markerId) {
       const marker = current.markers.find(item => item.id === markerTarget.dataset.markerId)
-      if (marker && tool === 'select') dragRef.current = { kind: 'marker-move', start, latest: start, clientX: event.clientX, clientY: event.clientY, marker: structuredClone(marker), moved: false }
+      if (marker && tool === 'select') dragRef.current = { kind: 'marker-move', start, latest: start, clientX: event.clientX, clientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, marker: structuredClone(marker), moved: false }
       else if (marker) openExistingMarker(marker)
       return
     }
     if (tool === 'pan' || (event.pointerType === 'touch' && (tool === 'select' || tool === 'marker') && !target)) {
-      dragRef.current = { kind: tool === 'marker' ? 'marker-tap' : 'pan', start, latest: start, clientX: event.clientX, clientY: event.clientY, moved: false }
+      dragRef.current = { kind: tool === 'marker' ? 'marker-tap' : 'pan', start, latest: start, clientX: event.clientX, clientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, moved: false }
       return
     }
     if (tool === 'text') {
       const annotation: DrawingAnnotation = {
         id: createId(), page, kind: 'text', x: start.x, y: start.y, endX: start.x, endY: start.y,
-        text: '文字', color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
+        text: '', color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
       }
       updateCurrent(drawing => ({ ...drawing, annotations: [...drawing.annotations, annotation] }), true)
       setSelectedAnnotationId(annotation.id)
@@ -553,18 +655,18 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       if (!annotation) return
       setSelectedAnnotationId(id)
       const handle = target.dataset.handle
-      dragRef.current = { kind: handle === 'start' ? 'resize-start' : handle === 'end' ? 'resize-end' : 'move', start, latest: start, clientX: event.clientX, clientY: event.clientY, annotation: structuredClone(annotation), moved: false }
+      dragRef.current = { kind: handle === 'start' ? 'resize-start' : handle === 'end' ? 'resize-end' : 'move', start, latest: start, clientX: event.clientX, clientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, annotation: structuredClone(annotation), moved: false }
       return
     }
     if (tool === 'marker') {
-      dragRef.current = { kind: 'marker-tap', start, latest: start, clientX: event.clientX, clientY: event.clientY, moved: false }
+      dragRef.current = { kind: 'marker-tap', start, latest: start, clientX: event.clientX, clientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, moved: false }
       return
     }
     const annotation: DrawingAnnotation = {
       id: createId(), page, kind: tool, x: start.x, y: start.y, endX: start.x, endY: start.y,
       text: tool === 'callout' ? '' : undefined, color: annotationColor, lineWidth: annotationWidth, fontSize: annotationFontSize,
     }
-    dragRef.current = { kind: 'draw', start, latest: start, clientX: event.clientX, clientY: event.clientY, annotation, moved: false }
+    dragRef.current = { kind: 'draw', start, latest: start, clientX: event.clientX, clientY: event.clientY, lastClientX: event.clientX, lastClientY: event.clientY, annotation, moved: false }
     setDraftAnnotation(annotation)
   }
 
@@ -574,30 +676,39 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
     if (event.pointerType === 'touch' && pointersRef.current.size === 2 && pinchRef.current) {
       const [a, b] = [...pointersRef.current.values()]
       const distance = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y))
-      const nextZoom = clamp(pinchRef.current.zoom * distance / pinchRef.current.distance, 0.25, 4)
+      const pinch = pinchRef.current
+      pinch.latestDistance = distance
+      const nextZoom = clamp(pinch.zoom * distance / pinch.distance, 0.25, 4)
       setFitMode(false)
       setZoom(nextZoom)
-      const pinch = pinchRef.current
-      requestAnimationFrame(() => {
-        if (pinchRef.current !== pinch) return
-        const viewport = viewportRef.current
-        if (!viewport) return
-        viewport.scrollLeft = pinch.focusX * canvasSize.width * nextZoom - pinch.localX
-        viewport.scrollTop = pinch.focusY * canvasSize.height * nextZoom - pinch.localY
-      })
+      if (pinchRafRef.current === null) {
+        pinchRafRef.current = requestAnimationFrame(() => {
+          pinchRafRef.current = null
+          if (pinchRef.current !== pinch) return
+          const viewport = viewportRef.current
+          if (!viewport) return
+          const frameZoom = clamp(pinch.zoom * pinch.latestDistance / pinch.distance, 0.25, 4)
+          viewport.scrollLeft = pinch.focusX * canvasSize.width * frameZoom - pinch.localX
+          viewport.scrollTop = pinch.focusY * canvasSize.height * frameZoom - pinch.localY
+        })
+      }
       return
     }
     const drag = dragRef.current
     if (!drag) return
     const point = pointFromEvent(event)
     const pixelDistance = Math.hypot(event.clientX - drag.clientX, event.clientY - drag.clientY)
+    const deltaX = event.clientX - drag.lastClientX
+    const deltaY = event.clientY - drag.lastClientY
+    drag.lastClientX = event.clientX
+    drag.lastClientY = event.clientY
     drag.latest = point
     drag.moved ||= pixelDistance > 6
     if (drag.kind === 'pan' || (drag.kind === 'marker-tap' && drag.moved && event.pointerType === 'touch')) {
       const viewport = viewportRef.current
       if (viewport) {
-        viewport.scrollLeft -= event.movementX
-        viewport.scrollTop -= event.movementY
+        viewport.scrollLeft -= deltaX
+        viewport.scrollTop -= deltaY
       }
       return
     }
@@ -659,29 +770,43 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   }
 
   const extractRooms = async (ocr: boolean) => {
-    if (!current || !pdf) return
+    if (!current || !pdf || extracting) return
+    const drawingIdAtStart = current.id
+    const pageAtStart = page
     const controller = new AbortController()
+    const task = { id: ++extractionIdRef.current, controller, drawingId: drawingIdAtStart, page: pageAtStart }
     ocrAbortRef.current?.abort()
+    extractionTaskRef.current?.controller.abort()
     ocrAbortRef.current = controller
+    extractionTaskRef.current = task
     setBusy(ocr ? '正在辨識中英文房間文字…' : '正在讀取 PDF 文字…')
+    setExtracting(true)
     setOcrProgress(ocr ? 0 : null)
+    const isActive = () => extractionTaskRef.current === task
+      && !controller.signal.aborted
+      && currentRef.current?.id === drawingIdAtStart
+      && loadedProjectRef.current === projectId
     try {
       const helpers = await import('@/lib/drawing-pdf')
       const labels = ocr
-        ? await helpers.recognizeDrawingRooms(pdf, page, { signal: controller.signal, onProgress: (value: number) => setOcrProgress(value) })
-        : await helpers.extractDrawingRoomLabels(pdf, page)
-      if (controller.signal.aborted) return
+        ? await helpers.recognizeDrawingRooms(pdf, pageAtStart, { signal: controller.signal, onProgress: (value: number) => { if (isActive()) setOcrProgress(value) } })
+        : await helpers.extractDrawingRoomLabels(pdf, pageAtStart, { signal: controller.signal })
+      if (!isActive()) return
       updateCurrent(drawing => ({
         ...drawing,
-        roomLabels: [...drawing.roomLabels.filter(label => !(label.page === page && label.source === (ocr ? 'ocr' : 'pdf-text'))), ...labels],
+        roomLabels: [...drawing.roomLabels.filter(label => !(label.page === pageAtStart && label.source === (ocr ? 'ocr' : 'pdf-text'))), ...labels],
       }))
-      setNotice(`第 ${page} 頁已找到 ${labels.length} 個房間文字候選`)
+      setNotice(`第 ${pageAtStart} 頁已找到 ${labels.length} 個房間文字候選`)
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) setNotice(`文字辨識失敗：${error instanceof Error ? error.message : String(error)}`)
+      if (isActive() && !(error instanceof DOMException && error.name === 'AbortError')) setNotice(`文字辨識失敗：${error instanceof Error ? error.message : String(error)}`)
     } finally {
-      setBusy('')
-      setOcrProgress(null)
-      ocrAbortRef.current = null
+      if (extractionTaskRef.current === task) {
+        setBusy('')
+        setExtracting(false)
+        setOcrProgress(null)
+        ocrAbortRef.current = null
+        extractionTaskRef.current = null
+      }
     }
   }
 
@@ -763,6 +888,7 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
   const renderedAnnotations = [...currentAnnotations, ...(draftAnnotation ? [draftAnnotation] : [])]
   const scaledWidth = Math.max(1, canvasSize.width * zoom)
   const scaledHeight = Math.max(1, canvasSize.height * zoom)
+  const activeMarkerSession = markerSessionRef.current
 
   return <main className={styles.app}>
     <header className={styles.header}>
@@ -774,11 +900,13 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
       <div className={styles.headerActions}>
         {current && <button className={styles.markerToggle} aria-label="問題標記" title="問題標記" aria-expanded={markerListOpen} onClick={() => { setMarkerListOpen(value => !value); setSidebarOpen(false) }}><ListChecks /></button>}
         <button className={`${styles.saveState} ${saveState === 'error' ? styles.error : ''}`} onClick={() => void flushSave().catch(() => undefined)} disabled={!dirtyRef.current || saveState === 'saving' || saveState === 'loading'} title={saveState === 'error' ? '按此重試保存' : undefined}><Save />{saveState === 'loading' ? '載入中' : saveState === 'saving' ? '保存中' : saveState === 'error' ? '保存失敗（重試）' : '已保存'}</button>
-        <button onClick={() => setManagerOpen(true)}>管理圖紙</button>
+        <button className={styles.manageButton} onClick={() => setManagerOpen(true)} aria-label="管理圖紙" title="管理圖紙"><Ellipsis />管理圖紙</button>
         <button className={styles.primary} onClick={() => fileInputRef.current?.click()}><FilePlus2 />匯入 PDF</button>
         <input ref={fileInputRef} hidden type="file" accept="application/pdf,.pdf" multiple onChange={event => { const files = event.target.files ? Array.from(event.target.files) : []; event.target.value = ''; void importPdfs(files) }} />
       </div>
     </header>
+
+    {projectLoadError && <div className={styles.projectError} role="alert"><section><h2>未能切換 Project</h2><p>{projectLoadError}</p><button className={styles.primary} onClick={() => setProjectLoadAttempt(value => value + 1)}>重試</button></section></div>}
 
     {!current ? <section className={styles.empty}>
       <FilePlus2 />
@@ -796,10 +924,10 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
           </div>}
           {openToolGroup !== null && <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(null)} title="返回工具組" aria-label="返回工具組"><ArrowLeft /></button>}
           {openToolGroup === null && <>
-            <button className={`${styles.toolGroupToggle} ${tool === 'pan' ? styles.active : ''}`} onClick={() => setTool('pan')} title="平移"><Grab /></button>
-            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(1)} title="標記工具組"><MousePointer2 /></button>
-            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(2)} title="編輯工具組"><Undo2 /></button>
-            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(3)} title="OCR 及匯出工具組"><ScanText /></button>
+            <button className={`${styles.toolGroupToggle} ${tool === 'pan' ? styles.active : ''}`} onClick={() => setTool('pan')} title="平移" aria-label="平移"><Grab /></button>
+            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(1)} title="標記工具組" aria-label="開啟標記工具組"><MousePointer2 /></button>
+            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(2)} title="編輯工具組" aria-label="開啟編輯工具組"><Undo2 /></button>
+            <button className={styles.toolGroupToggle} onClick={() => setOpenToolGroup(3)} title="OCR 及匯出工具組" aria-label="開啟 OCR 及匯出工具組"><ScanText /></button>
           </>}
           {openToolGroup === 1 && <div className={styles.toolGroup}>
             <button className={tool === 'select' ? styles.active : ''} onClick={() => setTool('select')} title="選取"><MousePointer2 /></button>
@@ -814,8 +942,8 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
             <button onClick={() => setRotation(value => normalizeRotation(value + 90))} title="順時針旋轉"><RotateCw /></button>
           </div>}
           {openToolGroup === 3 && <div className={styles.toolGroup}>
-            <button onClick={() => void extractRooms(false)}><ScanText />讀取文字</button>
-            <button onClick={() => void extractRooms(true)}><ScanText />OCR</button>
+            <button onClick={() => void extractRooms(false)} disabled={extracting}><ScanText />讀取文字</button>
+            <button onClick={() => void extractRooms(true)} disabled={extracting}><ScanText />OCR</button>
             <button onClick={exportMarkedPdf}><FileDown />標記 PDF</button>
             <button onClick={openIssueReport}><Download />問題報告</button>
             <button onClick={() => setImportOpen(true)}><Ellipsis /></button>
@@ -856,10 +984,10 @@ export function DrawingApp({ projectId, projectName, categories, smartTagOptions
               const start = canonicalToDisplay(annotation.kind === 'callout' ? { x: annotation.endX, y: annotation.endY } : annotation, viewRotation)
               const editing = annotation.id === editingTextId
               const textStyle = { left: `${start.x * 100}%`, top: `${start.y * 100}%`, color: annotation.color, fontSize: `${annotation.fontSize * zoom}px`, ...(annotation.kind === 'callout' ? { border: `${annotation.lineWidth * zoom}px solid ${annotation.color}`, background: '#ffffffdd', padding: `${4 * zoom}px`, minWidth: `${60 * zoom}px` } : {}) }
-return editing ? <input key={`text-${annotation.id}`} ref={textInputRef} data-annotation-id={annotation.id} className={styles.textEditorInput} value={annotation.text || ''} onPointerDown={event => event.stopPropagation()} onChange={event => updateAnnotation(annotation.id, { text: event.target.value }, false)} onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229) event.currentTarget.blur() }} onBlur={() => { setEditingTextId(null); setTool('select') }} style={textStyle} aria-label="編輯文字" /> : <span key={`text-${annotation.id}`} data-annotation-id={annotation.id} className={`${styles.textAnnotation} ${annotation.id === selectedAnnotationId ? styles.selectedTextAnnotation : ''}`} style={textStyle}>{annotation.text}</span>
+return editing ? <input key={`text-${annotation.id}`} ref={textInputRef} data-annotation-id={annotation.id} className={styles.textEditorInput} value={annotation.text || ''} onPointerDown={event => event.stopPropagation()} onChange={event => updateAnnotation(annotation.id, { text: event.target.value }, false)} onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229) event.currentTarget.blur() }} onBlur={() => { if (annotation.kind === 'text' && !annotation.text?.trim()) updateCurrent(drawing => ({ ...drawing, annotations: drawing.annotations.filter(item => item.id !== annotation.id) }), true); setEditingTextId(null); setTool('select') }} style={textStyle} aria-label="編輯文字" /> : <span key={`text-${annotation.id}`} data-annotation-id={annotation.id} className={`${styles.textAnnotation} ${annotation.id === selectedAnnotationId ? styles.selectedTextAnnotation : ''}`} style={textStyle}>{annotation.text}</span>
             })}
           </div>
-          {busy && <div className={styles.busy} role="status"><span />{busy}{ocrProgress !== null && ` ${Math.round(ocrProgress <= 1 ? ocrProgress * 100 : ocrProgress)}%`}{ocrProgress !== null && <button onClick={() => ocrAbortRef.current?.abort()}>取消</button>}</div>}
+          {busy && <div className={styles.busy} role="status"><span />{busy}{ocrProgress !== null && ` ${Math.round(ocrProgress <= 1 ? ocrProgress * 100 : ocrProgress)}%`}{extracting && <button onClick={() => extractionTaskRef.current?.controller.abort()}>取消</button>}</div>}
         </div>
       </section>
 
@@ -888,18 +1016,18 @@ return editing ? <input key={`text-${annotation.id}`} ref={textInputRef} data-an
       <div className={styles.previewGrid}>{pdf && Array.from({ length: current.pageCount }, (_, index) => <Thumbnail key={index + 1} pdf={pdf} page={index + 1} active={page === index + 1} onClick={() => { setPage(index + 1); setSidebarOpen(false) }} />)}</div>
     </section></div>}
 
-    {markerDraft && <div className={styles.modalBackdrop} onClick={() => setMarkerDraft(null)}><section className={styles.markerEditor} onClick={event => event.stopPropagation()}>
-      <header><div><p>ISSUE MARKER</p><h2>{markerDraft.id ? '編輯問題標記' : '新增問題標記'}</h2></div><button onClick={() => setMarkerDraft(null)}>×</button></header>
+    {markerDraft && <div className={styles.modalBackdrop} onClick={closeMarkerDraft}><section className={styles.markerEditor} onClick={event => event.stopPropagation()}>
+      <header><div><p>ISSUE MARKER</p><h2>{markerDraft.id ? '編輯問題標記' : '新增問題標記'}</h2></div><button aria-label="關閉標記編輯" onClick={closeMarkerDraft}>×</button></header>
       <div className={styles.formGrid}>
         <label className={styles.full}>房間名稱<input value={markerDraft.roomName} onChange={event => setMarkerDraft(value => value && ({ ...value, roomName: event.target.value }))} placeholder="可留空或自行修正" /></label>
-        {nearbyRooms.length > 0 && <div className={`${styles.roomSuggestions} ${styles.full}`}><small>附近文字（只作建議）</small>{nearbyRooms.map(room => <button key={room.id} onClick={() => setMarkerDraft(value => value && ({ ...value, roomName: room.text }))}>{room.text}</button>)}</div>}
+        {nearbyRooms.length > 0 && <div className={`${styles.roomSuggestions} ${styles.full}`}><small>附近文字（只作建議）</small>{nearbyRooms.map(room => <button type="button" key={room.id} onClick={() => setMarkerDraft(value => value && ({ ...value, roomName: room.text }))}>{room.text}</button>)}</div>}
         <label>工程類別<input list="drawing-categories" value={markerDraft.category} onChange={event => setMarkerDraft(value => value && ({ ...value, category: event.target.value }))} /><datalist id="drawing-categories">{categories.map(category => <option key={category} value={category} />)}</datalist></label>
         <label>報告裁剪範圍<input type="range" min="0.5" max="3" step="0.1" value={markerDraft.cropScale || 1} onChange={event => setMarkerDraft(value => value && ({ ...value, cropScale: Number(event.target.value) }))} /></label>
         {SMART_TAG_KEYS.map(key => { const options = key === '位置' && markerDraft.tags['樓層'] ? smartTagOptions[`位置:${markerDraft.tags['樓層']}`] || smartTagOptions[key] || [] : smartTagOptions[key] || []; const value = markerDraft.tags[key] || ''; return <label className={styles.smartTagField} key={key}>{key}<select value={value} onChange={event => setMarkerDraft(currentDraft => currentDraft && ({ ...currentDraft, tags: { ...currentDraft.tags, [key]: event.target.value } }))}><option value="">選擇{key}</option><option value="N/A">N/A</option>{value && value !== 'N/A' && !options.includes(value) && <option value={value}>{value}</option>}{options.map(option => <option key={option} value={option}>{option}</option>)}</select></label> })}
         <label className={styles.full}>文字備註<textarea value={markerDraft.note} onChange={event => setMarkerDraft(value => value && ({ ...value, note: event.target.value }))} rows={3} /></label>
       </div>
-      <div className={styles.photoLinks}><div><strong>已連結相片</strong><span>{markerDraft.photoIds.length} 張</span></div><div className={styles.linkedPhotos}>{markerDraft.photoIds.map(id => { const photo = photos.find(item => item.id === id); return <figure key={id}>{photo ? <img src={photo.src} alt={photo.category} /> : <span>相片遺失</span>}<button onClick={() => setMarkerDraft(value => value && ({ ...value, photoIds: value.photoIds.filter(photoId => photoId !== id) }))}>×</button></figure> })}</div><div className={styles.photoActions}><button onClick={() => onOpenCamera(photo => setMarkerDraft(value => value && ({ ...value, photoIds: value.photoIds.includes(photo.id) ? value.photoIds : [...value.photoIds, photo.id], category: photo.category || value.category, tags: { ...value.tags, ...photo.tags }, note: photo.note || value.note })), markerDraft.category)}><Camera />拍攝補充</button><button onClick={() => onSelectAlbumPhotos(ids => setMarkerDraft(value => value && ({ ...value, photoIds: [...new Set([...value.photoIds, ...ids])] })))}><Images />從相簿選取</button></div></div>
-      <footer>{markerDraft.id ? <button className={styles.danger} onClick={deleteMarkerRecord}><Trash2 />刪除標記</button> : <span />}<div><button onClick={() => setMarkerDraft(null)}>取消</button><button className={styles.primary} onClick={saveMarker}>保存標記</button></div></footer>
+      <div className={styles.photoLinks}><div><strong>已連結相片</strong><span>{markerDraft.photoIds.length} 張</span></div><div className={styles.linkedPhotos}>{markerDraft.photoIds.map(id => { const photo = photos.find(item => item.id === id); return <figure key={id}>{photo ? <img src={photo.src} alt={photo.category} /> : <span>相片遺失</span>}<button type="button" onClick={() => setMarkerDraft(value => value && ({ ...value, photoIds: value.photoIds.filter(photoId => photoId !== id) }))}>×</button></figure> })}</div><div className={styles.photoActions}><button type="button" onClick={() => { const session = activeMarkerSession; onOpenCamera(photo => setMarkerDraft(value => markerSessionRef.current === session && value ? ({ ...value, photoIds: value.photoIds.includes(photo.id) ? value.photoIds : [...value.photoIds, photo.id], category: photo.category || value.category, tags: { ...value.tags, ...photo.tags }, note: photo.note || value.note }) : value), markerDraft.category) }}><Camera />拍攝補充</button><button type="button" onClick={() => { const session = activeMarkerSession; onSelectAlbumPhotos(ids => setMarkerDraft(value => markerSessionRef.current === session && value ? ({ ...value, photoIds: [...new Set([...value.photoIds, ...ids])] }) : value)) }}><Images />從相簿選取</button></div></div>
+      <footer>{markerDraft.id ? <button className={styles.danger} onClick={deleteMarkerRecord}><Trash2 />刪除標記</button> : <span />}<div><button onClick={closeMarkerDraft}>取消</button><button className={styles.primary} onClick={saveMarker}>保存標記</button></div></footer>
     </section></div>}
 
     {managerOpen && <div className={styles.modalBackdrop} onClick={() => setManagerOpen(false)}><section className={styles.manager} onClick={event => event.stopPropagation()}><header><div><p>DRAWING LIBRARY</p><h2>管理圖紙</h2></div><button onClick={() => setManagerOpen(false)}>×</button></header><div className={styles.drawingList}>{drawings.map(drawing => <article key={drawing.id}><button onClick={() => void chooseDrawing(drawing.id)}><strong>{drawing.name}</strong><small>{drawing.fileName} · {drawing.pageCount} 頁 · {drawing.markers.length} 個標記</small></button><button className={styles.danger} onClick={() => void removeDrawing(drawing)}><Trash2 /></button></article>)}</div><button className={styles.primary} onClick={() => fileInputRef.current?.click()}><FilePlus2 />匯入新修訂版</button></section></div>}

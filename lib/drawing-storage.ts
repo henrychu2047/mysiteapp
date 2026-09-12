@@ -121,6 +121,14 @@ export function loadDrawing(id: string): Promise<DrawingDocument | null> {
   })
 }
 
+/** Saves editable metadata without rewriting the immutable PDF bytes. */
+export function saveDrawingMetadata(drawing: DrawingDocument): Promise<void> {
+  return transact(META_STORE, 'readwrite', transaction => {
+    const metaRequest = transaction.objectStore(META_STORE).put(withoutPdf(drawing))
+    return { result: () => undefined, error: () => metaRequest.error }
+  })
+}
+
 /** Saves immutable source bytes and editable metadata in one atomic transaction. */
 export function saveDrawing(drawing: DrawingDocument): Promise<void> {
   return transact([META_STORE, PDF_STORE], 'readwrite', transaction => {
